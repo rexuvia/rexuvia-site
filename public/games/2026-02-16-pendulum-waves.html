@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pendulum Gate</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0f; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; }
+canvas { display: block; }
+#backLink {
+  position: fixed; top: 12px; left: 12px; z-index: 100;
+  color: #888; font-size: 14px; text-decoration: none; font-family: 'Inter', sans-serif;
+}
+#backLink:hover { color: #00f0ff; }
+</style>
+</head>
+<body>
+<a id="backLink" href="/">← Back to Rexuvia</a>
+<canvas id="c"></canvas>
+<script>
+// ===== PENDULUM GATE =====
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// --- Resize ---
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// --- Constants ---
+const ROW_COLORS = ['#00f0ff','#ff00aa','#00ff88','#ffdd00','#aa44ff'];
+const BOB_RADIUS = 10;
+const PARTICLE_RADIUS = 6;
+const COLLISION_FACTOR = 0.8;
+const TRAIL_LENGTH = 20;
+const NEAR_MISS_DIST = 15;
+const LEVELS = [
+  { rows:2, pensPerRow:2, freqSpread:0.3, particleSpeed:200, amplitude:0.6 },
+  { rows:2, pensPerRow:3, freqSpread:0.3, particleSpeed:200, amplitude:0.6 },
+  { rows:3, pensPerRow:3, freqSpread:0.25, particleSpeed:220, amplitude:0.65 },
+  { rows:3, pensPerRow:3, freqSpread:0.2, particleSpeed:240, amplitude:0.7 },
+  { rows:3, pensPerRow:4, freqSpread:0.2, particleSpeed:250, amplitude:0.7 },
+  { rows:4, pensPerRow:3, freqSpread:0.15, particleSpeed:260, amplitude:0.75 },
+  { rows:4, pensPerRow:4, freqSpread:0.15, particleSpeed:280, amplitude:0.75 },
+  { rows:4, pensPerRow:4, freqSpread:0.12, particleSpeed:300, amplitude:0.8 },
+  { rows:5, pensPerRow:4, freqSpread:0.1, particleSpeed:320, amplitude:0.8 },
+  { rows:5, pensPerRow:5, freqSpread:0.08, particleSpeed:340, amplitude:0.85 },
+];
+
+// --- State ---
+let state = 'title'; // title, levelIntro, playing, gameOver
+let level = 0;
+let score = 0;
+let combo = 0;
+let lives = 3;
+let highScore = parseInt(localStorage.getItem('pendulumGateHigh')) || 0;
+let aimAngle = 0; // radians from vertical, negative=left, positive=right
+let pendulums = [];
+let particle = null;
+let trail = [];
+let shakeTimer = 0;
+let shakeX = 0, shakeY = 0;
+let levelIntroTimer = 0;
+let floatingTexts = [];
+let gameTime = 0;
+let titlePendulums = [];
+let rowsCleared = [];
+let orientationPermission = false;
+let hasGyro = false;
+let audioCtx = null;
+
+// --- Sound ---
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playLaunch() {
+  try {
+    const a = getAudio(), o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(200, a.currentTime);
+    o.frequency.linearRampToValueAtTime(800, a.currentTime + 0.1);
+    g.gain.setValueAtTime(0.15, a.currentTime);
+    g.gain.linearRampToValueAtTime(0, a.currentTime + 0.1);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.1);
+  } catch(e) {}
+}
+function playChime(row) {
+  try {
+    const a = getAudio(), o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine'; o.frequency.value = 400 + row * 100;
+    g.gain.setValueAtTime(0.12, a.currentTime);
+    g.gain.linearRampToValueAtTime(0, a.currentTime + 0.15);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.15);
+  } catch(e) {}
+}
+function playDeath() {
+  try {
+    const a = getAudio(), o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine'; o.frequency.value = 80;
+    g.gain.setValueAtTime(0.3, a.currentTime);
+    g.gain.linearRampToValueAtTime(0, a.currentTime + 0.2);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.2);
+  } catch(e) {}
+}
+function playLevelClear() {
+  try {
+    const a = getAudio();
+    [500,650,800].forEach((f,i) => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.12, a.currentTime + i*0.1);
+      g.gain.linearRampToValueAtTime(0, a.currentTime + i*0.1 + 0.12);
+      o.connect(g); g.connect(a.destination);
+      o.start(a.currentTime + i*0.1); o.stop(a.currentTime + i*0.1 + 0.12);
+    });
+  } catch(e) {}
+}
+
+// --- Pendulum Setup ---
+function setupPendulums(lvlData, forTitle) {
+  const pens = [];
+  const W = canvas.width, H = canvas.height;
+  const launchY = H * 0.8;
+  const topMargin = H * 0.08;
+  const rowRegion = launchY - topMargin;
+  const rows = forTitle ? 3 : lvlData.rows;
+  const ppr = forTitle ? 4 : lvlData.pensPerRow;
+  const amp = forTitle ? 0.4 : lvlData.amplitude;
+  const fs = forTitle ? 0.2 : lvlData.freqSpread;
+  const stringLen = Math.min(rowRegion / (rows + 1) * 0.7, 80);
+
+  for (let r = 0; r < rows; r++) {
+    const pivotY = topMargin + (r + 1) * rowRegion / (rows + 1);
+    for (let p = 0; p < ppr; p++) {
+      const pivotX = (p + 1) * W / (ppr + 1);
+      const baseFreq = 1.5 + r * 0.2;
+      pens.push({
+        pivotX, pivotY, stringLen,
+        amplitude: amp,
+        frequency: baseFreq + (p - (ppr-1)/2) * fs,
+        phase: Math.random() * Math.PI * 2,
+        row: r,
+        color: ROW_COLORS[r % ROW_COLORS.length]
+      });
+    }
+  }
+  return pens;
+}
+
+function initLevel() {
+  const lvl = LEVELS[Math.min(level, LEVELS.length - 1)];
+  pendulums = setupPendulums(lvl, false);
+  particle = null;
+  trail = [];
+  rowsCleared = new Array(lvl.rows).fill(false);
+  lives = 3;
+}
+
+function initTitle() {
+  titlePendulums = setupPendulums(null, true);
+}
+
+// --- Bob position ---
+function getBobPos(pen, t) {
+  const angle = pen.amplitude * Math.sin(pen.frequency * t + pen.phase);
+  return {
+    x: pen.pivotX + pen.stringLen * Math.sin(angle),
+    y: pen.pivotY + pen.stringLen * Math.cos(angle)
+  };
+}
+
+// --- Launch ---
+function launchParticle() {
+  if (particle) return;
+  const W = canvas.width, H = canvas.height;
+  const launchY = H * 0.82;
+  const launchX = W / 2;
+  const lvl = LEVELS[Math.min(level, LEVELS.length - 1)];
+  const speed = lvl.particleSpeed;
+  const vx = Math.sin(aimAngle) * speed;
+  const vy = -Math.cos(aimAngle) * speed;
+  particle = { x: launchX, y: launchY, vx, vy };
+  trail = [];
+  rowsCleared = new Array(lvl.rows).fill(false);
+  playLaunch();
+}
+
+// --- Floating text ---
+function addFloat(x, y, text, color) {
+  floatingTexts.push({ x, y, text, color, life: 1.0 });
+}
+
+// --- Input ---
+let mouseX = canvas.width / 2;
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'ArrowLeft') aimAngle = Math.max(aimAngle - 0.05, -Math.PI/9);
+  if (e.code === 'ArrowRight') aimAngle = Math.min(aimAngle + 0.05, Math.PI/9);
+  if ((e.code === 'Space' || e.code === 'ArrowUp') && state === 'playing') {
+    e.preventDefault();
+    launchParticle();
+  }
+  if ((e.code === 'Space' || e.code === 'ArrowUp') && state === 'title') {
+    e.preventDefault();
+    startGame();
+  }
+  if ((e.code === 'Space') && state === 'gameOver') {
+    e.preventDefault();
+    restartGame();
+  }
+});
+
+window.addEventListener('mousemove', e => {
+  mouseX = e.clientX;
+  if (state === 'playing' || state === 'title') {
+    const center = canvas.width / 2;
+    aimAngle = ((mouseX - center) / center) * (Math.PI / 9);
+    aimAngle = Math.max(-Math.PI/9, Math.min(Math.PI/9, aimAngle));
+  }
+});
+
+function handleTap(e) {
+  if (e) e.preventDefault();
+  requestGyro();
+  if (state === 'title') { startGame(); return; }
+  if (state === 'gameOver') { restartGame(); return; }
+  if (state === 'playing') launchParticle();
+}
+
+canvas.addEventListener('touchstart', handleTap, { passive: false });
+canvas.addEventListener('mousedown', e => {
+  if (state === 'title') { startGame(); return; }
+  if (state === 'gameOver') { restartGame(); return; }
+  if (state === 'playing') launchParticle();
+});
+
+// --- Gyroscope ---
+function requestGyro() {
+  if (orientationPermission) return;
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(r => {
+      if (r === 'granted') { orientationPermission = true; listenGyro(); }
+    }).catch(() => {});
+  } else {
+    orientationPermission = true;
+    listenGyro();
+  }
+}
+
+function listenGyro() {
+  window.addEventListener('deviceorientation', e => {
+    if (e.gamma !== null) {
+      hasGyro = true;
+      aimAngle = (e.gamma / 90) * (Math.PI / 9) * 2;
+      aimAngle = Math.max(-Math.PI/9, Math.min(Math.PI/9, aimAngle));
+    }
+  });
+}
+
+// --- Game flow ---
+function startGame() {
+  state = 'levelIntro';
+  level = 0; score = 0; combo = 0;
+  initLevel();
+  levelIntroTimer = 1.5;
+}
+
+function restartGame() {
+  startGame();
+}
+
+function nextLevel() {
+  level++;
+  if (level >= LEVELS.length) {
+    // Won the game, show game over with victory
+    endGame();
+    return;
+  }
+  state = 'levelIntro';
+  initLevel();
+  levelIntroTimer = 1.5;
+}
+
+function endGame() {
+  state = 'gameOver';
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('pendulumGateHigh', highScore);
+  }
+}
+
+// --- Update ---
+function update(dt) {
+  gameTime += dt;
+
+  // Shake decay
+  if (shakeTimer > 0) {
+    shakeTimer -= dt;
+    shakeX = (Math.random() - 0.5) * 8;
+    shakeY = (Math.random() - 0.5) * 8;
+    if (shakeTimer <= 0) { shakeX = 0; shakeY = 0; }
+  }
+
+  // Floating texts
+  floatingTexts.forEach(f => { f.life -= dt * 1.5; f.y -= 30 * dt; });
+  floatingTexts = floatingTexts.filter(f => f.life > 0);
+
+  if (state === 'levelIntro') {
+    levelIntroTimer -= dt;
+    if (levelIntroTimer <= 0) state = 'playing';
+  }
+
+  if (state === 'playing' && particle) {
+    // Move particle
+    particle.x += particle.vx * dt;
+    particle.y += particle.vy * dt;
+
+    // Trail
+    trail.push({ x: particle.x, y: particle.y });
+    if (trail.length > TRAIL_LENGTH) trail.shift();
+
+    const lvl = LEVELS[Math.min(level, LEVELS.length - 1)];
+
+    // Check collisions with bobs
+    let hit = false;
+    for (const pen of pendulums) {
+      const bob = getBobPos(pen, gameTime);
+      const dx = particle.x - bob.x;
+      const dy = particle.y - bob.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const colDist = (BOB_RADIUS + PARTICLE_RADIUS) * COLLISION_FACTOR;
+
+      if (dist < colDist) {
+        hit = true;
+        break;
+      }
+
+      // Near miss
+      if (!hit && dist < NEAR_MISS_DIST + BOB_RADIUS && dist >= colDist) {
+        if (!pen._nearMissed) {
+          pen._nearMissed = true;
+          score += 50;
+          addFloat(bob.x, bob.y - 20, 'CLOSE! +50', '#ffdd00');
+        }
+      }
+    }
+
+    // Check row clears (particle passed below each row's bob Y)
+    for (const pen of pendulums) {
+      const bob = getBobPos(pen, gameTime);
+      if (!rowsCleared[pen.row] && particle.y < bob.y - BOB_RADIUS - 5) {
+        // Check if all pendulums in this row are above particle
+        const allInRow = pendulums.filter(p => p.row === pen.row);
+        const allPassed = allInRow.every(p => {
+          const b = getBobPos(p, gameTime);
+          return particle.y < b.y - BOB_RADIUS - 5;
+        });
+        if (allPassed) {
+          rowsCleared[pen.row] = true;
+          const pts = (pen.row + 1) * 100;
+          score += pts;
+          playChime(pen.row);
+          addFloat(particle.x, particle.y, `+${pts}`, pen.color);
+        }
+      }
+    }
+
+    if (hit) {
+      // Death
+      playDeath();
+      shakeTimer = 0.2;
+      lives--;
+      particle = null;
+      trail = [];
+      pendulums.forEach(p => p._nearMissed = false);
+      combo = 0;
+      if (lives <= 0) endGame();
+      return;
+    }
+
+    // Off screen top = success
+    if (particle.y < -20) {
+      const allCleared = rowsCleared.every(Boolean);
+      if (allCleared) {
+        score += 500;
+        combo++;
+        score += combo * 100;
+        addFloat(canvas.width/2, canvas.height/2, `ALL CLEAR! +${500 + combo*100}`, '#00ff88');
+        playLevelClear();
+        particle = null;
+        trail = [];
+        pendulums.forEach(p => p._nearMissed = false);
+        setTimeout(() => nextLevel(), 800);
+        state = 'levelIntro';
+        levelIntroTimer = 1.5;
+        initLevel();
+      } else {
+        // Passed through but missed some rows — still counts as a clear for advancing
+        combo++;
+        playLevelClear();
+        particle = null;
+        trail = [];
+        pendulums.forEach(p => p._nearMissed = false);
+        setTimeout(() => {}, 0);
+        state = 'levelIntro';
+        levelIntroTimer = 1.5;
+        nextLevel();
+      }
+      return;
+    }
+
+    // Off screen sides
+    if (particle.x < -20 || particle.x > canvas.width + 20) {
+      particle = null;
+      trail = [];
+      pendulums.forEach(p => p._nearMissed = false);
+    }
+  }
+}
+
+// --- Draw ---
+function drawPendulumSet(pens, t) {
+  // Draw pivot bars
+  const rows = {};
+  pens.forEach(p => {
+    if (!rows[p.row]) rows[p.row] = p.pivotY;
+  });
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  Object.values(rows).forEach(y => {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  });
+
+  // Draw strings and bobs
+  pens.forEach(pen => {
+    const bob = getBobPos(pen, t);
+    // String
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pen.pivotX, pen.pivotY);
+    ctx.lineTo(bob.x, bob.y);
+    ctx.stroke();
+    // Bob
+    ctx.save();
+    ctx.shadowColor = pen.color;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = pen.color;
+    ctx.beginPath();
+    ctx.arc(bob.x, bob.y, BOB_RADIUS, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawAimIndicator() {
+  const W = canvas.width, H = canvas.height;
+  const launchX = W / 2;
+  const launchY = H * 0.82;
+  const len = 60;
+  const endX = launchX + Math.sin(aimAngle) * len;
+  const endY = launchY - Math.cos(aimAngle) * len;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,240,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(launchX, launchY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Small circle at launch point
+  ctx.fillStyle = 'rgba(0,240,255,0.3)';
+  ctx.beginPath();
+  ctx.arc(launchX, launchY, 4, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawTrail() {
+  for (let i = 0; i < trail.length; i++) {
+    const alpha = (i / trail.length) * 0.6;
+    const r = PARTICLE_RADIUS * (i / trail.length) * 0.8;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#00f0ff';
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(trail[i].x, trail[i].y, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawParticle() {
+  if (!particle) return;
+  drawTrail();
+  ctx.save();
+  ctx.shadowColor = '#00f0ff';
+  ctx.shadowBlur = 15;
+  ctx.fillStyle = '#00f0ff';
+  ctx.beginPath();
+  ctx.arc(particle.x, particle.y, PARTICLE_RADIUS, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHUD() {
+  const W = canvas.width, H = canvas.height;
+  ctx.save();
+  // Lives top-left
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(30 + i * 24, 40, 8, 0, Math.PI*2);
+    ctx.fillStyle = i < lives ? '#00f0ff' : '#333';
+    ctx.shadowColor = i < lives ? '#00f0ff' : 'transparent';
+    ctx.shadowBlur = i < lives ? 8 : 0;
+    ctx.fill();
+  }
+  // Score top-right
+  ctx.shadowBlur = 0;
+  ctx.font = '700 18px Orbitron';
+  ctx.fillStyle = '#00f0ff';
+  ctx.textAlign = 'right';
+  ctx.fillText(score, W - 20, 45);
+  // Level bottom-left
+  ctx.font = '400 14px Orbitron';
+  ctx.fillStyle = '#666';
+  ctx.textAlign = 'left';
+  ctx.fillText(`LVL ${level + 1}`, 20, H - 20);
+  // Combo bottom-right
+  if (combo > 0) {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffdd00';
+    ctx.fillText(`COMBO ×${combo}`, W - 20, H - 20);
+  }
+  ctx.restore();
+}
+
+function drawLaunchZone() {
+  const y = canvas.height * 0.8;
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(canvas.width, y);
+  ctx.stroke();
+}
+
+function drawFloatingTexts() {
+  floatingTexts.forEach(f => {
+    ctx.save();
+    ctx.globalAlpha = f.life;
+    ctx.font = '700 16px Orbitron';
+    ctx.fillStyle = f.color;
+    ctx.textAlign = 'center';
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.restore();
+  });
+}
+
+function drawTitle() {
+  const W = canvas.width, H = canvas.height;
+  drawPendulumSet(titlePendulums, gameTime);
+
+  ctx.save();
+  // Title
+  ctx.font = '900 36px Orbitron';
+  ctx.fillStyle = '#00f0ff';
+  ctx.shadowColor = '#00f0ff';
+  ctx.shadowBlur = 20;
+  ctx.textAlign = 'center';
+  ctx.fillText('PENDULUM GATE', W/2, H * 0.3);
+  ctx.shadowBlur = 0;
+
+  // Instructions
+  ctx.font = '300 14px Inter';
+  ctx.fillStyle = '#888';
+  ctx.fillText('Launch particles through swinging pendulums.', W/2, H * 0.42);
+  ctx.fillText('Time your shots carefully!', W/2, H * 0.46);
+
+  ctx.font = '300 12px Inter';
+  ctx.fillStyle = '#666';
+  ctx.fillText('Tap to launch | Tilt phone or Arrow Keys to aim', W/2, H * 0.52);
+
+  // High score
+  if (highScore > 0) {
+    ctx.font = '400 14px Orbitron';
+    ctx.fillStyle = '#ffdd00';
+    ctx.fillText(`BEST: ${highScore}`, W/2, H * 0.6);
+  }
+
+  // Pulsing tap to start
+  const pulse = 0.5 + 0.5 * Math.sin(gameTime * 3);
+  ctx.globalAlpha = 0.4 + pulse * 0.6;
+  ctx.font = '700 18px Orbitron';
+  ctx.fillStyle = '#00f0ff';
+  ctx.fillText('TAP TO START', W/2, H * 0.72);
+  ctx.restore();
+}
+
+function drawLevelIntro() {
+  const W = canvas.width, H = canvas.height;
+  drawPendulumSet(pendulums, gameTime);
+  drawLaunchZone();
+
+  ctx.save();
+  ctx.font = '900 40px Orbitron';
+  ctx.fillStyle = '#00f0ff';
+  ctx.shadowColor = '#00f0ff';
+  ctx.shadowBlur = 20;
+  ctx.textAlign = 'center';
+  ctx.fillText(`LEVEL ${level + 1}`, W/2, H * 0.45);
+  ctx.shadowBlur = 0;
+
+  // Lives
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(W/2 - 24 + i * 24, H * 0.52, 8, 0, Math.PI*2);
+    ctx.fillStyle = i < lives ? '#00f0ff' : '#333';
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawGameOver() {
+  const W = canvas.width, H = canvas.height;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.font = '900 36px Orbitron';
+  ctx.fillStyle = '#ff00aa';
+  ctx.shadowColor = '#ff00aa';
+  ctx.shadowBlur = 20;
+  ctx.textAlign = 'center';
+  ctx.fillText('GAME OVER', W/2, H * 0.35);
+  ctx.shadowBlur = 0;
+
+  ctx.font = '700 20px Orbitron';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`SCORE: ${score}`, W/2, H * 0.48);
+
+  ctx.font = '400 16px Orbitron';
+  ctx.fillStyle = '#ffdd00';
+  ctx.fillText(`BEST: ${highScore}`, W/2, H * 0.55);
+
+  const pulse = 0.5 + 0.5 * Math.sin(gameTime * 3);
+  ctx.globalAlpha = 0.4 + pulse * 0.6;
+  ctx.font = '700 18px Orbitron';
+  ctx.fillStyle = '#00f0ff';
+  ctx.fillText('TAP TO RETRY', W/2, H * 0.68);
+  ctx.restore();
+}
+
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  // Background
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(-10, -10, W + 20, H + 20);
+
+  if (state === 'title') {
+    drawTitle();
+  } else if (state === 'levelIntro') {
+    drawLevelIntro();
+  } else if (state === 'playing') {
+    drawPendulumSet(pendulums, gameTime);
+    drawLaunchZone();
+    drawAimIndicator();
+    drawParticle();
+    drawHUD();
+  } else if (state === 'gameOver') {
+    drawPendulumSet(pendulums, gameTime);
+    drawGameOver();
+  }
+
+  drawFloatingTexts();
+  ctx.restore();
+}
+
+// --- Main Loop ---
+let lastTime = 0;
+initTitle();
+
+function loop(timestamp) {
+  let dt = (timestamp - lastTime) / 1000;
+  lastTime = timestamp;
+  if (dt > 0.05) dt = 0.05;
+  if (dt < 0) dt = 0;
+
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(t => { lastTime = t; loop(t); });
+</script>
+</body>
+</html>

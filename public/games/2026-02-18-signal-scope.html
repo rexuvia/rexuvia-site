@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Scope — Rexuvia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--cyan:#00f0ff;--magenta:#ff00aa;--green:#00ff88;
+  --panel:#12121a;--border:#1a1a2e;--text:#e0e0e0;--dim:#666;
+}
+html{font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.back-link{
+  display:inline-block;padding:12px 16px;font-size:0.85rem;
+  opacity:0.7;transition:opacity .2s;
+}
+.back-link:hover{opacity:1}
+
+.title-bar{
+  text-align:center;padding:8px 16px 16px;
+}
+.title-bar h1{
+  font-family:'Orbitron',sans-serif;font-size:1.6rem;font-weight:900;
+  background:linear-gradient(90deg,var(--cyan),var(--magenta));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-shadow:0 0 30px rgba(0,240,255,0.3);
+}
+.title-bar .subtitle{font-size:0.75rem;color:var(--dim);margin-top:4px}
+
+.container{max-width:800px;margin:0 auto;padding:0 12px 24px}
+
+.panel{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;margin-bottom:12px;overflow:hidden;
+}
+.panel-header{
+  font-family:'Orbitron',sans-serif;font-size:0.7rem;font-weight:700;
+  color:var(--cyan);padding:8px 12px;border-bottom:1px solid var(--border);
+  text-transform:uppercase;letter-spacing:2px;
+}
+
+canvas{display:block;width:100%;background:#000;border-radius:0 0 12px 12px}
+
+/* Note display */
+.note-display{padding:16px;text-align:center}
+.note-main{
+  font-family:'Orbitron',sans-serif;font-size:3.5rem;font-weight:900;
+  color:var(--green);text-shadow:0 0 20px rgba(0,255,136,0.5);
+  line-height:1;margin-bottom:4px;min-height:3.8rem;
+}
+.note-main.inactive{color:var(--dim);text-shadow:none;font-size:1.2rem}
+.cents-bar{
+  height:6px;background:#1a1a2e;border-radius:3px;margin:8px auto;
+  max-width:300px;position:relative;overflow:visible;
+}
+.cents-marker{
+  position:absolute;top:-2px;width:10px;height:10px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 8px var(--cyan);
+  transform:translateX(-50%);transition:left 0.1s;
+}
+.cents-center{
+  position:absolute;top:0;left:50%;width:2px;height:6px;
+  background:var(--dim);transform:translateX(-50%);
+}
+.cents-label{
+  font-size:0.8rem;color:var(--cyan);margin-top:8px;
+  font-family:'Orbitron',sans-serif;
+}
+
+.note-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:6px;
+  margin-top:12px;
+}
+.note-item{
+  background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;
+}
+.note-item .label{font-size:0.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+.note-item .value{font-family:'Orbitron',sans-serif;font-size:0.95rem;color:var(--text);margin-top:2px}
+
+.confidence-bar{
+  height:4px;background:#1a1a2e;border-radius:2px;margin-top:10px;
+  max-width:200px;margin-left:auto;margin-right:auto;
+}
+.confidence-fill{height:100%;border-radius:2px;transition:width 0.15s;background:var(--green)}
+.confidence-label{font-size:0.65rem;color:var(--dim);margin-top:4px}
+
+/* Stats */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:1px;
+  background:var(--border);
+}
+.stat{background:var(--panel);padding:10px 12px}
+.stat .label{font-size:0.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+.stat .value{font-family:'Orbitron',sans-serif;font-size:0.85rem;margin-top:2px}
+
+/* VU Meter */
+.vu-container{padding:12px}
+.vu-bar{
+  height:20px;background:#0a0a0f;border-radius:10px;overflow:hidden;
+  position:relative;
+}
+.vu-fill{height:100%;border-radius:10px;transition:width 0.08s}
+.vu-ticks{
+  display:flex;justify-content:space-between;padding:4px 4px 0;
+  font-size:0.55rem;color:var(--dim);font-family:'Orbitron',sans-serif;
+}
+
+/* History */
+.history-wrapper{position:relative;overflow:hidden;border-radius:0 0 12px 12px}
+.history-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.history-scroll canvas{border-radius:0 0 12px 12px}
+
+/* Controls */
+.controls{text-align:center;padding:8px 0 20px}
+.btn{
+  font-family:'Orbitron',sans-serif;font-size:0.9rem;font-weight:700;
+  padding:14px 40px;border:2px solid var(--cyan);border-radius:30px;
+  background:transparent;color:var(--cyan);cursor:pointer;
+  text-transform:uppercase;letter-spacing:3px;
+  transition:all .2s;
+}
+.btn:hover{background:rgba(0,240,255,0.1);box-shadow:0 0 20px rgba(0,240,255,0.3)}
+.btn.active{border-color:var(--magenta);color:var(--magenta);background:rgba(255,0,170,0.1)}
+.btn.active:hover{box-shadow:0 0 20px rgba(255,0,170,0.3)}
+
+@media(min-width:600px){
+  .note-grid{grid-template-columns:repeat(4,1fr)}
+  .stats-grid{grid-template-columns:repeat(3,1fr)}
+  .note-main{font-size:4.5rem}
+}
+</style>
+</head>
+<body>
+
+<a href="/" class="back-link">← Back to Rexuvia</a>
+<div class="title-bar">
+  <h1>Signal Scope</h1>
+  <div class="subtitle">Real-time Audio Visualizer & Analyzer</div>
+</div>
+
+<div class="container">
+  <!-- Oscilloscope -->
+  <div class="panel">
+    <div class="panel-header">Oscilloscope</div>
+    <canvas id="scopeCanvas" height="160"></canvas>
+  </div>
+
+  <!-- Spectrum -->
+  <div class="panel">
+    <div class="panel-header">Frequency Spectrum</div>
+    <canvas id="spectrumCanvas" height="140"></canvas>
+  </div>
+
+  <!-- Note Display -->
+  <div class="panel">
+    <div class="panel-header">Detected Note</div>
+    <div class="note-display">
+      <div class="note-main inactive" id="noteMain">—</div>
+      <div class="cents-bar">
+        <div class="cents-center"></div>
+        <div class="cents-marker" id="centsMarker" style="left:50%"></div>
+      </div>
+      <div class="cents-label" id="centsLabel">±0 cents</div>
+      <div class="note-grid" id="noteGrid">
+        <div class="note-item"><div class="label">Scientific</div><div class="value" id="nSci">—</div></div>
+        <div class="note-item"><div class="label">Helmholtz</div><div class="value" id="nHelm">—</div></div>
+        <div class="note-item"><div class="label">MIDI</div><div class="value" id="nMidi">—</div></div>
+        <div class="note-item"><div class="label">Frequency</div><div class="value" id="nFreq">—</div></div>
+        <div class="note-item"><div class="label">Solfège</div><div class="value" id="nSolf">—</div></div>
+        <div class="note-item"><div class="label">German</div><div class="value" id="nGer">—</div></div>
+        <div class="note-item"><div class="label">Octave</div><div class="value" id="nOct">—</div></div>
+        <div class="note-item"><div class="label">Cents</div><div class="value" id="nCents">—</div></div>
+      </div>
+      <div class="confidence-bar"><div class="confidence-fill" id="confFill" style="width:0%"></div></div>
+      <div class="confidence-label" id="confLabel">Confidence: —</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="panel">
+    <div class="panel-header">Signal Stats</div>
+    <div class="stats-grid">
+      <div class="stat"><div class="label">RMS Level</div><div class="value" id="sRms">— dB</div></div>
+      <div class="stat"><div class="label">Peak Level</div><div class="value" id="sPeak">— dB</div></div>
+      <div class="stat"><div class="label">SNR Estimate</div><div class="value" id="sSnr">—</div></div>
+      <div class="stat"><div class="label">Dominant Freq</div><div class="value" id="sDom">— Hz</div></div>
+      <div class="stat"><div class="label">Harmonics</div><div class="value" id="sHarm">—</div></div>
+      <div class="stat"><div class="label">Sample Rate</div><div class="value" id="sSr">—</div></div>
+    </div>
+  </div>
+
+  <!-- VU Meter -->
+  <div class="panel">
+    <div class="panel-header">Level Meter</div>
+    <div class="vu-container">
+      <div class="vu-bar"><div class="vu-fill" id="vuFill" style="width:0%"></div></div>
+      <div class="vu-ticks">
+        <span>-60</span><span>-48</span><span>-36</span><span>-24</span><span>-12</span><span>-6</span><span>0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="panel">
+    <div class="panel-header">Pitch History (scroll ← →)</div>
+    <div class="history-wrapper">
+      <div class="history-scroll" id="historyScroll">
+        <canvas id="historyCanvas" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn" id="toggleBtn" onclick="toggleAudio()">Start</button>
+  </div>
+</div>
+
+<script>
+// ─── State ───
+let audioCtx, analyser, source, stream;
+let running = false;
+let animId;
+const FFT_SIZE = 4096;
+
+// History: up to 5 min at ~15fps ≈ 4500 points, but we store by time
+const HISTORY_VISIBLE_SEC = 60;
+const HISTORY_MAX_SEC = 300;
+let pitchHistory = []; // {t: timestamp, freq: hz, confidence: 0-1}
+let historyStartTime = 0;
+
+// Buffers
+let timeBuf, freqBuf;
+
+// ─── Note tables ───
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const SOLFEGE = ['Do','Re','Re','Mi','Mi','Fa','Fa','Sol','Sol','La','La','Ti']; // chromatic approx
+const SOLFEGE_MAP = {0:'Do',1:'Do#',2:'Re',3:'Re#',4:'Mi',5:'Fa',6:'Fa#',7:'Sol',8:'Sol#',9:'La',10:'La#',11:'Ti'};
+const GERMAN_MAP = {0:'C',1:'Cis',2:'D',3:'Dis',4:'E',5:'F',6:'Fis',7:'G',8:'Gis',9:'A',10:'Ais',11:'H'};
+
+function freqToNote(freq) {
+  const midi = 69 + 12 * Math.log2(freq / 440);
+  const midiRound = Math.round(midi);
+  const cents = (midi - midiRound) * 100;
+  const noteIndex = ((midiRound % 12) + 12) % 12;
+  const octave = Math.floor(midiRound / 12) - 1;
+  const name = NOTE_NAMES[noteIndex];
+  return { midi: midiRound, cents, noteIndex, octave, name, freq };
+}
+
+function helmholtz(name, octave) {
+  // Helmholtz: C0-B0 = C,,, etc. Middle C (C4) = c'
+  // Octave 0-2: uppercase + commas; 3: uppercase; 4: lowercase + '
+  let base = name;
+  if (octave >= 4) {
+    base = name.toLowerCase();
+    const primes = octave - 4;
+    return base + (primes > 0 ? '\u2032'.repeat(primes) : '');
+  } else if (octave === 3) {
+    return base;
+  } else {
+    const commas = 2 - octave;
+    return base + (commas > 0 ? ','.repeat(commas) : '');
+  }
+}
+
+// ─── Canvas setup ───
+const scopeC = document.getElementById('scopeCanvas');
+const specC = document.getElementById('spectrumCanvas');
+const histC = document.getElementById('historyCanvas');
+const scopeCtx = scopeC.getContext('2d');
+const specCtx = specC.getContext('2d');
+const histCtx = histC.getContext('2d');
+
+function resizeCanvases() {
+  const dpr = window.devicePixelRatio || 1;
+  [scopeC, specC].forEach(c => {
+    const w = c.parentElement.clientWidth;
+    const h = parseInt(c.getAttribute('height'));
+    c.width = w * dpr;
+    c.height = h * dpr;
+    c.style.height = h + 'px';
+    c.getContext('2d').scale(dpr, dpr);
+    c._w = w; c._h = h;
+  });
+  // History canvas is wider for scrolling
+  const hw = histC.parentElement.parentElement.clientWidth;
+  const totalW = Math.max(hw, (HISTORY_MAX_SEC / HISTORY_VISIBLE_SEC) * hw);
+  const hh = parseInt(histC.getAttribute('height'));
+  histC.width = totalW * dpr;
+  histC.height = hh * dpr;
+  histC.style.width = totalW + 'px';
+  histC.style.height = hh + 'px';
+  histCtx.scale(dpr, dpr);
+  histC._w = totalW; histC._h = hh;
+  histC._viewW = hw;
+}
+resizeCanvases();
+window.addEventListener('resize', resizeCanvases);
+
+// ─── Autocorrelation pitch detection ───
+function autoCorrelate(buf, sampleRate) {
+  let size = buf.length;
+  let rms = 0;
+  for (let i = 0; i < size; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / size);
+  if (rms < 0.008) return { freq: -1, confidence: 0 }; // too quiet
+
+  // Trim silence from edges
+  let r1 = 0, r2 = size - 1;
+  const thresh = 0.2;
+  for (let i = 0; i < size / 2; i++) { if (Math.abs(buf[i]) < thresh) r1 = i; else break; }
+  for (let i = 1; i < size / 2; i++) { if (Math.abs(buf[size - i]) < thresh) r2 = size - i; else break; }
+
+  buf = buf.slice(r1, r2);
+  size = buf.length;
+
+  // Autocorrelation
+  const c = new Float32Array(size);
+  for (let i = 0; i < size; i++) {
+    let sum = 0;
+    for (let j = 0; j < size - i; j++) sum += buf[j] * buf[j + i];
+    c[i] = sum;
+  }
+
+  // Find first dip then first peak
+  let d = 0;
+  while (c[d] > c[d + 1] && d < size - 1) d++;
+
+  let maxVal = -1, maxPos = -1;
+  for (let i = d; i < size; i++) {
+    if (c[i] > maxVal) { maxVal = c[i]; maxPos = i; }
+  }
+
+  const confidence = maxVal / c[0];
+  // Parabolic interpolation
+  let T0 = maxPos;
+  if (maxPos > 0 && maxPos < size - 1) {
+    const x1 = c[maxPos - 1], x2 = c[maxPos], x3 = c[maxPos + 1];
+    const a = (x1 + x3 - 2 * x2) / 2;
+    const b = (x3 - x1) / 2;
+    if (a) T0 = maxPos - b / (2 * a);
+  }
+
+  return { freq: sampleRate / T0, confidence };
+}
+
+// ─── Drawing ───
+function drawScope() {
+  const w = scopeC._w, h = scopeC._h;
+  const ctx = scopeCtx;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,240,255,0.08)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = (h / 4) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  for (let i = 0; i <= 8; i++) {
+    const x = (w / 8) * i;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+
+  analyser.getFloatTimeDomainData(timeBuf);
+
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  const sliceW = w / timeBuf.length;
+  for (let i = 0; i < timeBuf.length; i++) {
+    const x = i * sliceW;
+    const y = (1 - timeBuf[i]) * h / 2;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawSpectrum() {
+  const w = specC._w, h = specC._h;
+  const ctx = specCtx;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+
+  analyser.getByteFrequencyData(freqBuf);
+
+  const barCount = Math.min(128, freqBuf.length);
+  const barW = w / barCount;
+
+  for (let i = 0; i < barCount; i++) {
+    const val = freqBuf[i] / 255;
+    const barH = val * h;
+
+    // Color gradient: cyan → magenta → green
+    const t = i / barCount;
+    let r, g, b;
+    if (t < 0.5) {
+      const p = t * 2;
+      r = Math.floor(255 * p); g = Math.floor(240 * (1 - p)); b = 255;
+    } else {
+      const p = (t - 0.5) * 2;
+      r = Math.floor(255 * (1 - p)); g = Math.floor(255 * p); b = Math.floor(170 * (1 - p));
+    }
+
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 4;
+    ctx.fillRect(i * barW, h - barH, barW - 1, barH);
+  }
+  ctx.shadowBlur = 0;
+}
+
+function updateNoteDisplay(freq, confidence) {
+  const mainEl = document.getElementById('noteMain');
+  const centsMarker = document.getElementById('centsMarker');
+  const centsLabel = document.getElementById('centsLabel');
+
+  if (freq <= 0 || confidence < 0.5) {
+    mainEl.textContent = '—';
+    mainEl.className = 'note-main inactive';
+    centsMarker.style.left = '50%';
+    centsLabel.textContent = '±0 cents';
+    ['nSci','nHelm','nMidi','nFreq','nSolf','nGer','nOct','nCents'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('confFill').style.width = '0%';
+    document.getElementById('confLabel').textContent = 'Confidence: —';
+    return;
+  }
+
+  const note = freqToNote(freq);
+  mainEl.textContent = note.name + note.octave;
+  mainEl.className = 'note-main';
+
+  // Cents visualization
+  const centsPct = 50 + (note.cents / 50) * 50; // ±50 cents → 0-100%
+  centsMarker.style.left = Math.max(0, Math.min(100, centsPct)) + '%';
+  const cSign = note.cents >= 0 ? '+' : '';
+  centsLabel.textContent = `${cSign}${note.cents.toFixed(1)} cents`;
+
+  // Color based on how in-tune
+  const absCents = Math.abs(note.cents);
+  if (absCents < 5) {
+    mainEl.style.color = '#00ff88';
+    mainEl.style.textShadow = '0 0 20px rgba(0,255,136,0.5)';
+  } else if (absCents < 15) {
+    mainEl.style.color = '#00f0ff';
+    mainEl.style.textShadow = '0 0 20px rgba(0,240,255,0.5)';
+  } else {
+    mainEl.style.color = '#ff00aa';
+    mainEl.style.textShadow = '0 0 20px rgba(255,0,170,0.5)';
+  }
+
+  document.getElementById('nSci').textContent = note.name + note.octave;
+  document.getElementById('nHelm').textContent = helmholtz(note.name, note.octave);
+  document.getElementById('nMidi').textContent = note.midi;
+  document.getElementById('nFreq').textContent = freq.toFixed(2) + ' Hz';
+  document.getElementById('nSolf').textContent = SOLFEGE_MAP[note.noteIndex] || '—';
+  document.getElementById('nGer').textContent = GERMAN_MAP[note.noteIndex] || '—';
+  document.getElementById('nOct').textContent = note.octave;
+  const centsStr = `${cSign}${note.cents.toFixed(1)}¢`;
+  document.getElementById('nCents').textContent = centsStr;
+
+  // Confidence
+  const confPct = Math.round(confidence * 100);
+  const confFill = document.getElementById('confFill');
+  confFill.style.width = confPct + '%';
+  confFill.style.background = confidence > 0.85 ? '#00ff88' : confidence > 0.65 ? '#00f0ff' : '#ff00aa';
+  document.getElementById('confLabel').textContent = `Confidence: ${confPct}%`;
+}
+
+function updateStats() {
+  analyser.getFloatTimeDomainData(timeBuf);
+  analyser.getByteFrequencyData(freqBuf);
+
+  let rms = 0, peak = 0;
+  for (let i = 0; i < timeBuf.length; i++) {
+    const v = Math.abs(timeBuf[i]);
+    rms += timeBuf[i] * timeBuf[i];
+    if (v > peak) peak = v;
+  }
+  rms = Math.sqrt(rms / timeBuf.length);
+
+  const rmsDb = rms > 0 ? 20 * Math.log10(rms) : -100;
+  const peakDb = peak > 0 ? 20 * Math.log10(peak) : -100;
+
+  document.getElementById('sRms').textContent = rmsDb.toFixed(1) + ' dB';
+  document.getElementById('sRms').style.color = rmsDb > -12 ? '#ff00aa' : rmsDb > -30 ? '#00f0ff' : '#00ff88';
+  document.getElementById('sPeak').textContent = peakDb.toFixed(1) + ' dB';
+  document.getElementById('sPeak').style.color = peakDb > -6 ? '#ff00aa' : peakDb > -18 ? '#00f0ff' : '#00ff88';
+
+  // SNR estimate: peak / RMS ratio
+  const snr = peak > 0 && rms > 0 ? 20 * Math.log10(peak / rms) : 0;
+  document.getElementById('sSnr').textContent = snr.toFixed(1) + ' dB';
+
+  // Dominant freq from FFT
+  let maxBin = 0, maxVal = 0;
+  for (let i = 1; i < freqBuf.length; i++) {
+    if (freqBuf[i] > maxVal) { maxVal = freqBuf[i]; maxBin = i; }
+  }
+  const domFreq = maxBin * audioCtx.sampleRate / (analyser.fftSize);
+  document.getElementById('sDom').textContent = domFreq.toFixed(1) + ' Hz';
+
+  // Harmonic content: ratio of energy above fundamental
+  let lowE = 0, highE = 0;
+  const fundBin = Math.max(1, maxBin);
+  for (let i = 1; i < freqBuf.length; i++) {
+    const e = freqBuf[i] * freqBuf[i];
+    if (i <= fundBin * 1.5) lowE += e; else highE += e;
+  }
+  const harmRatio = (lowE + highE) > 0 ? highE / (lowE + highE) : 0;
+  const harmLabels = ['Pure', 'Low', 'Medium', 'Rich', 'Complex'];
+  const harmIdx = Math.min(4, Math.floor(harmRatio * 5));
+  document.getElementById('sHarm').textContent = harmLabels[harmIdx];
+
+  document.getElementById('sSr').textContent = audioCtx.sampleRate + ' Hz';
+
+  // VU Meter
+  const vuDb = rmsDb;
+  const vuPct = Math.max(0, Math.min(100, ((vuDb + 60) / 60) * 100));
+  const vuFill = document.getElementById('vuFill');
+  vuFill.style.width = vuPct + '%';
+  if (vuPct > 90) {
+    vuFill.style.background = 'linear-gradient(90deg, #00ff88 0%, #00ff88 60%, #ffff00 80%, #ff0044 100%)';
+  } else if (vuPct > 70) {
+    vuFill.style.background = 'linear-gradient(90deg, #00ff88 0%, #00ff88 70%, #ffff00 100%)';
+  } else {
+    vuFill.style.background = '#00ff88';
+  }
+}
+
+function drawHistory() {
+  const w = histC._w, h = histC._h, vw = histC._viewW;
+  const ctx = histCtx;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+
+  if (pitchHistory.length === 0) return;
+
+  const now = Date.now();
+  const pxPerSec = vw / HISTORY_VISIBLE_SEC;
+
+  // Recalculate canvas width based on history
+  const elapsed = (now - historyStartTime) / 1000;
+  const totalSec = Math.min(HISTORY_MAX_SEC, Math.max(HISTORY_VISIBLE_SEC, elapsed));
+  const neededW = totalSec * pxPerSec;
+
+  if (Math.abs(histC._w - neededW) > pxPerSec * 2) {
+    const dpr = window.devicePixelRatio || 1;
+    histC.width = neededW * dpr;
+    histC.style.width = neededW + 'px';
+    histCtx.scale(dpr, dpr);
+    histC._w = neededW;
+  }
+
+  const totalW = histC._w;
+
+  // Y range: ~50Hz to 2000Hz, log scale
+  const minF = 50, maxF = 2000;
+  const logMin = Math.log2(minF), logMax = Math.log2(maxF);
+  const padding = 25;
+
+  // Grid lines for notes
+  ctx.strokeStyle = 'rgba(0,240,255,0.06)';
+  ctx.lineWidth = 1;
+  ctx.font = '9px Inter';
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+
+  const gridNotes = [65.41, 130.81, 261.63, 523.25, 1046.5]; // C2-C6
+  const gridLabels = ['C2', 'C3', 'C4', 'C5', 'C6'];
+  gridNotes.forEach((f, i) => {
+    const y = padding + (1 - (Math.log2(f) - logMin) / (logMax - logMin)) * (h - padding * 2);
+    if (y > padding && y < h - padding) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(totalW, y); ctx.stroke();
+      ctx.fillText(gridLabels[i], 4, y - 3);
+    }
+  });
+
+  // Time ruler
+  ctx.strokeStyle = 'rgba(0,240,255,0.1)';
+  const secStart = Math.floor((now - historyStartTime) / 1000);
+  for (let s = 0; s <= secStart; s += 5) {
+    const x = totalW - (secStart - s) * pxPerSec;
+    if (x < 0) continue;
+    ctx.beginPath(); ctx.moveTo(x, h - 15); ctx.lineTo(x, h); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillText(`-${secStart - s}s`, x + 2, h - 3);
+  }
+
+  // Draw pitch points
+  ctx.shadowColor = '#00f0ff';
+  ctx.shadowBlur = 4;
+
+  let prevX, prevY;
+  for (let i = 0; i < pitchHistory.length; i++) {
+    const p = pitchHistory[i];
+    if (p.freq < minF || p.freq > maxF) { prevX = undefined; continue; }
+
+    const age = (now - p.t) / 1000;
+    const x = totalW - age * pxPerSec;
+    const logF = Math.log2(p.freq);
+    const y = padding + (1 - (logF - logMin) / (logMax - logMin)) * (h - padding * 2);
+
+    // Color by confidence
+    const alpha = 0.3 + p.confidence * 0.7;
+    if (p.confidence > 0.85) ctx.fillStyle = `rgba(0,255,136,${alpha})`;
+    else if (p.confidence > 0.65) ctx.fillStyle = `rgba(0,240,255,${alpha})`;
+    else ctx.fillStyle = `rgba(255,0,170,${alpha})`;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Connect with line
+    if (prevX !== undefined && Math.abs(x - prevX) < pxPerSec * 2) {
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(prevX, prevY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+    prevX = x; prevY = y;
+  }
+  ctx.shadowBlur = 0;
+
+  // Auto-scroll to right
+  const scroll = document.getElementById('historyScroll');
+  scroll.scrollLeft = scroll.scrollWidth;
+}
+
+// ─── Main loop ───
+let frameCount = 0;
+function loop() {
+  if (!running) return;
+
+  drawScope();
+  drawSpectrum();
+
+  // Pitch detection every other frame for perf
+  if (frameCount % 2 === 0) {
+    analyser.getFloatTimeDomainData(timeBuf);
+    const result = autoCorrelate(timeBuf, audioCtx.sampleRate);
+    updateNoteDisplay(result.freq, result.confidence);
+
+    if (result.freq > 0 && result.confidence > 0.5) {
+      pitchHistory.push({ t: Date.now(), freq: result.freq, confidence: result.confidence });
+      // Trim old history
+      const cutoff = Date.now() - HISTORY_MAX_SEC * 1000;
+      while (pitchHistory.length > 0 && pitchHistory[0].t < cutoff) pitchHistory.shift();
+    }
+  }
+
+  updateStats();
+
+  if (frameCount % 3 === 0) drawHistory();
+
+  frameCount++;
+  animId = requestAnimationFrame(loop);
+}
+
+// ─── Toggle ───
+async function toggleAudio() {
+  const btn = document.getElementById('toggleBtn');
+
+  if (running) {
+    running = false;
+    cancelAnimationFrame(animId);
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (audioCtx) audioCtx.close();
+    btn.textContent = 'Start';
+    btn.className = 'btn';
+    return;
+  }
+
+  btn.textContent = 'Requesting mic...';
+  btn.className = 'btn';
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('getUserMedia not supported. Try Chrome or Safari.');
+    }
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Resume audio context (required on mobile after user gesture)
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    source = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = FFT_SIZE;
+    analyser.smoothingTimeConstant = 0.6;
+    source.connect(analyser);
+
+    timeBuf = new Float32Array(analyser.fftSize);
+    freqBuf = new Uint8Array(analyser.frequencyBinCount);
+
+    historyStartTime = Date.now();
+    pitchHistory = [];
+    running = true;
+    btn.textContent = 'Stop';
+    btn.className = 'btn active';
+
+    resizeCanvases();
+    loop();
+  } catch (e) {
+    btn.textContent = 'Start';
+    btn.className = 'btn';
+    alert('Mic error: ' + e.message + '\n\nMake sure you allow microphone access when prompted.');
+    console.error('Signal Scope mic error:', e);
+  }
+}
+</script>
+</body>
+</html>

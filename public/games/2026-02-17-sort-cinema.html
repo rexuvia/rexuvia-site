@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sort Cinema — Rexuvia</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
+a{color:#64ffda;text-decoration:none}
+a:hover{color:#00f0ff;text-shadow:0 0 8px #00f0ff}
+.back{display:inline-block;padding:12px 16px;font-size:.85rem;opacity:.7;transition:.3s}
+.back:hover{opacity:1}
+h1{font-family:'Orbitron',sans-serif;text-align:center;font-size:clamp(1.4rem,4vw,2.2rem);background:linear-gradient(90deg,#00f0ff,#ff00aa,#00ff88);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;padding:8px 0}
+.subtitle{text-align:center;font-size:.8rem;color:#888;margin-bottom:12px;font-style:italic}
+.controls{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:4px 12px;margin-bottom:8px}
+.controls label{font-size:.75rem;color:#aaa;display:flex;align-items:center;gap:4px}
+.controls input[type=range]{width:80px;accent-color:#00f0ff}
+.btn{font-family:'Orbitron',sans-serif;background:linear-gradient(135deg,#0a192f,#1a1a3f);border:1px solid #00f0ff55;color:#00f0ff;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:.72rem;transition:.3s;text-transform:uppercase;letter-spacing:1px}
+.btn:hover{border-color:#00f0ff;box-shadow:0 0 12px #00f0ff44;transform:scale(1.05)}
+.btn:active{transform:scale(.97)}
+.btn.go{border-color:#00ff88;color:#00ff88}
+.btn.go:hover{box-shadow:0 0 12px #00ff8844}
+.btn.pause{border-color:#ff00aa;color:#ff00aa}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:8px 12px;max-width:1400px;margin:0 auto}
+@media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:960px){.grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:1200px){.grid{grid-template-columns:repeat(5,1fr)}}
+.algo-box{background:#0a192f;border:1px solid #ffffff15;border-radius:8px;padding:8px;position:relative;overflow:hidden;min-height:150px}
+.algo-box.winner{border-color:#00ff88;box-shadow:0 0 20px #00ff8844}
+.algo-box.eliminated{opacity:.5;border-color:#ff000055}
+.algo-box.sweating{animation:sweat .3s infinite alternate}
+.algo-box.joke{border-color:#ff00aa33}
+@keyframes sweat{0%{transform:translateX(-1px)}100%{transform:translateX(1px)}}
+.algo-header{display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:4px}
+.algo-name{font-family:'Orbitron',sans-serif;font-size:.65rem;color:#00f0ff;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.algo-box.joke .algo-name{color:#ff00aa}
+.info-btn{background:none;border:1px solid #ffffff33;color:#aaa;font-size:.65rem;width:20px;height:20px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.3s;flex-shrink:0;padding:0;line-height:1}
+.info-btn:hover{border-color:#00f0ff;color:#00f0ff;box-shadow:0 0 8px #00f0ff44}
+.algo-stats{font-size:.6rem;color:#888;text-align:center;margin-top:4px;min-height:1.2em}
+.algo-emoji{position:absolute;top:4px;right:6px;font-size:.85rem}
+.bar-container{display:flex;align-items:flex-end;justify-content:center;height:80px;gap:1px;padding:2px 0}
+.bar{transition:height .05s,background .1s;border-radius:1px 1px 0 0;min-width:1px}
+.bar.active{box-shadow:0 0 8px #ff00aa;z-index:2}
+.bar.sorted{box-shadow:0 0 4px #00ff88}
+.winner-banner{text-align:center;font-family:'Orbitron',sans-serif;font-size:clamp(.9rem,3vw,1.4rem);color:#00ff88;text-shadow:0 0 20px #00ff88;padding:8px;display:none}
+.winner-banner.show{display:block;animation:glow 1s ease-in-out infinite alternate}
+@keyframes glow{from{text-shadow:0 0 10px #00ff88}to{text-shadow:0 0 30px #00ff88,0 0 60px #00ff8866}}
+canvas#particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99}
+.mood{font-size:.55rem;color:#ff00aa;text-align:center;min-height:.9em;font-style:italic}
+.rank-badge{position:absolute;top:4px;left:6px;font-size:.6rem;font-family:'Orbitron',sans-serif;color:#00ff88;opacity:0;transition:.3s}
+.rank-badge.show{opacity:1}
+/* Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:200;justify-content:center;align-items:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#0a192f;border:1px solid #00f0ff55;border-radius:12px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;position:relative;box-shadow:0 0 40px #00f0ff22}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;color:#ff00aa;font-size:1.5rem;cursor:pointer;transition:.3s}
+.modal-close:hover{color:#00f0ff;transform:scale(1.2)}
+.modal h2{font-family:'Orbitron',sans-serif;font-size:1rem;color:#00f0ff;margin-bottom:12px;padding-right:30px;background:linear-gradient(90deg,#00f0ff,#ff00aa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.modal h3{font-family:'Orbitron',sans-serif;font-size:.7rem;color:#ff00aa;margin:12px 0 4px;text-transform:uppercase;letter-spacing:1px}
+.modal p{font-size:.85rem;color:#ccc;line-height:1.5;margin-bottom:8px}
+.modal .complexity{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.modal .complexity div{background:#0a0a1f;border:1px solid #ffffff11;border-radius:6px;padding:8px;text-align:center}
+.modal .complexity .label{font-size:.6rem;color:#888;text-transform:uppercase;letter-spacing:1px}
+.modal .complexity .value{font-size:.8rem;color:#00f0ff;font-family:'Orbitron',sans-serif;margin-top:2px}
+.modal .fun-fact{background:linear-gradient(135deg,#1a0a2f,#0a1a2f);border:1px solid #ff00aa33;border-radius:8px;padding:12px;margin-top:12px;font-size:.8rem;color:#ddd;line-height:1.5}
+.modal .fun-fact::before{content:'💡 ';font-size:1rem}
+.modal .joke-warning{background:linear-gradient(135deg,#2f0a0a,#1a0a0a);border:1px solid #ff000033;border-radius:8px;padding:12px;margin-top:12px;font-size:.8rem;color:#ff6666;line-height:1.5}
+.modal .joke-warning::before{content:'⚠️ ';font-size:1rem}
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0a0a0f}
+::-webkit-scrollbar-thumb{background:#00f0ff33;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#00f0ff66}
+</style>
+</head>
+<body>
+<a class="back" href="/">← Back to Rexuvia</a>
+<h1>🎬 SORT CINEMA</h1>
+<p class="subtitle">19 algorithms enter — only one can sort first</p>
+
+<div class="controls">
+  <label>Size: <span id="szVal">30</span> <input type="range" id="szSlider" min="10" max="80" value="30"></label>
+  <label>Speed: <input type="range" id="spdSlider" min="1" max="100" value="50"></label>
+  <button class="btn go" id="btnRace">▶ RACE!</button>
+  <button class="btn" id="btnStep">⏭ Step</button>
+  <button class="btn pause" id="btnPause" disabled>⏸ Pause</button>
+  <button class="btn" id="btnNew">🔀 New Array</button>
+</div>
+
+<div class="winner-banner" id="winBanner"></div>
+<div class="grid" id="grid"></div>
+<canvas id="particles"></canvas>
+
+<!-- Info Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <button class="modal-close" id="modalClose">&times;</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ALGORITHM DEFINITIONS
+// ============================================================
+const ALGOS = [
+  // --- REAL SORTS ---
+  {name:'Bubble Sort',emoji:'🫧',joke:false,color:'#ff00aa',
+   mood:['Chugging along...','This is fine 🔥','*heavy breathing*','Are we there yet?','Almost...'],
+   info:{desc:'Repeatedly steps through the list, compares adjacent elements and swaps them if they\'re in the wrong order. Like bubbles rising to the surface — the largest values "bubble up" to the end each pass.',
+     best:'O(n)',avg:'O(n²)',worst:'O(n²)',space:'O(1)',
+     fact:'Despite being one of the slowest practical sorts, Bubble Sort is famous in CS education. Barack Obama once joked that "the answer is never bubble sort" when asked about efficiency at Google.'}},
+  {name:'Quick Sort',emoji:'⚡',joke:false,color:'#00f0ff',
+   mood:['Divide and conquer!','Picking pivots','Recursion go brrrr','Too fast too furious','ez clap'],
+   info:{desc:'Picks a "pivot" element, partitions the array so smaller elements go left and larger go right, then recursively sorts both sides. The king of average-case performance.',
+     best:'O(n log n)',avg:'O(n log n)',worst:'O(n²)',space:'O(log n)',
+     fact:'Quick Sort was invented by Tony Hoare in 1959 while he was a visiting student in Moscow. It\'s the default sort in many standard libraries because of its excellent cache performance.'}},
+  {name:'Merge Sort',emoji:'🧬',joke:false,color:'#64ffda',
+   mood:['Splitting atoms...','Merging realities','Stable & steady','Perfectly balanced','Guaranteed speed'],
+   info:{desc:'Divides the array in half recursively until each piece has one element, then merges the pieces back together in sorted order. It\'s guaranteed O(n log n) — no worst case surprises.',
+     best:'O(n log n)',avg:'O(n log n)',worst:'O(n log n)',space:'O(n)',
+     fact:'Merge Sort is a "stable" sort, meaning equal elements maintain their relative order. It was invented by John von Neumann in 1945 — one of the earliest sorting algorithms ever designed for computers.'}},
+  {name:'Heap Sort',emoji:'🏔️',joke:false,color:'#ff8800',
+   mood:['Building the heap...','Heapify!','Sifting down...','Tree vibes 🌲','Max extracted!'],
+   info:{desc:'Builds a max-heap from the array, then repeatedly extracts the maximum element and places it at the end. Uses an implicit binary tree structure within the array itself.',
+     best:'O(n log n)',avg:'O(n log n)',worst:'O(n log n)',space:'O(1)',
+     fact:'Heap Sort guarantees O(n log n) with O(1) extra space — the best of both worlds on paper. But in practice, its poor cache locality often makes it slower than Quick Sort.'}},
+  {name:'Insertion Sort',emoji:'🃏',joke:false,color:'#aa55ff',
+   mood:['One card at a time','Like sorting cards','*slides into place*','Patience is key','Nearly there...'],
+   info:{desc:'Builds the sorted array one item at a time by picking each element and inserting it into its correct position among the already-sorted elements. Like sorting a hand of playing cards.',
+     best:'O(n)',avg:'O(n²)',worst:'O(n²)',space:'O(1)',
+     fact:'Insertion Sort is actually the fastest algorithm for very small arrays (< ~15 elements). That\'s why Tim Sort and other hybrid algorithms use it as a subroutine!'}},
+  {name:'Selection Sort',emoji:'👀',joke:false,color:'#ffff00',
+   mood:['Scanning...scanning...','Found the min!','Swapping!','Methodical AF','One by one...'],
+   info:{desc:'Finds the minimum element from the unsorted portion and puts it at the beginning. Repeats until everything is sorted. Simple but always makes O(n²) comparisons regardless of input.',
+     best:'O(n²)',avg:'O(n²)',worst:'O(n²)',space:'O(1)',
+     fact:'Selection Sort always makes exactly n(n-1)/2 comparisons. Its only advantage: it makes at most n swaps, which matters when writes are expensive (like writing to flash memory).'}},
+  {name:'Shell Sort',emoji:'🐚',joke:false,color:'#ff6644',
+   mood:['Gap sequence go!','Shrinking gaps...','h-sorting...','Almost insertion sort','Donald Shell says hi'],
+   info:{desc:'An optimization of Insertion Sort that compares elements far apart first, then progressively reduces the gap. This moves elements closer to their final position faster than plain insertion.',
+     best:'O(n log n)',avg:'O(n^1.25)',worst:'O(n²)',space:'O(1)',
+     fact:'Invented by Donald Shell in 1959. The optimal gap sequence is still an open problem in computer science! Different sequences give different performance — the Knuth sequence (3^k-1)/2 is popular.'}},
+  {name:'Radix Sort',emoji:'🔢',joke:false,color:'#44aaff',
+   mood:['Digit by digit...','Bucketing values','LSD processing...','Non-comparative!','Radix power!'],
+   info:{desc:'Sorts numbers digit by digit, from least significant to most significant (LSD variant). Uses counting sort as a subroutine for each digit position. Doesn\'t compare elements directly!',
+     best:'O(nk)',avg:'O(nk)',worst:'O(nk)',space:'O(n+k)',
+     fact:'Radix Sort is one of the oldest sorting methods — it was used for sorting punched cards on mechanical tabulating machines in the 1890s! k is the number of digits.'}},
+  {name:'Counting Sort',emoji:'🔟',joke:false,color:'#88ff44',
+   mood:['Counting up...','Building histogram','Placing elements...','Integer magic!','No comparisons!'],
+   info:{desc:'Counts the occurrences of each distinct value, calculates positions from the counts, and places elements directly. Only works with integers in a known range — but when it does, it\'s blazing fast.',
+     best:'O(n+k)',avg:'O(n+k)',worst:'O(n+k)',space:'O(n+k)',
+     fact:'Counting Sort is a non-comparison sort that breaks the O(n log n) lower bound for comparison-based sorting. k is the range of input values.'}},
+  {name:'Cocktail Shaker',emoji:'🍸',joke:false,color:'#ff44aa',
+   mood:['Shaking left...','Shaking right...','Bidirectional!','Bubble\'s cousin','Cocktail hour!'],
+   info:{desc:'A bidirectional variant of Bubble Sort. Goes left-to-right bubbling up the largest, then right-to-left bubbling down the smallest. Helps with "turtles" — small values at the end of the list.',
+     best:'O(n)',avg:'O(n²)',worst:'O(n²)',space:'O(1)',
+     fact:'Also called "bidirectional bubble sort" or "ripple sort." It solves the "turtle problem" where small elements near the end take forever to move left in regular Bubble Sort.'}},
+  {name:'Comb Sort',emoji:'🪮',joke:false,color:'#ddaa00',
+   mood:['Large gaps first...','Shrinking by 1.3','Combing through...','Almost there...','Final comb pass!'],
+   info:{desc:'Improves on Bubble Sort by using a gap that starts large and shrinks by a factor of 1.3 each pass, eliminating "turtles" efficiently. The final passes with gap=1 are like Bubble Sort.',
+     best:'O(n log n)',avg:'O(n²/2^p)',worst:'O(n²)',space:'O(1)',
+     fact:'The shrink factor of 1.3 was found empirically by the inventors (Lacey and Box, 1991) to be optimal. Comb Sort is to Bubble Sort what Shell Sort is to Insertion Sort.'}},
+  {name:'Gnome Sort',emoji:'🧙',joke:false,color:'#ff88cc',
+   mood:['Garden gnoming...','Moving pots...','Back and forth','Like a gnome!','Sorting flowers 🌷'],
+   info:{desc:'Also called "stupid sort" — works like a garden gnome sorting flower pots. Moves forward when things are in order, goes back one step when they\'re not. Surprisingly simple but slow.',
+     best:'O(n)',avg:'O(n²)',worst:'O(n²)',space:'O(1)',
+     fact:'Gnome Sort was originally proposed by Hamid Sarbazi-Azad in 2000 and called "stupid sort." It was renamed to Gnome Sort by Dick Grune, inspired by the Dutch garden gnome tradition.'}},
+  {name:'Bitonic Sort',emoji:'⚡🔀',joke:false,color:'#ff4400',
+   mood:['Building bitonic...','Merging sequences','Parallel power!','Network sort!','GPU friendly!'],
+   info:{desc:'Creates "bitonic sequences" (first ascending, then descending) and recursively merges them. Originally designed for parallel computing — every comparison is independent of the data.',
+     best:'O(n log²n)',avg:'O(n log²n)',worst:'O(n log²n)',space:'O(1)',
+     fact:'Bitonic Sort is perfect for GPUs because all comparisons at each step can happen in parallel. It requires the array size to be a power of 2, so we pad the array.'}},
+  {name:'Pancake Sort',emoji:'🥞',joke:false,color:'#cc8844',
+   mood:['Flipping pancakes!','Finding biggest...','Flip to top!','Flip to place!','Short stack!'],
+   info:{desc:'The only operation allowed is "flipping" a prefix of the array (like flipping a stack of pancakes with a spatula). Finds the max, flips it to the top, then flips it to its correct position.',
+     best:'O(n)',avg:'O(n²)',worst:'O(n²)',space:'O(1)',
+     fact:'Bill Gates co-authored a paper on pancake sorting in 1979 — it was his only published academic paper! The "pancake number" P(n) — minimum flips needed — is still an open problem.'}},
+  {name:'Tim Sort',emoji:'⏱️',joke:false,color:'#44ddaa',
+   mood:['Finding runs...','Merging runs','Hybrid power!','Python\'s choice','Galloping mode!'],
+   info:{desc:'A hybrid sort that finds naturally occurring sorted "runs" in the data, extends short runs with Insertion Sort, then merges them intelligently. Used as the default sort in Python and Java.',
+     best:'O(n)',avg:'O(n log n)',worst:'O(n log n)',space:'O(n)',
+     fact:'Tim Sort was invented by Tim Peters in 2002 for Python. It\'s designed for real-world data that often has existing patterns. It\'s the default sort in Python, Java SE 7+, Android, and Swift.'}},
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let arraySize=30, baseArray=[], running=false, paused=false, speed=50, winner=null, racers=[], animId=null, finishRank=0;
+const grid=document.getElementById('grid'), winBanner=document.getElementById('winBanner');
+const szSlider=document.getElementById('szSlider'), spdSlider=document.getElementById('spdSlider');
+const szVal=document.getElementById('szVal');
+const btnRace=document.getElementById('btnRace'), btnStep=document.getElementById('btnStep');
+const btnPause=document.getElementById('btnPause'), btnNew=document.getElementById('btnNew');
+const modalOverlay=document.getElementById('modalOverlay'), modalContent=document.getElementById('modalContent');
+document.getElementById('modalClose').onclick=()=>modalOverlay.classList.remove('show');
+modalOverlay.onclick=(e)=>{if(e.target===modalOverlay)modalOverlay.classList.remove('show');};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')modalOverlay.classList.remove('show');});
+
+// ============================================================
+// AUDIO
+// ============================================================
+let audioCtx;
+function beep(freq,dur=.03,vol=.08){
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.frequency.value=freq;g.gain.value=vol;
+  o.start();g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);
+  o.stop(audioCtx.currentTime+dur);
+}
+function winSound(){for(let i=0;i<5;i++)setTimeout(()=>beep(400+i*200,.1,.1),i*100);}
+
+// ============================================================
+// MODAL
+// ============================================================
+function showInfo(idx){
+  const a=ALGOS[idx];const info=a.info;
+  let html=`<h2>${a.emoji} ${a.name}</h2>`;
+  html+=`<h3>How It Works</h3><p>${info.desc}</p>`;
+  html+=`<h3>Complexity</h3><div class="complexity">`;
+  html+=`<div><div class="label">Best</div><div class="value">${info.best}</div></div>`;
+  html+=`<div><div class="label">Average</div><div class="value">${info.avg}</div></div>`;
+  html+=`<div><div class="label">Worst</div><div class="value">${info.worst}</div></div>`;
+  html+=`<div><div class="label">Space</div><div class="value">${info.space}</div></div>`;
+  html+=`</div>`;
+  if(info.fact)html+=`<div class="fun-fact">${info.fact}</div>`;
+  if(info.joke)html+=`<div class="joke-warning">${info.joke}</div>`;
+  modalContent.innerHTML=html;
+  modalOverlay.classList.add('show');
+}
+
+// ============================================================
+// ARRAY GENERATION
+// ============================================================
+function genArray(){
+  baseArray=[];for(let i=0;i<arraySize;i++)baseArray.push(Math.floor(Math.random()*100)+1);
+}
+
+function initRacers(){
+  finishRank=0;
+  racers=ALGOS.map((a,i)=>({
+    ...a,arr:[...baseArray],steps:0,done:false,active:[-1,-1],sorted:new Set(),
+    gen:null,startTime:0,elapsed:0,moodIdx:0,rank:0,eliminated:false
+  }));
+  racers.forEach((r,i)=>{r.gen=getSortGen(i,r.arr);});
+}
+
+// ============================================================
+// SORTING ALGORITHMS — GENERATORS
+// ============================================================
+function* bubbleSort(arr,r){
+  for(let i=0;i<arr.length;i++){
+    let swapped=false;
+    for(let j=0;j<arr.length-i-1;j++){
+      r.active=[j,j+1];r.steps++;yield;
+      if(arr[j]>arr[j+1]){[arr[j],arr[j+1]]=[arr[j+1],arr[j]];swapped=true;}
+    }
+    r.sorted.add(arr.length-i-1);
+    if(!swapped)break;
+  }
+}
+
+function* quickSort(arr,r,lo=0,hi=arr.length-1){
+  if(lo>=hi){if(lo>=0&&lo<arr.length)r.sorted.add(lo);return;}
+  let pivot=arr[hi],i=lo;
+  for(let j=lo;j<hi;j++){
+    r.active=[j,hi];r.steps++;yield;
+    if(arr[j]<pivot){[arr[i],arr[j]]=[arr[j],arr[i]];i++;}
+  }
+  [arr[i],arr[hi]]=[arr[hi],arr[i]];r.sorted.add(i);
+  yield* quickSort(arr,r,lo,i-1);yield* quickSort(arr,r,i+1,hi);
+}
+
+function* mergeSort(arr,r,lo=0,hi=arr.length-1){
+  if(lo>=hi)return;
+  const mid=(lo+hi)>>1;
+  yield* mergeSort(arr,r,lo,mid);yield* mergeSort(arr,r,mid+1,hi);
+  const tmp=[];let i=lo,j=mid+1;
+  while(i<=mid&&j<=hi){r.active=[i,j];r.steps++;yield;tmp.push(arr[i]<=arr[j]?arr[i++]:arr[j++]);}
+  while(i<=mid){tmp.push(arr[i++]);r.steps++;yield;}
+  while(j<=hi){tmp.push(arr[j++]);r.steps++;yield;}
+  for(let k=0;k<tmp.length;k++){arr[lo+k]=tmp[k];r.sorted.add(lo+k);}
+}
+
+function* heapSort(arr,r){
+  const n=arr.length;
+  function* sift(i,end){
+    let largest=i,l=2*i+1,ri2=2*i+2;
+    if(l<end&&arr[l]>arr[largest])largest=l;
+    if(ri2<end&&arr[ri2]>arr[largest])largest=ri2;
+    if(largest!==i){r.active=[i,largest];r.steps++;[arr[i],arr[largest]]=[arr[largest],arr[i]];yield;yield* sift(largest,end);}
+  }
+  for(let i=(n>>1)-1;i>=0;i--)yield* sift(i,n);
+  for(let i=n-1;i>0;i--){[arr[0],arr[i]]=[arr[i],arr[0]];r.sorted.add(i);r.active=[0,i];r.steps++;yield;yield* sift(0,i);}
+  r.sorted.add(0);
+}
+
+function* insertionSort(arr,r){
+  for(let i=1;i<arr.length;i++){
+    let key=arr[i],j=i-1;
+    while(j>=0&&arr[j]>key){r.active=[j,j+1];r.steps++;arr[j+1]=arr[j];j--;yield;}
+    arr[j+1]=key;r.sorted.add(i);
+  }
+}
+
+function* selectionSort(arr,r){
+  for(let i=0;i<arr.length;i++){
+    let min=i;
+    for(let j=i+1;j<arr.length;j++){r.active=[min,j];r.steps++;yield;if(arr[j]<arr[min])min=j;}
+    [arr[i],arr[min]]=[arr[min],arr[i]];r.sorted.add(i);
+  }
+}
+
+function* shellSort(arr,r){
+  let gap=Math.floor(arr.length/2);
+  while(gap>0){
+    for(let i=gap;i<arr.length;i++){
+      let temp=arr[i],j=i;
+      while(j>=gap&&arr[j-gap]>temp){
+        r.active=[j,j-gap];r.steps++;arr[j]=arr[j-gap];j-=gap;yield;
+      }
+      arr[j]=temp;
+    }
+    gap=Math.floor(gap/2);
+  }
+}
+
+function* radixSortLSD(arr,r){
+  const max=Math.max(...arr);
+  for(let exp=1;Math.floor(max/exp)>0;exp*=10){
+    const output=new Array(arr.length);
+    const count=new Array(10).fill(0);
+    for(let i=0;i<arr.length;i++){count[Math.floor(arr[i]/exp)%10]++;r.active=[i,-1];r.steps++;yield;}
+    for(let i=1;i<10;i++)count[i]+=count[i-1];
+    for(let i=arr.length-1;i>=0;i--){
+      const d=Math.floor(arr[i]/exp)%10;
+      output[count[d]-1]=arr[i];count[d]--;
+      r.active=[i,count[d]];r.steps++;yield;
+    }
+    for(let i=0;i<arr.length;i++)arr[i]=output[i];
+  }
+}
+
+function* countingSort(arr,r){
+  const max=Math.max(...arr), min=Math.min(...arr);
+  const range=max-min+1;
+  const count=new Array(range).fill(0);
+  const output=new Array(arr.length);
+  for(let i=0;i<arr.length;i++){count[arr[i]-min]++;r.active=[i,-1];r.steps++;yield;}
+  for(let i=1;i<range;i++)count[i]+=count[i-1];
+  for(let i=arr.length-1;i>=0;i--){
+    output[count[arr[i]-min]-1]=arr[i];count[arr[i]-min]--;
+    r.active=[i,-1];r.steps++;yield;
+  }
+  for(let i=0;i<arr.length;i++){arr[i]=output[i];r.sorted.add(i);r.active=[i,-1];r.steps++;yield;}
+}
+
+function* cocktailShakerSort(arr,r){
+  let start=0,end=arr.length-1,swapped=true;
+  while(swapped){
+    swapped=false;
+    for(let i=start;i<end;i++){
+      r.active=[i,i+1];r.steps++;yield;
+      if(arr[i]>arr[i+1]){[arr[i],arr[i+1]]=[arr[i+1],arr[i]];swapped=true;}
+    }
+    r.sorted.add(end);end--;
+    if(!swapped)break;
+    swapped=false;
+    for(let i=end;i>start;i--){
+      r.active=[i,i-1];r.steps++;yield;
+      if(arr[i]<arr[i-1]){[arr[i],arr[i-1]]=[arr[i-1],arr[i]];swapped=true;}
+    }
+    r.sorted.add(start);start++;
+  }
+}
+
+function* combSort(arr,r){
+  let gap=arr.length;const shrink=1.3;let sorted=false;
+  while(!sorted){
+    gap=Math.max(1,Math.floor(gap/shrink));
+    if(gap===1)sorted=true;
+    for(let i=0;i+gap<arr.length;i++){
+      r.active=[i,i+gap];r.steps++;yield;
+      if(arr[i]>arr[i+gap]){[arr[i],arr[i+gap]]=[arr[i+gap],arr[i]];sorted=false;}
+    }
+  }
+}
+
+function* gnomeSort(arr,r){
+  let i=1;
+  while(i<arr.length){
+    r.active=[i,i-1];r.steps++;yield;
+    if(i===0||arr[i]>=arr[i-1]){i++;}
+    else{[arr[i],arr[i-1]]=[arr[i-1],arr[i]];i--;}
+  }
+}
+
+function* bitonicSort(arr,r){
+  // Pad to power of 2
+  const origLen=arr.length;
+  let n=1;while(n<origLen)n*=2;
+  while(arr.length<n)arr.push(101); // pad with max+1
+  function* bitonicMerge(lo,cnt,dir){
+    if(cnt>1){
+      const k=cnt>>1;
+      for(let i=lo;i<lo+k;i++){
+        if(i<origLen&&i+k<origLen){
+          r.active=[i,i+k];r.steps++;yield;
+          if((dir&&arr[i]>arr[i+k])||(!dir&&arr[i]<arr[i+k]))
+            [arr[i],arr[i+k]]=[arr[i+k],arr[i]];
+        }
+      }
+      yield* bitonicMerge(lo,k,dir);yield* bitonicMerge(lo+k,k,dir);
+    }
+  }
+  function* bitonicSortRec(lo,cnt,dir){
+    if(cnt>1){
+      const k=cnt>>1;
+      yield* bitonicSortRec(lo,k,true);
+      yield* bitonicSortRec(lo+k,k,false);
+      yield* bitonicMerge(lo,cnt,dir);
+    }
+  }
+  yield* bitonicSortRec(0,n,true);
+  arr.length=origLen; // remove padding
+}
+
+function* pancakeSort(arr,r){
+  function flip(end){
+    let s=0;
+    while(s<end){[arr[s],arr[end]]=[arr[end],arr[s]];s++;end--;}
+  }
+  for(let size=arr.length;size>1;size--){
+    let maxIdx=0;
+    for(let i=1;i<size;i++){r.active=[i,maxIdx];r.steps++;yield;if(arr[i]>arr[maxIdx])maxIdx=i;}
+    if(maxIdx!==size-1){
+      if(maxIdx!==0){flip(maxIdx);r.active=[0,maxIdx];r.steps++;yield;}
+      flip(size-1);r.active=[0,size-1];r.steps++;yield;
+    }
+    r.sorted.add(size-1);
+  }
+  r.sorted.add(0);
+}
+
+function* timSort(arr,r){
+  const RUN=Math.max(4,Math.min(16,arr.length>>2));
+  // Insertion sort on runs
+  for(let start=0;start<arr.length;start+=RUN){
+    const end=Math.min(start+RUN,arr.length);
+    for(let i=start+1;i<end;i++){
+      let key=arr[i],j=i-1;
+      while(j>=start&&arr[j]>key){r.active=[j,j+1];r.steps++;arr[j+1]=arr[j];j--;yield;}
+      arr[j+1]=key;
+    }
+  }
+  // Merge runs
+  for(let size=RUN;size<arr.length;size*=2){
+    for(let left=0;left<arr.length;left+=2*size){
+      const mid=Math.min(left+size,arr.length);
+      const right=Math.min(left+2*size,arr.length);
+      if(mid<right){
+        const tmp=[];let i=left,j=mid;
+        while(i<mid&&j<right){r.active=[i,j];r.steps++;yield;tmp.push(arr[i]<=arr[j]?arr[i++]:arr[j++]);}
+        while(i<mid)tmp.push(arr[i++]);
+        while(j<right)tmp.push(arr[j++]);
+        for(let k=0;k<tmp.length;k++){arr[left+k]=tmp[k];r.sorted.add(left+k);}
+      }
+    }
+  }
+}
+
+function getSortGen(idx,arr){
+  const r=racers[idx];
+  const gens=[bubbleSort,quickSort,mergeSort,heapSort,insertionSort,selectionSort,
+    shellSort,radixSortLSD,countingSort,cocktailShakerSort,combSort,gnomeSort,
+    bitonicSort,pancakeSort,timSort];
+  return gens[idx](arr,r);
+}
+// ============================================================
+// RENDERING
+// ============================================================
+function renderGrid(){
+  grid.innerHTML='';
+  racers.forEach((r,i)=>{
+    const box=document.createElement('div');
+    box.className='algo-box'+(r.joke?' joke':'');box.id='box'+i;
+    const maxV=Math.max(...r.arr);
+    box.innerHTML=`
+      <div class="rank-badge" id="rank${i}"></div>
+      <div class="algo-emoji">${r.emoji}</div>
+      <div class="algo-header">
+        <div class="algo-name">${r.name}</div>
+        <button class="info-btn" onclick="showInfo(${i})" title="Learn more">ℹ</button>
+      </div>
+      <div class="bar-container" id="bars${i}">${r.arr.map((v,j)=>{
+        const h=(v/maxV)*90;
+        return `<div class="bar" style="height:${h}%;width:${Math.max(100/r.arr.length-1,1)}%;background:${r.color}"></div>`;
+      }).join('')}</div>
+      <div class="mood" id="mood${i}"></div>
+      <div class="algo-stats" id="stats${i}">Steps: 0</div>`;
+    grid.appendChild(box);
+  });
+}
+
+function updateBars(){
+  racers.forEach((r,i)=>{
+    const cont=document.getElementById('bars'+i);if(!cont)return;
+    const maxV=Math.max(...r.arr.filter(v=>v>0),1);
+    const bars=cont.children;
+    r.arr.forEach((v,j)=>{
+      if(!bars[j])return;
+      const h=v>0?(v/maxV)*90:0;
+      const isSorted=r.done||r.sorted.has(j);
+      const isActive=r.active.includes(j);
+      bars[j].style.height=h+'%';
+      bars[j].style.background=v===0?'#333':isSorted?'#00ff88':isActive?'#ff00aa':r.color;
+      bars[j].className='bar'+(isActive?' active':'')+(isSorted?' sorted':'');
+    });
+    const st=document.getElementById('stats'+i);
+    if(st)st.textContent=r.done?`✅ ${r.steps} steps • ${(r.elapsed/1000).toFixed(2)}s`:`Steps: ${r.steps}`;
+    const mood=document.getElementById('mood'+i);
+    if(mood){
+      if(r.done){
+        if(winner===i)mood.textContent='🏆 WINNER!';
+        else if(r.eliminated)mood.textContent='🗑️ Data "sorted" (destroyed)';
+        else if(r.rank)mood.textContent=`#${r.rank} finished`;
+        else mood.textContent='Finished!';
+      } else if(running){
+        const mi=Math.min(Math.floor(r.steps/(arraySize*1.5))%r.mood.length,r.mood.length-1);
+        mood.textContent=r.mood[mi];
+      }
+    }
+    const box=document.getElementById('box'+i);
+    if(box){
+      box.classList.toggle('winner',winner===i);
+      box.classList.toggle('eliminated',!!r.eliminated);
+      const maxSteps=Math.max(...racers.filter(x=>!x.done).map(x=>x.steps),1);
+      box.classList.toggle('sweating',!r.done&&running&&r.steps>=maxSteps&&racers.some(x=>x.done));
+    }
+    const rankEl=document.getElementById('rank'+i);
+    if(rankEl&&r.rank){rankEl.textContent='#'+r.rank;rankEl.classList.add('show');}
+  });
+}
+
+// ============================================================
+// PARTICLES
+// ============================================================
+const pCanvas=document.getElementById('particles'),pCtx=pCanvas.getContext('2d');
+let particles=[];
+function resizeCanvas(){pCanvas.width=window.innerWidth;pCanvas.height=window.innerHeight;}
+window.addEventListener('resize',resizeCanvas);resizeCanvas();
+
+function spawnFireworks(x,y,count=50){
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2,spd=Math.random()*5+2;
+    particles.push({x,y,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,life:1,
+      color:['#00f0ff','#ff00aa','#00ff88','#ffff00','#aa55ff'][Math.floor(Math.random()*5)]});
+  }
+}
+function drawParticles(){
+  pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
+  particles=particles.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=.06;p.life-=.012;
+    if(p.life<=0)return false;
+    pCtx.globalAlpha=p.life;pCtx.fillStyle=p.color;
+    pCtx.beginPath();pCtx.arc(p.x,p.y,2.5,0,Math.PI*2);pCtx.fill();
+    return true;
+  });
+  pCtx.globalAlpha=1;
+  if(particles.length||running)requestAnimationFrame(drawParticles);
+}
+
+// ============================================================
+// RACE ENGINE
+// ============================================================
+function doSteps(count=1){
+  for(let s=0;s<count;s++){
+    racers.forEach((r,i)=>{
+      if(r.done)return;
+      const res=r.gen.next();
+      if(res.done){
+        r.done=true;r.elapsed=performance.now()-r.startTime;
+        r.active=[-1,-1];
+        finishRank++;
+        r.rank=finishRank;
+        if(winner===null){
+          winner=i;
+          winBanner.textContent=`🏆 ${r.name} wins in ${r.steps} steps!`;
+          winBanner.classList.add('show');winSound();
+          const box=document.getElementById('box'+i);
+          if(box){const rect=box.getBoundingClientRect();
+            spawnFireworks(rect.left+rect.width/2,rect.top,80);
+            spawnFireworks(rect.left+rect.width/2,rect.top+rect.height,40);
+          }
+        }
+        beep(600+finishRank*50,.04,.05);
+      }
+    });
+  }
+  updateBars();
+}
+
+function getStepsPerFrame(){
+  const s=parseInt(spdSlider.value);
+  if(s<20)return 1;if(s<50)return 2;if(s<75)return Math.ceil(arraySize/15);
+  return Math.ceil(arraySize/4);
+}
+
+function tick(){
+  if(!running||paused)return;
+  doSteps(getStepsPerFrame());
+  if(racers.every(r=>r.done)){running=false;btnPause.disabled=true;btnRace.disabled=false;return;}
+  animId=requestAnimationFrame(tick);
+}
+
+function startRace(){
+  if(running)return;
+  winner=null;winBanner.classList.remove('show');winBanner.textContent='';
+  genArray();initRacers();renderGrid();
+  running=true;paused=false;
+  const now=performance.now();racers.forEach(r=>r.startTime=now);
+  btnPause.disabled=false;btnRace.disabled=true;
+  if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
+  beep(300,.05);setTimeout(()=>beep(300,.05),150);setTimeout(()=>beep(600,.08),300);
+  drawParticles();tick();
+}
+
+function reset(){
+  running=false;paused=false;winner=null;
+  cancelAnimationFrame(animId);
+  winBanner.classList.remove('show');
+  btnPause.disabled=true;btnRace.disabled=false;
+  genArray();initRacers();renderGrid();updateBars();
+}
+
+szSlider.oninput=()=>{szVal.textContent=szSlider.value;arraySize=parseInt(szSlider.value);if(!running)reset();};
+spdSlider.oninput=()=>{speed=parseInt(spdSlider.value);};
+btnRace.onclick=startRace;
+btnPause.onclick=()=>{
+  paused=!paused;btnPause.textContent=paused?'▶ Resume':'⏸ Pause';
+  if(!paused)tick();
+};
+btnStep.onclick=()=>{
+  if(!running){startRace();paused=true;btnPause.textContent='▶ Resume';return;}
+  paused=true;btnPause.textContent='▶ Resume';doSteps(1);
+};
+btnNew.onclick=reset;
+
+// ============================================================
+// INIT
+// ============================================================
+genArray();initRacers();renderGrid();updateBars();
+</script>
+</body>
+</html>

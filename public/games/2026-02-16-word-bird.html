@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Word Bird</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron&family=Inter:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; background: #0a0a0f; overflow: hidden; }
+        canvas { display: block; }
+        a { position: absolute; top: 10px; left: 10px; color: white; text-decoration: none; font-family: sans-serif; z-index: 10; }
+    </style>
+</head>
+<body>
+    <a href="https://rexuvia.com">← Back to Rexuvia</a>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        // Word Bird Game - Completely Rewritten Concept
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Resize canvas to full screen
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game States
+        let started = false;
+        let gameOver = false;
+        let score = 0;
+        let bestScore = localStorage.getItem('wordBirdBest') || 0;
+
+        // Bird properties
+        const bird = {
+            x: 100,
+            y: canvas.height / 2,
+            radius: 18,
+            velocity: 0,
+            flapPower: -2.8,
+            rotation: 0
+        };
+
+        // Physics
+        let gravity = 0.10;
+        const maxGravity = 0.30;
+        const gravityIncrease = 0.002;
+
+        let speed = 0.8;
+        const maxSpeed = 3.0;
+        const speedIncrease = 0.025;
+
+        let spacing = 450;
+        const minSpacing = 220;
+        const spacingDecrease = 3;
+
+        // Categories
+        const categories = {
+            FRUITS: ['apple', 'banana', 'mango', 'cherry', 'grape', 'lemon', 'peach', 'plum', 'kiwi', 'melon', 'berry', 'fig', 'lime', 'pear', 'guava'],
+            ANIMALS: ['tiger', 'eagle', 'whale', 'shark', 'snake', 'horse', 'mouse', 'panda', 'zebra', 'wolf', 'deer', 'fox', 'bear', 'lion', 'hawk'],
+            COLORS: ['red', 'blue', 'green', 'white', 'black', 'pink', 'gold', 'grey', 'teal', 'coral', 'ivory', 'amber', 'cyan', 'beige', 'rust'],
+            INSTRUMENTS: ['piano', 'guitar', 'drums', 'violin', 'flute', 'harp', 'cello', 'trumpet', 'banjo', 'organ', 'bass', 'sitar', 'oboe'],
+            COUNTRIES: ['japan', 'spain', 'italy', 'france', 'brazil', 'egypt', 'chile', 'india', 'china', 'kenya', 'peru', 'cuba', 'iran', 'nepal'],
+            SPORTS: ['tennis', 'soccer', 'hockey', 'boxing', 'rugby', 'skiing', 'golf', 'karate', 'judo', 'fencing', 'polo', 'squash', 'diving'],
+            PLANETS: ['mars', 'venus', 'earth', 'saturn', 'pluto', 'neptune', 'uranus', 'mercury', 'jupiter'],
+            WEATHER: ['rain', 'snow', 'storm', 'cloud', 'thunder', 'fog', 'hail', 'frost', 'wind', 'sleet', 'mist', 'drought', 'breeze'],
+            BODY_PARTS: ['heart', 'brain', 'liver', 'spine', 'skull', 'elbow', 'wrist', 'ankle', 'thumb', 'knee', 'chest', 'ribs', 'lungs'],
+            CLOTHING: ['shirt', 'pants', 'shoes', 'dress', 'scarf', 'jacket', 'boots', 'socks', 'belt', 'hat', 'gloves', 'coat', 'vest', 'tie'],
+            FOOD: ['bread', 'pasta', 'rice', 'steak', 'salad', 'soup', 'pizza', 'taco', 'sushi', 'curry', 'bacon', 'toast', 'chips', 'pie'],
+            OCEAN: ['coral', 'whale', 'shark', 'squid', 'crab', 'shrimp', 'kelp', 'seal', 'otter', 'clam', 'reef', 'tide', 'wave', 'surf'],
+            SPACE: ['star', 'comet', 'orbit', 'galaxy', 'nebula', 'quasar', 'pulsar', 'nova', 'void', 'cosmos', 'astral', 'lunar', 'solar'],
+            MUSIC: ['tempo', 'chord', 'lyric', 'melody', 'rhythm', 'beat', 'note', 'pitch', 'tune', 'bass', 'vocal', 'solo', 'duet', 'riff'],
+            TOOLS: ['hammer', 'wrench', 'drill', 'pliers', 'clamp', 'chisel', 'lathe', 'anvil', 'vise', 'saw', 'file', 'bolt', 'nail', 'screw'],
+            TREES: ['oak', 'pine', 'maple', 'birch', 'cedar', 'elm', 'willow', 'spruce', 'palm', 'teak', 'beech', 'ash', 'poplar', 'yew'],
+            GEMS: ['ruby', 'pearl', 'opal', 'topaz', 'jade', 'onyx', 'amber', 'garnet', 'quartz', 'agate', 'ivory', 'coral', 'diamond'],
+            EMOTIONS: ['joy', 'anger', 'fear', 'love', 'pride', 'shame', 'grief', 'hope', 'envy', 'awe', 'peace', 'bliss', 'rage', 'dread'],
+            VEHICLES: ['car', 'truck', 'bus', 'train', 'plane', 'boat', 'bike', 'taxi', 'van', 'jeep', 'yacht', 'ferry', 'tram', 'canoe'],
+            JOBS: ['doctor', 'pilot', 'chef', 'nurse', 'judge', 'clerk', 'baker', 'miner', 'tutor', 'guard', 'mason', 'smith', 'diver']
+        };
+
+        const categoryNames = Object.keys(categories);
+
+        // Similar categories for difficulty
+        const similarCategories = {
+            'OCEAN': ['ANIMALS'],
+            'ANIMALS': ['OCEAN'],
+            'TOOLS': ['INSTRUMENTS'],
+            'INSTRUMENTS': ['TOOLS'],
+            'SPACE': ['PLANETS'],
+            'PLANETS': ['SPACE'],
+            'FOOD': ['FRUITS'],
+            'FRUITS': ['FOOD'],
+            'MUSIC': ['INSTRUMENTS'],
+            'INSTRUMENTS': ['MUSIC']
+        };
+
+        // Neon colors
+        const neonColors = ['#00f0ff', '#ff00aa', '#ff8800', '#aa44ff', '#44ffaa', '#ff4466', '#ffdd00', '#00aaff', '#ff66cc', '#88ff44'];
+
+        // Walls
+        const walls = [];
+        const boxWidth = 150;
+        let lastWallX = canvas.width;
+
+        // Particles for trail and dissolve
+        let trailParticles = [];
+        let dissolveParticles = [];
+
+        // Stars for background
+        const stars = [];
+        for (let i = 0; i < 100; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2 + 1,
+                speed: Math.random() * 0.5 + 0.1
+            });
+        }
+
+        // Generate wall
+        function generateWall(x) {
+            // Pick majority category
+            const majorityCat = categoryNames[Math.floor(Math.random() * categoryNames.length)];
+
+            // Decide if tricky
+            const trickyProb = Math.min(0.5, score / 20);
+            let oddCat;
+            if (Math.random() < trickyProb && similarCategories[majorityCat]) {
+                const sim = similarCategories[majorityCat];
+                oddCat = sim[Math.floor(Math.random() * sim.length)];
+            } else {
+                do {
+                    oddCat = categoryNames[Math.floor(Math.random() * categoryNames.length)];
+                } while (oddCat === majorityCat);
+            }
+
+            // Pick 4 words from majority (always 4 + 1 odd = 5 total)
+            const majorityWords = [...categories[majorityCat]];
+            majorityWords.sort(() => Math.random() - 0.5);
+            const selectedMajority = majorityWords.slice(0, 4);
+
+            // Pick 1 odd word, ensure not in majority
+            let oddWord;
+            let attempts = 0;
+            do {
+                const oddWords = categories[oddCat];
+                oddWord = oddWords[Math.floor(Math.random() * oddWords.length)];
+                attempts++;
+            } while (categories[majorityCat].includes(oddWord) && attempts < 10);
+
+            if (attempts >= 10) {
+                // Fallback to random different cat
+                do {
+                    oddCat = categoryNames[Math.floor(Math.random() * categoryNames.length)];
+                } while (oddCat === majorityCat);
+                const oddWords = categories[oddCat];
+                oddWord = oddWords[Math.floor(Math.random() * oddWords.length)];
+            }
+
+            // Combine and shuffle
+            const allWords = [...selectedMajority, oddWord];
+            allWords.sort(() => Math.random() - 0.5);
+
+            // Assign colors (random different)
+            let colors = [...neonColors];
+            colors.sort(() => Math.random() - 0.5);
+            colors = colors.slice(0, 5);
+
+            // Create boxes
+            const boxHeight = canvas.height / 5;
+            const boxes = [];
+            for (let i = 0; i < 5; i++) {
+                boxes.push({
+                    word: allWords[i].toUpperCase(),
+                    color: colors[i],
+                    y: i * boxHeight,
+                    height: boxHeight,
+                    isOddOneOut: allWords[i] === oddWord,
+                    opacity: 1,
+                    passed: false
+                });
+            }
+
+            walls.push({
+                x,
+                majorityCat: majorityCat.toUpperCase(),
+                boxes
+            });
+        }
+
+        // Initial walls
+        generateWall(canvas.width + 100);
+        generateWall(canvas.width + 100 + spacing);
+
+        // Controls
+        function flap() {
+            if (!started) {
+                started = true;
+            }
+            if (gameOver) {
+                resetGame();
+                return;
+            }
+            bird.velocity = bird.flapPower;
+        }
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            flap();
+        });
+        canvas.addEventListener('mousedown', flap);
+        window.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
+                flap();
+            }
+        });
+
+        // Reset game
+        function resetGame() {
+            bird.y = canvas.height / 2;
+            bird.velocity = 0;
+            gravity = 0.10;
+            speed = 0.8;
+            spacing = 450;
+            score = 0;
+            walls.length = 0;
+            for (let i = 0; i < 4; i++) {
+                generateWall(canvas.width + 100 + i * spacing);
+            }
+            gameOver = false;
+            started = true;
+        }
+
+        // Particle functions
+        function createTrailParticle() {
+            trailParticles.push({
+                x: bird.x,
+                y: bird.y,
+                size: bird.radius / 2,
+                opacity: 1,
+                color: '#00f0ff'
+            });
+        }
+
+        function createDissolveParticles(box) {
+            for (let i = 0; i < 50; i++) {
+                dissolveParticles.push({
+                    x: walls[0].x + boxWidth / 2, // Center of box
+                    y: box.y + box.height / 2,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    size: Math.random() * 5 + 2,
+                    opacity: 1,
+                    color: box.color
+                });
+            }
+        }
+
+        // Draw functions
+        function drawBackground() {
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+                star.x -= star.speed * delta;
+                if (star.x < 0) star.x = canvas.width;
+            });
+        }
+
+        function drawBird() {
+            // Trail particles
+            trailParticles.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 240, 255, ${p.opacity})`;
+                ctx.fill();
+                p.opacity -= 0.02 * delta * 60;
+                p.size -= 0.1 * delta * 60;
+                if (p.opacity <= 0 || p.size <= 0) trailParticles.splice(i, 1);
+            });
+
+            // Glow
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00f0ff';
+
+            // Body (cyan ellipse)
+            ctx.fillStyle = '#00f0ff';
+            ctx.beginPath();
+            ctx.ellipse(bird.x, bird.y, bird.radius, bird.radius * 0.8, bird.rotation, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Wing (green, animated)
+            const wingAngle = Math.sin(Date.now() / 100) * 0.5;
+            ctx.fillStyle = '#00ff88';
+            ctx.beginPath();
+            ctx.moveTo(bird.x - bird.radius * 0.5, bird.y);
+            ctx.lineTo(bird.x - bird.radius * 1.2, bird.y + bird.radius * wingAngle);
+            ctx.lineTo(bird.x - bird.radius * 0.8, bird.y + bird.radius * 0.5);
+            ctx.fill();
+
+            // Eye (white with black pupil)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(bird.x + bird.radius * 0.5, bird.y - bird.radius * 0.3, bird.radius * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(bird.x + bird.radius * 0.5 + 2, bird.y - bird.radius * 0.3, bird.radius * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Beak (orange triangle)
+            ctx.fillStyle = '#ff8800';
+            ctx.beginPath();
+            ctx.moveTo(bird.x + bird.radius, bird.y);
+            ctx.lineTo(bird.x + bird.radius + 10, bird.y - 5);
+            ctx.lineTo(bird.x + bird.radius + 10, bird.y + 5);
+            ctx.fill();
+
+            // Tail feathers
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(bird.x - bird.radius, bird.y);
+            ctx.lineTo(bird.x - bird.radius - 10, bird.y - 5);
+            ctx.moveTo(bird.x - bird.radius, bird.y);
+            ctx.lineTo(bird.x - bird.radius - 10, bird.y);
+            ctx.moveTo(bird.x - bird.radius, bird.y);
+            ctx.lineTo(bird.x - bird.radius - 10, bird.y + 5);
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+        }
+
+        function hexToRgb(hex) {
+            const h = hex.replace('#', '');
+            return { r: parseInt(h.substring(0,2),16), g: parseInt(h.substring(2,4),16), b: parseInt(h.substring(4,6),16) };
+        }
+
+        function drawWalls() {
+            walls.forEach(wall => {
+                wall.boxes.forEach(box => {
+                    if (box.opacity <= 0) return;
+
+                    const {r, g, b} = hexToRgb(box.color);
+                    const pad = 3; // small gap between boxes
+
+                    // ALL boxes drawn identically — colored fill + border + white text
+                    // The odd-one-out looks exactly the same as the others
+                    ctx.shadowColor = box.color;
+                    ctx.shadowBlur = 8;
+
+                    // Filled background
+                    ctx.fillStyle = `rgba(${r},${g},${b},${0.6 * box.opacity})`;
+                    ctx.fillRect(wall.x, box.y + pad, boxWidth, box.height - pad * 2);
+
+                    // Neon border
+                    ctx.strokeStyle = `rgba(${r},${g},${b},${box.opacity})`;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(wall.x, box.y + pad, boxWidth, box.height - pad * 2);
+
+                    ctx.shadowBlur = 0;
+
+                    // Word text in white
+                    ctx.fillStyle = `rgba(255,255,255,${box.opacity})`;
+                    ctx.font = 'bold 20px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(box.word, wall.x + boxWidth / 2, box.y + box.height / 2);
+                });
+            });
+        }
+
+        function drawDissolveParticles() {
+            dissolveParticles.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `${p.color.replace(')', `,${p.opacity})`).replace('rgb', 'rgba')}`;
+                ctx.fill();
+                p.x += p.vx * delta;
+                p.y += p.vy * delta;
+                p.opacity -= 0.02 * delta * 60;
+                p.size -= 0.1 * delta * 60;
+                if (p.opacity <= 0 || p.size <= 0) dissolveParticles.splice(i, 1);
+            });
+        }
+
+        function drawUI() {
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'white';
+
+            if (!started) {
+                ctx.font = '40px Orbitron';
+                ctx.fillText('WORD BIRD', canvas.width / 2, canvas.height / 3);
+                ctx.font = '20px Inter';
+                ctx.fillText('Fly through the word that doesn\'t belong!', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('TAP TO START', canvas.width / 2, canvas.height / 2 + 50);
+                ctx.fillText(`Best: ${bestScore}`, canvas.width / 2, canvas.height / 2 + 100);
+            } else if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '40px Orbitron';
+                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 3);
+                ctx.font = '20px Inter';
+                ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2);
+                ctx.fillText(`Best: ${bestScore}`, canvas.width / 2, canvas.height / 2 + 30);
+                ctx.fillText('TAP TO RETRY', canvas.width / 2, canvas.height / 2 + 80);
+            } else {
+                // Score
+                ctx.font = '30px Orbitron';
+                ctx.fillText(`${score}`, canvas.width / 2, 50);
+
+                // No hint — figure it out!
+            }
+        }
+
+        // Collision detection
+        function checkCollision() {
+            const wall = walls[0];
+            if (!wall) return;
+
+            if (bird.x + bird.radius > wall.x && bird.x - bird.radius < wall.x + boxWidth) {
+                const birdTop = bird.y - bird.radius;
+                const birdBottom = bird.y + bird.radius;
+
+                for (let box of wall.boxes) {
+                    if (box.opacity <= 0) continue;
+
+                    const boxTop = box.y;
+                    const boxBottom = box.y + box.height;
+
+                    if (birdBottom > boxTop && birdTop < boxBottom) {
+                        if (box.isOddOneOut) {
+                            // Pass through
+                            createDissolveParticles(box);
+                            box.opacity = 0;
+                            if (!box.passed) {
+                                box.passed = true;
+                                score++;
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    localStorage.setItem('wordBirdBest', bestScore);
+                                }
+                                // Increase difficulty
+                                speed = Math.min(maxSpeed, speed + speedIncrease);
+                                gravity = Math.min(maxGravity, gravity + gravityIncrease);
+                                spacing = Math.max(minSpacing, spacing - spacingDecrease);
+                            }
+                        } else {
+                            // Collision
+                            gameOver = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update walls
+        function updateWalls() {
+            walls.forEach(wall => {
+                wall.x -= speed * delta * 60;
+            });
+
+            // Remove off-screen walls
+            while (walls.length > 0 && walls[0].x + boxWidth < -10) {
+                walls.shift();
+            }
+
+            // Generate new walls — keep at least 3 ahead, evenly spaced
+            while (walls.length < 4) {
+                const lastX = walls.length > 0 ? walls[walls.length - 1].x : bird.x;
+                const newX = lastX + spacing;
+                generateWall(newX);
+            }
+        }
+
+        // Update bird
+        function updateBird() {
+            bird.velocity += gravity * delta * 60;
+            bird.velocity = Math.max(-3.5, Math.min(bird.velocity, 4));
+            bird.y += bird.velocity * delta * 60;
+
+            bird.rotation = Math.atan2(bird.velocity, 3); // Simple rotation based on velocity
+
+            // Ground/ceiling collision
+            if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) {
+                gameOver = true;
+            }
+
+            // Trail
+            if (Math.random() < 0.2) createTrailParticle();
+        }
+
+        // Animation loop
+        let lastTime = 0;
+        let delta = 0;
+
+        function gameLoop(timestamp) {
+            delta = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            drawBackground();
+            drawWalls();
+            drawBird();
+            drawDissolveParticles();
+            drawUI();
+
+            if (started && !gameOver) {
+                updateBird();
+                updateWalls();
+                checkCollision();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

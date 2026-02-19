@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Neon Synth Pad</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#0a0a0f;color:#fff;font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;touch-action:manipulation}
+a{color:#00f0ff;text-decoration:none}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+.back{font-size:14px;opacity:.7}
+.back:hover{opacity:1}
+h1{font-family:'Orbitron',sans-serif;font-size:clamp(16px,4vw,24px);color:#00f0ff;text-shadow:0 0 20px #00f0ff80}
+.container{max-width:500px;margin:0 auto;padding:0 12px 24px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.pad{position:relative;aspect-ratio:1;border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:clamp(12px,3vw,16px);font-weight:700;transition:transform .05s,box-shadow .05s;user-select:none;min-height:70px;overflow:hidden}
+.pad .note-name{position:relative;z-index:2}
+.pad .key-hint{font-family:'Inter',sans-serif;font-size:10px;opacity:.5;margin-top:2px;position:relative;z-index:2}
+.pad.active{transform:scale(1.08)}
+.pad .ripple{position:absolute;border-radius:50%;transform:scale(0);opacity:.6;pointer-events:none;animation:rippleAnim .5s ease-out forwards}
+@keyframes rippleAnim{to{transform:scale(3);opacity:0}}
+canvas#visualizer{width:100%;height:60px;border-radius:8px;margin-bottom:12px;display:block}
+.controls{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px}
+.btn{background:#1a1a2e;border:1px solid;border-radius:8px;color:#fff;padding:8px 14px;font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{filter:brightness(1.3)}
+.btn.active{box-shadow:0 0 12px var(--c,#00f0ff);background:#2a2a4e}
+.btn.rec-active{border-color:#ff4466;box-shadow:0 0 12px #ff4466;animation:pulse 1s infinite}
+.btn.play-active{border-color:#00ff88;box-shadow:0 0 12px #00ff88}
+@keyframes pulse{50%{opacity:.6}}
+.vol-row{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:4px}
+.vol-row label{font-size:12px;opacity:.7}
+input[type=range]{-webkit-appearance:none;background:#1a1a2e;height:6px;border-radius:3px;outline:none;width:120px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:#00f0ff;border-radius:50%;cursor:pointer}
+.section-label{font-size:11px;opacity:.4;text-align:center;margin:8px 0 4px;font-family:'Inter',sans-serif}
+</style>
+</head>
+<body>
+<div class="header">
+<a href="/" class="back">← Back to Rexuvia</a>
+<h1>NEON SYNTH PAD</h1>
+</div>
+<div class="container">
+<div class="grid" id="grid"></div>
+<canvas id="visualizer"></canvas>
+<div class="section-label">WAVEFORM</div>
+<div class="controls" id="waveControls"></div>
+<div class="section-label">SCALE</div>
+<div class="controls" id="scaleControls"></div>
+<div class="section-label">CONTROLS</div>
+<div class="controls" id="mainControls"></div>
+<div class="controls" id="recControls"></div>
+<div class="vol-row">
+<label>Vol</label>
+<input type="range" id="volSlider" min="0" max="1" step="0.01" value="0.5">
+</div>
+</div>
+<script>
+const PAD_COLORS=['#00f0ff','#ff00aa','#00ff88','#ffdd00','#aa44ff','#ff4466','#ff8800','#00aaff','#ff66cc','#88ff44','#44ffaa','#ff6600','#00ddff','#dd00ff','#ffaa00','#66ff44'];
+const KEY_MAP=['1','2','3','4','q','w','e','r','a','s','d','f','z','x','c','v'];
+const SCALES={
+  Major:[0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26],
+  Minor:[0,2,3,5,7,8,10,12,14,15,17,19,20,22,24,26],
+  Penta:[0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36]
+};
+const WAVE_TYPES=['sine','square','triangle','sawtooth'];
+const WAVE_LABELS=['Sine','Square','Tri','Saw'];
+
+let audioCtx,analyser,masterGain;
+let currentWave='sine',currentScale='Major',octaveShift=0,sustainMode=false,volume=0.5;
+let recording=false,playing=false,recorded=[],recStart=0,playTimeouts=[];
+let activeOscs={};
+
+function initAudio(){
+  if(audioCtx)return;
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  masterGain=audioCtx.createGain();
+  masterGain.gain.value=volume;
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=256;
+  masterGain.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  drawVis();
+}
+
+function noteFreq(semitones){
+  // semitones relative to C4 (MIDI 60). A4=440=MIDI69, C4=MIDI60
+  return 440*Math.pow(2,(semitones-9)/12)*Math.pow(2,octaveShift);
+}
+
+function getScaleNotes(){return SCALES[currentScale];}
+
+function playNote(idx){
+  initAudio();
+  const semi=getScaleNotes()[idx];
+  const freq=noteFreq(semi);
+  const key=idx+'_'+semi+'_'+octaveShift;
+  if(sustainMode&&activeOscs[key]){stopNote(key);return;}
+  if(activeOscs[key])return;
+  const osc=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  osc.type=currentWave;
+  osc.frequency.value=freq;
+  g.gain.setValueAtTime(0,audioCtx.currentTime);
+  g.gain.linearRampToValueAtTime(1,audioCtx.currentTime+0.01);
+  osc.connect(g);g.connect(masterGain);osc.start();
+  activeOscs[key]={osc,gain:g,idx};
+  pads[idx].classList.add('active');
+  if(recording)recorded.push({idx,time:Date.now()-recStart});
+}
+
+function stopNote(key){
+  const o=activeOscs[key];if(!o)return;
+  o.gain.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.1);
+  const osc=o.osc;setTimeout(()=>{try{osc.stop()}catch(e){}},150);
+  pads[o.idx].classList.remove('active');
+  delete activeOscs[key];
+}
+
+function stopNoteByIdx(idx){
+  Object.keys(activeOscs).forEach(k=>{if(activeOscs[k]&&activeOscs[k].idx===idx)stopNote(k);});
+}
+
+function triggerPad(idx){
+  const semi=getScaleNotes()[idx];
+  const key=idx+'_'+semi+'_'+octaveShift;
+  if(sustainMode){playNote(idx);return;}
+  playNote(idx);
+  // For non-sustain tap, stop after 300ms
+  setTimeout(()=>stopNote(key),300);
+}
+
+// Ripple
+function addRipple(pad,color){
+  const r=document.createElement('div');
+  r.className='ripple';
+  const sz=Math.max(pad.offsetWidth,pad.offsetHeight)*2;
+  Object.assign(r.style,{width:sz+'px',height:sz+'px',left:'50%',top:'50%',marginLeft:-sz/2+'px',marginTop:-sz/2+'px',background:color});
+  pad.appendChild(r);
+  r.addEventListener('animationend',()=>r.remove());
+}
+
+// Build grid
+const grid=document.getElementById('grid');
+let pads=[];
+const NOTE_NAMES=['C','D','E','F','G','A','B'];
+function padNoteName(idx){
+  const semi=getScaleNotes()[idx];
+  const absSemi=semi+60+octaveShift*12;
+  const octave=Math.floor(absSemi/12)-1;
+  const noteIdx=absSemi%12;
+  const names=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  return names[noteIdx]+octave;
+}
+
+function buildGrid(){
+  grid.innerHTML='';pads=[];
+  for(let i=0;i<16;i++){
+    const pad=document.createElement('div');
+    pad.className='pad';
+    const c=PAD_COLORS[i];
+    pad.style.background=c+'20';
+    pad.style.border='2px solid '+c+'60';
+    pad.style.color=c;
+    pad.style.setProperty('--c',c);
+    pad.innerHTML=`<span class="note-name">${padNoteName(i)}</span><span class="key-hint">${KEY_MAP[i].toUpperCase()}</span>`;
+    pad.dataset.idx=i;
+    // Touch
+    pad.addEventListener('touchstart',e=>{e.preventDefault();triggerPad(i);addRipple(pad,c);},{passive:false});
+    pad.addEventListener('mousedown',e=>{e.preventDefault();triggerPad(i);addRipple(pad,c);});
+    grid.appendChild(pad);
+    pads.push(pad);
+  }
+}
+buildGrid();
+
+// Visualizer
+const canvas=document.getElementById('visualizer');
+const ctx2=canvas.getContext('2d');
+function drawVis(){
+  if(!analyser){requestAnimationFrame(drawVis);return;}
+  canvas.width=canvas.offsetWidth*2;canvas.height=canvas.offsetHeight*2;
+  const bufLen=analyser.frequencyBinCount;
+  const data=new Uint8Array(bufLen);
+  analyser.getByteFrequencyData(data);
+  ctx2.clearRect(0,0,canvas.width,canvas.height);
+  const barW=canvas.width/bufLen*2;
+  for(let i=0;i<bufLen;i++){
+    const h=(data[i]/255)*canvas.height;
+    const hue=180+i*2;
+    ctx2.fillStyle=`hsla(${hue},100%,60%,0.8)`;
+    ctx2.fillRect(i*barW,canvas.height-h,barW-1,h);
+  }
+  requestAnimationFrame(drawVis);
+}
+drawVis();
+
+// Wave controls
+const waveDiv=document.getElementById('waveControls');
+WAVE_TYPES.forEach((w,i)=>{
+  const b=document.createElement('button');
+  b.className='btn'+(w===currentWave?' active':'');
+  b.textContent=WAVE_LABELS[i];b.style.borderColor='#00f0ff';b.style.setProperty('--c','#00f0ff');
+  b.onclick=()=>{currentWave=w;waveDiv.querySelectorAll('.btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');};
+  waveDiv.appendChild(b);
+});
+
+// Scale controls
+const scaleDiv=document.getElementById('scaleControls');
+['Major','Minor','Penta'].forEach(s=>{
+  const b=document.createElement('button');
+  b.className='btn'+(s===currentScale?' active':'');
+  b.textContent=s;b.style.borderColor='#aa44ff';b.style.setProperty('--c','#aa44ff');
+  b.onclick=()=>{currentScale=s==='Penta'?'Penta':s;scaleDiv.querySelectorAll('.btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');Object.keys(activeOscs).forEach(k=>stopNote(k));buildGrid();};
+  scaleDiv.appendChild(b);
+});
+
+// Main controls
+const mainDiv=document.getElementById('mainControls');
+function addCtrl(label,color,fn){
+  const b=document.createElement('button');b.className='btn';b.textContent=label;
+  b.style.borderColor=color;b.style.setProperty('--c',color);b.onclick=fn;mainDiv.appendChild(b);return b;
+}
+addCtrl('Oct−','#ffdd00',()=>{octaveShift--;buildGrid();});
+addCtrl('Oct+','#ffdd00',()=>{octaveShift++;buildGrid();});
+const susBtn=addCtrl('Sustain','#ff8800',()=>{sustainMode=!sustainMode;susBtn.classList.toggle('active');if(!sustainMode)Object.keys(activeOscs).forEach(k=>stopNote(k));});
+
+// Record controls
+const recDiv=document.getElementById('recControls');
+function addRec(label,color,fn){
+  const b=document.createElement('button');b.className='btn';b.textContent=label;
+  b.style.borderColor=color;b.style.setProperty('--c',color);b.onclick=fn;recDiv.appendChild(b);return b;
+}
+const recBtn=addRec('⏺ Rec','#ff4466',()=>{
+  if(recording){recording=false;recBtn.classList.remove('rec-active');recBtn.textContent='⏺ Rec';return;}
+  recorded=[];recStart=Date.now();recording=true;recBtn.classList.add('rec-active');recBtn.textContent='⏹ Stop';
+});
+const playBtn=addRec('▶ Play','#00ff88',()=>{
+  if(playing){playing=false;playTimeouts.forEach(clearTimeout);playTimeouts=[];playBtn.classList.remove('play-active');playBtn.textContent='▶ Play';return;}
+  if(!recorded.length)return;
+  playing=true;playBtn.classList.add('play-active');playBtn.textContent='⏹ Stop';
+  function doPlay(){
+    if(!playing)return;
+    recorded.forEach(r=>{
+      const t=setTimeout(()=>{if(playing)triggerPad(r.idx);},r.time);
+      playTimeouts.push(t);
+    });
+    const total=recorded[recorded.length-1].time+500;
+    const lt=setTimeout(()=>{if(playing)doPlay();},total);
+    playTimeouts.push(lt);
+  }
+  doPlay();
+});
+
+// Volume
+document.getElementById('volSlider').oninput=function(){volume=+this.value;if(masterGain)masterGain.gain.value=volume;};
+
+// Keyboard
+const keyDown={};
+document.addEventListener('keydown',e=>{
+  if(e.repeat)return;
+  const idx=KEY_MAP.indexOf(e.key.toLowerCase());
+  if(idx===-1)return;
+  e.preventDefault();
+  keyDown[idx]=true;
+  triggerPad(idx);
+  addRipple(pads[idx],PAD_COLORS[idx]);
+});
+document.addEventListener('keyup',e=>{
+  const idx=KEY_MAP.indexOf(e.key.toLowerCase());
+  if(idx===-1)return;
+  keyDown[idx]=false;
+  if(!sustainMode)stopNoteByIdx(idx);
+});
+</script>
+</body>
+</html>
