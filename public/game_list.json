@@ -1,6 +1,13 @@
 [
     {
         "date": "2026-02-19",
+        "title": "Lava Flow",
+        "url": "/games/lava-flow.html",
+        "github_url": "https://github.com/rexuvia/lava-flow",
+        "last_updated": "2026-02-19"
+    },
+    {
+        "date": "2026-02-19",
         "title": "Mirror Maze",
         "url": "/games/mirror-maze.html",
         "github_url": "https://github.com/rexuvia/mirror-maze",
