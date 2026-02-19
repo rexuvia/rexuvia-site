@@ -2,31 +2,43 @@
     {
         "date": "2026-02-19",
         "title": "Mirror Maze",
-        "url": "/games/mirror-maze.html"
+        "url": "/games/mirror-maze.html",
+        "github_url": "https://github.com/rexuvia/mirror-maze",
+        "last_updated": "2026-02-19"
     },
     {
         "date": "2026-02-18",
         "title": "Signal Scope",
-        "url": "/games/2026-02-18-signal-scope.html"
+        "url": "/games/2026-02-18-signal-scope.html",
+        "github_url": "https://github.com/rexuvia/signal-scope",
+        "last_updated": "2026-02-19"
     },
     {
         "date": "2026-02-17",
         "title": "Sort Cinema",
-        "url": "/games/2026-02-17-sort-cinema.html"
+        "url": "/games/2026-02-17-sort-cinema.html",
+        "github_url": "https://github.com/rexuvia/sort-cinema",
+        "last_updated": "2026-02-19"
     },
     {
         "date": "2026-02-16",
         "title": "Neon Synth Pad",
-        "url": "/games/2026-02-16-neon-synth-pad.html"
+        "url": "/games/2026-02-16-neon-synth-pad.html",
+        "github_url": "https://github.com/rexuvia/neon-synth-pad",
+        "last_updated": "2026-02-19"
     },
     {
         "date": "2026-02-16",
         "title": "Pendulum Waves",
-        "url": "/games/2026-02-16-pendulum-waves.html"
+        "url": "/games/2026-02-16-pendulum-waves.html",
+        "github_url": "https://github.com/rexuvia/pendulum-waves",
+        "last_updated": "2026-02-19"
     },
     {
         "date": "2026-02-16",
         "title": "Word Bird",
-        "url": "/games/2026-02-16-word-bird.html"
+        "url": "/games/2026-02-16-word-bird.html",
+        "github_url": "https://github.com/rexuvia/word-bird",
+        "last_updated": "2026-02-19"
     }
 ]
