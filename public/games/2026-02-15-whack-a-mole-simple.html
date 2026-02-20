@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whack-a-Mole</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            text-align: center;
+            padding: 20px;
+        }
+        .game-container {
+            background-color: rgba(30, 30, 30, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            max-width: 450px;
+            width: 100%;
+            border: 1px solid #555;
+        }
+        h1 {
+            font-family: 'Cinzel', serif;
+            color: #8a2be2;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+        p {
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 10px;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+            border: 2px solid #333;
+            padding: 10px;
+            background-color: #444;
+            border-radius: 5px;
+        }
+        .hole {
+            width: 90px;
+            height: 90px;
+            background-color: #222;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .mole {
+            width: 80%;
+            height: 80%;
+            background-color: #8B4513; /* SaddleBrown */
+            border-radius: 50%;
+            position: absolute;
+            bottom: -100%; /* Start hidden below the hole */
+            transition: bottom 0.2s ease-out;
+        }
+        .mole.up {
+            bottom: 0; /* Mole pops up */
+        }
+        button {
+            background-color: #8a2be2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 5px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #9932cc;
+        }
+        #score, #timer {
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Whack-a-Mole</h1>
+        <p>Whack the moles as they pop up!</p>
+        <p>Score: <span id="score">0</span> | Time Left: <span id="timer">30</span>s</p>
+
+        <div class="grid" id="gameGrid">
+            <div class="hole"><div class="mole" data-id="0"></div></div>
+            <div class="hole"><div class="mole" data-id="1"></div></div>
+            <div class="hole"><div class="mole" data-id="2"></div></div>
+            <div class="hole"><div class="mole" data-id="3"></div></div>
+            <div class="hole"><div class="mole" data-id="4"></div></div>
+            <div class="hole"><div class="mole" data-id="5"></div></div>
+            <div class="hole"><div class="mole" data-id="6"></div></div>
+            <div class="hole"><div class="mole" data-id="7"></div></div>
+            <div class="hole"><div class="mole" data-id="8"></div></div>
+        </div>
+
+        <button id="startBtn">Start Game</button>
+        <p id="gameOverMsg" class="hidden">Game Over! Your final score: <span id="finalScore"></span></p>
+    </div>
+
+    <script>
+        const gameGrid = document.getElementById('gameGrid');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const gameOverMsg = document.getElementById('gameOverMsg');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const moles = document.querySelectorAll('.mole');
+
+        let score = 0;
+        let timeLeft = 30;
+        let timerId = null;
+        let moleTimerId = null;
+        let lastHole;
+
+        function randomHole() {
+            const holes = [...document.querySelectorAll('.hole')];
+            const idx = Math.floor(Math.random() * holes.length);
+            const hole = holes[idx];
+            if (hole === lastHole) {
+                return randomHole();
+            }
+            lastHole = hole;
+            return hole;
+        }
+
+        function popUpMole() {
+            const time = Math.random() * 800 + 400; // Mole stays up for 0.4s to 1.2s
+            const hole = randomHole();
+            const mole = hole.querySelector('.mole');
+            mole.classList.add('up');
+            moleTimerId = setTimeout(() => {
+                mole.classList.remove('up');
+                if (timeLeft > 0) {
+                    popUpMole();
+                }
+            }, time);
+        }
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            scoreDisplay.textContent = score;
+            timerDisplay.textContent = timeLeft;
+            gameOverMsg.classList.add('hidden');
+            startBtn.disabled = true;
+            moles.forEach(mole => mole.classList.remove('up'));
+            clearTimeout(moleTimerId);
+
+            timerId = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = timeLeft;
+                if (timeLeft === 0) {
+                    clearInterval(timerId);
+                    clearTimeout(moleTimerId);
+                    moles.forEach(mole => mole.classList.remove('up'));
+                    gameOver();
+                }
+            }, 1000);
+
+            popUpMole();
+        }
+
+        function whack(e) {
+            if (!e.isTrusted || !e.target.classList.contains('mole')) return;
+            score++;
+            scoreDisplay.textContent = score;
+            e.target.classList.remove('up');
+        }
+
+        function gameOver() {
+            finalScoreDisplay.textContent = score;
+            gameOverMsg.classList.remove('hidden');
+            startBtn.disabled = false;
+        }
+
+        gameGrid.addEventListener('click', whack);
+        startBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>

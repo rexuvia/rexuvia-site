@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reaction Time Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            flex-direction: column;
+            text-align: center;
+        }
+        #game-container {
+            width: 300px;
+            height: 300px;
+            background-color: #ccc;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.1s ease-in-out;
+            margin-bottom: 20px;
+        }
+        #game-container.ready {
+            background-color: #ffcc00; /* Yellow for ready */
+        }
+        #game-container.go {
+            background-color: #00cc00; /* Green for go */
+        }
+        #message {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        #result {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reaction Time Test</h1>
+    <p id="message">Click the square when it turns green!</p>
+    <div id="game-container">
+        <span id="instruction">Wait...</span>
+    </div>
+    <p id="result"></p>
+    <button id="resetButton" style="display: none;">Play Again</button>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const instruction = document.getElementById('instruction');
+        const message = document.getElementById('message');
+        const resultDisplay = document.getElementById('result');
+        const resetButton = document.getElementById('resetButton');
+
+        let startTime;
+        let timeoutId;
+        let isWaiting = false;
+        let isReady = false;
+
+        function resetGame() {
+            clearTimeout(timeoutId);
+            gameContainer.classList.remove('ready', 'go');
+            gameContainer.style.backgroundColor = '#ccc';
+            instruction.textContent = 'Wait...';
+            message.textContent = 'Click the square when it turns green!';
+            resultDisplay.textContent = '';
+            resetButton.style.display = 'none';
+            isWaiting = false;
+            isReady = false;
+            startGame();
+        }
+
+        function startGame() {
+            gameContainer.onclick = null; // Disable clicks until ready
+            const delay = Math.random() * 3000 + 1000; // Random delay between 1 and 4 seconds
+
+            instruction.textContent = 'Wait...';
+            gameContainer.classList.remove('go');
+            gameContainer.classList.add('ready');
+            isWaiting = true;
+            isReady = false;
+
+            timeoutId = setTimeout(() => {
+                gameContainer.classList.remove('ready');
+                gameContainer.classList.add('go');
+                instruction.textContent = 'GO!';
+                message.textContent = 'Click NOW!';
+                startTime = new Date().getTime();
+                isReady = true;
+                isWaiting = false;
+                gameContainer.onclick = recordReaction; // Enable clicks
+            }, delay);
+        }
+
+        function recordReaction() {
+            if (!isReady) {
+                // Too early click
+                clearTimeout(timeoutId);
+                resultDisplay.textContent = 'Too soon! Click "Play Again" to restart.';
+                gameContainer.classList.remove('ready', 'go');
+                gameContainer.style.backgroundColor = '#f00'; /* Red for too soon */
+                instruction.textContent = 'STOP!';
+                message.textContent = '';
+                resetButton.style.display = 'block';
+                isWaiting = false;
+                isReady = false;
+            } else {
+                const endTime = new Date().getTime();
+                const reactionTime = endTime - startTime;
+                resultDisplay.textContent = `Your reaction time: ${reactionTime} ms`;
+                gameContainer.classList.remove('go');
+                gameContainer.style.backgroundColor = '#00cc00'; /* Keep green for success */
+                instruction.textContent = 'Well done!';
+                message.textContent = '';
+                resetButton.style.display = 'block';
+                isWaiting = false;
+                isReady = false;
+            }
+        }
+
+        resetButton.addEventListener('click', resetGame);
+
+        // Initial start
+        startGame();
+    </script>
+</body>
+</html>

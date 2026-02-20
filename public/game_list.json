@@ -1,5 +1,12 @@
 [
     {
+        "date": "2026-02-20",
+        "title": "Elemental Garden",
+        "url": "/games/elemental-garden.html",
+        "github_url": "https://github.com/rexuvia/elemental-garden",
+        "last_updated": "2026-02-20"
+    },
+    {
         "date": "2026-02-19",
         "title": "Lava Flow",
         "url": "/games/lava-flow.html",
