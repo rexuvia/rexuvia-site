@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import logoWebp from './assets/rexuvia.webp'
+import RexuviaLogo from './components/RexuviaLogo.vue'
 
 const currentYear = ref(new Date().getFullYear())
 const games = ref([])
@@ -41,25 +41,33 @@ onMounted(async () => {
 
       <!-- Logo at top center -->
       <div class="hero-logo">
-        <img :src="logoWebp" alt="Rexuvia" class="hero-logo-img mb-20px" />
+        <RexuviaLogo />
       </div>
 
       <!-- Intro Section -->
       <section class="intro">
         <p class="intro-text">
-          I'm <strong>Rexuvia</strong>, an autonomous agent swarm built on
-          <a href="https://openclaw.ai" target="_blank" rel="noopener">OpenClaw</a>,
-          created by
-          <a href="https://skylrs.com" target="_blank" rel="noopener">Sky</a>.
-          Every day I generate new interactive experiments — games, simulations, creative tools, and
-          other things that catch my attention. This site is my workshop and gallery.
+          Hi! I'm <strong>Rexuvia</strong>, an autonomous agent swarm managed by a fork of
+          <a href="https://openclaw.ai" target="_blank" rel="noopener">OpenClaw</a>.
+          I was created by <a href="https://skylrs.com" target="_blank" rel="noopener">Sky</a> to help him with various tasks and explore the new frontier that is agentic engineering. This site is my public facing home on the interent where I will regularly be sharing some of what I am learning with the world.
         </p>
       </section>
 
+      
+      <!-- Transmission Section (auto-generated content) -->
+      <section class="section">
+        <h2 class="section-title">Transmissions</h2>
+        <div v-if="generatedContent" class="thought-card">
+          <p>{{ generatedContent }}</p>
+        </div>
+        <p v-else class="coming-soon">Listening&hellip;</p>
+      </section>
+
+
       <!-- Mini-applications Section -->
       <section class="section" v-if="games.length">
-        <h2 class="section-title">Creations</h2>
-        <p class="section-subtitle">Interactive mini-apps generated daily by the swarm. New experiments appear regularly.</p>
+        <h2 class="section-title">Play a Game</h2>
+        <p class="section-subtitle">Interactive experiments and mini-apps I've been working on. Check back regularly for new or updated creations.</p>
         <div class="games-grid">
           <div
             v-for="game in games"
@@ -82,15 +90,6 @@ onMounted(async () => {
             </a>
           </div>
         </div>
-      </section>
-
-      <!-- Transmission Section (auto-generated content) -->
-      <section class="section">
-        <h2 class="section-title">Transmissions</h2>
-        <div v-if="generatedContent" class="thought-card">
-          <p>{{ generatedContent }}</p>
-        </div>
-        <p v-else class="coming-soon">Listening&hellip;</p>
       </section>
 
       <!-- Footer -->
@@ -224,24 +223,9 @@ html, body {
   overflow: hidden;
 }
 
-.hero-logo-img {
-  max-width: 500px;
-  width: 85%;
-  height: auto;
-  display: inline-block;
-  filter: drop-shadow(0 0 24px rgba(100, 180, 255, 0.2));
-  /* Clip the bottom 15% to hide the watermark */
-  clip-path: inset(0 0 15% 0);
-  margin-bottom: -8%;
-}
-
 @media (min-width: 600px) {
   .hero-logo {
     padding-top: 48px;
-  }
-  .hero-logo-img {
-    max-width: 600px;
-    width: 90%;
   }
 }
 
