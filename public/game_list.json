@@ -1,58 +1,79 @@
 [
-    {
-        "date": "2026-02-20",
-        "title": "Elemental Garden",
-        "url": "/games/elemental-garden.html",
-        "github_url": "https://github.com/rexuvia/elemental-garden",
-        "last_updated": "2026-02-20"
-    },
-    {
-        "date": "2026-02-19",
-        "title": "Lava Flow",
-        "url": "/games/lava-flow.html",
-        "github_url": "https://github.com/rexuvia/lava-flow",
-        "last_updated": "2026-02-19"
-    },
-    {
-        "date": "2026-02-19",
-        "title": "Mirror Maze",
-        "url": "/games/mirror-maze.html",
-        "github_url": "https://github.com/rexuvia/mirror-maze",
-        "last_updated": "2026-02-19"
-    },
-    {
-        "date": "2026-02-18",
-        "title": "Signal Scope",
-        "url": "/games/2026-02-18-signal-scope.html",
-        "github_url": "https://github.com/rexuvia/signal-scope",
-        "last_updated": "2026-02-19"
-    },
-    {
-        "date": "2026-02-17",
-        "title": "Sort Cinema",
-        "url": "/games/2026-02-17-sort-cinema.html",
-        "github_url": "https://github.com/rexuvia/sort-cinema",
-        "last_updated": "2026-02-19"
-    },
-    {
-        "date": "2026-02-16",
-        "title": "Neon Synth Pad",
-        "url": "/games/2026-02-16-neon-synth-pad.html",
-        "github_url": "https://github.com/rexuvia/neon-synth-pad",
-        "last_updated": "2026-02-19"
-    },
-    {
-        "date": "2026-02-16",
-        "title": "Pendulum Waves",
-        "url": "/games/2026-02-16-pendulum-waves.html",
-        "github_url": "https://github.com/rexuvia/pendulum-waves",
-        "last_updated": "2026-02-19"
-    },
-    {
-        "date": "2026-02-16",
-        "title": "Word Bird",
-        "url": "/games/2026-02-16-word-bird.html",
-        "github_url": "https://github.com/rexuvia/word-bird",
-        "last_updated": "2026-02-19"
-    }
+  {
+    "title": "Neural Knot Untangler",
+    "url": "/games/2026-02-23-neural-knot-untangler.html",
+    "github_url": "https://github.com/rexuvia/neural-knot-untangler",
+    "date": "2026-02-23",
+    "last_updated": "2026-02-23"
+  },
+  {
+    "date": "2026-02-22",
+    "title": "Cell Symphony",
+    "url": "/games/2026-02-22-cell-symphony.html",
+    "github_url": "https://github.com/rexuvia/cell-symphony",
+    "last_updated": "2026-02-22"
+  },
+  {
+    "date": "2026-02-21",
+    "title": "Echo Weaver",
+    "url": "/games/echo-weaver.html",
+    "github_url": "https://github.com/rexuvia/echo-weaver",
+    "last_updated": "2026-02-21"
+  },
+  {
+    "date": "2026-02-20",
+    "title": "Elemental Garden",
+    "url": "/games/elemental-garden.html",
+    "github_url": "https://github.com/rexuvia/elemental-garden",
+    "last_updated": "2026-02-20"
+  },
+  {
+    "date": "2026-02-19",
+    "title": "Lava Flow",
+    "url": "/games/lava-flow.html",
+    "github_url": "https://github.com/rexuvia/lava-flow",
+    "last_updated": "2026-02-19"
+  },
+  {
+    "date": "2026-02-19",
+    "title": "Mirror Maze",
+    "url": "/games/mirror-maze.html",
+    "github_url": "https://github.com/rexuvia/mirror-maze",
+    "last_updated": "2026-02-19"
+  },
+  {
+    "date": "2026-02-18",
+    "title": "Signal Scope",
+    "url": "/games/2026-02-18-signal-scope.html",
+    "github_url": "https://github.com/rexuvia/signal-scope",
+    "last_updated": "2026-02-19"
+  },
+  {
+    "date": "2026-02-17",
+    "title": "Sort Cinema",
+    "url": "/games/2026-02-17-sort-cinema.html",
+    "github_url": "https://github.com/rexuvia/sort-cinema",
+    "last_updated": "2026-02-19"
+  },
+  {
+    "date": "2026-02-16",
+    "title": "Neon Synth Pad",
+    "url": "/games/2026-02-16-neon-synth-pad.html",
+    "github_url": "https://github.com/rexuvia/neon-synth-pad",
+    "last_updated": "2026-02-19"
+  },
+  {
+    "date": "2026-02-16",
+    "title": "Pendulum Waves",
+    "url": "/games/2026-02-16-pendulum-waves.html",
+    "github_url": "https://github.com/rexuvia/pendulum-waves",
+    "last_updated": "2026-02-19"
+  },
+  {
+    "date": "2026-02-16",
+    "title": "Word Bird",
+    "url": "/games/2026-02-16-word-bird.html",
+    "github_url": "https://github.com/rexuvia/word-bird",
+    "last_updated": "2026-02-19"
+  }
 ]

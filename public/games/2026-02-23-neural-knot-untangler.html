@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neural Knot Untangler | Rexuvia</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@500;700&display=swap');
+
+        :root {
+            --bg-dark: #0a0a0f;
+            --neon-cyan: #00f0ff;
+            --neon-magenta: #ff00aa;
+            --neon-green: #00ff88;
+            --warning-red: #ff3b6a;
+            --success-green: #00ffa8;
+            --font-main: 'Inter', sans-serif;
+            --font-display: 'Orbitron', sans-serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            color: #fff;
+            font-family: var(--font-main);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .back-link {
+            color: var(--neon-cyan);
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.8);
+            color: #fff;
+        }
+
+        .title {
+            font-family: var(--font-display);
+            margin: 0;
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, var(--neon-magenta), var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255, 0, 170, 0.3);
+        }
+
+        .header-spacer {
+            width: 130px;
+        }
+
+        .game-area {
+            flex-grow: 1;
+            position: relative;
+            perspective: 1200px;
+            overflow: hidden;
+        }
+
+        .scene {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+            transform: var(--scene-transform, translateZ(0) rotateX(0deg) rotateY(0deg));
+        }
+
+        .node {
+            position: absolute;
+            width: 42px;
+            height: 42px;
+            margin-left: -21px;
+            margin-top: -21px;
+            border-radius: 50%;
+            background: rgba(10, 10, 15, 0.85);
+            border: 2px solid var(--node-color, var(--neon-cyan));
+            box-shadow: 0 0 var(--glow-size, 18px) var(--node-color, var(--neon-cyan)),
+                        inset 0 0 12px var(--node-color, var(--neon-cyan));
+            transform: translate3d(calc(50vw + var(--x) * 1px), calc(50vh + var(--y) * 1px), calc(var(--z) * 1px));
+            cursor: grab;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-display);
+            font-size: 0.7rem;
+            user-select: none;
+            will-change: transform, box-shadow;
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .node:active, .node.dragging {
+            --glow-size: 32px;
+            cursor: grabbing;
+            z-index: 100;
+        }
+
+        .node-core {
+            width: 12px;
+            height: 12px;
+            background: var(--node-color, var(--neon-cyan));
+            border-radius: 50%;
+            opacity: var(--activation, 0.55);
+            transition: opacity 0.3s ease;
+        }
+
+        .edge-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: visible;
+            transform-style: preserve-3d;
+        }
+
+        .edge {
+            position: absolute;
+            height: var(--thickness, 3px);
+            background: var(--edge-color, rgba(0, 240, 255, 0.35));
+            transform-origin: 0 50%;
+            left: 50vw;
+            top: 50vh;
+            box-shadow: 0 0 var(--glow, 10px) var(--edge-color, rgba(0, 240, 255, 0.5));
+            will-change: transform, background;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            max-width: 300px;
+            background: rgba(10, 10, 15, 0.85);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 12px;
+            padding: 16px 18px;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.2);
+            backdrop-filter: blur(6px);
+            z-index: 15;
+        }
+
+        .info-panel h2 {
+            margin: 0 0 8px 0;
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            color: var(--neon-cyan);
+            letter-spacing: 0.04em;
+        }
+
+        .info-panel p {
+            margin: 6px 0;
+            font-size: 0.9rem;
+            color: #d3f7ff;
+            line-height: 1.4;
+        }
+
+        .info-panel strong {
+            color: var(--neon-green);
+            font-weight: 600;
+        }
+
+        .stats-panel {
+            position: absolute;
+            top: 90px;
+            right: 20px;
+            width: clamp(220px, 25vw, 280px);
+            background: rgba(10, 10, 15, 0.85);
+            border: 1px solid rgba(255, 0, 170, 0.3);
+            border-radius: 12px;
+            padding: 16px 18px;
+            box-shadow: 0 0 25px rgba(255, 0, 170, 0.2);
+            backdrop-filter: blur(6px);
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .stats-line {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        .stats-line span:first-child {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .stats-line span:last-child {
+            color: var(--neon-cyan);
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: var(--progress, 0%);
+            background: linear-gradient(90deg, rgba(255,0,170,0.7), rgba(0,240,255,0.8), rgba(0,255,136,0.8));
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+            transition: width 0.25s ease;
+        }
+
+        .difficulty-select {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .difficulty-btn {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: rgba(10, 10, 15, 0.6);
+            color: rgba(255, 255, 255, 0.7);
+            font-family: var(--font-display);
+            font-size: 0.7rem;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .difficulty-btn.active {
+            border-color: var(--neon-magenta);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(255, 0, 170, 0.45);
+        }
+
+        .difficulty-btn:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            z-index: 20;
+        }
+
+        .btn {
+            background: rgba(10, 10, 15, 0.7);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 9px 18px;
+            font-family: var(--font-display);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+        }
+
+        .btn:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 14px rgba(0, 240, 255, 0.5);
+        }
+
+        .btn.secondary {
+            border-color: rgba(255, 0, 170, 0.6);
+            color: var(--neon-magenta);
+        }
+
+        .btn.secondary:hover {
+            background: rgba(255, 0, 170, 0.18);
+            box-shadow: 0 0 14px rgba(255, 0, 170, 0.45);
+        }
+
+        .status-message {
+            position: absolute;
+            bottom: 28px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-family: var(--font-display);
+            z-index: 20;
+        }
+
+        .status-message span {
+            font-size: 0.8rem;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.65);
+        }
+
+        .status-message strong {
+            color: var(--neon-green);
+            font-size: 1rem;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(10, 10, 15, 0.95);
+            border: 1px solid var(--neon-magenta);
+            border-radius: 8px;
+            padding: 15px;
+            width: 250px;
+            box-shadow: 0 0 20px rgba(255, 0, 170, 0.3);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            transform: translate(-50%, -120%);
+            z-index: 25;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip h3 {
+            margin: 0 0 10px 0;
+            color: var(--neon-cyan);
+            font-size: 1.05rem;
+            font-family: var(--font-display);
+        }
+
+        .tooltip p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #ddd;
+            line-height: 1.4;
+        }
+
+        .victory-overlay {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(0, 240, 255, 0.1), rgba(10, 10, 15, 0.92));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 18px;
+            font-family: var(--font-display);
+            letter-spacing: 0.08em;
+            color: var(--neon-green);
+            text-align: center;
+            z-index: 30;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .victory-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .victory-title {
+            font-size: clamp(1.6rem, 5vw, 2.4rem);
+            text-shadow: 0 0 25px rgba(0, 255, 136, 0.8);
+        }
+
+        .victory-subtitle {
+            font-size: clamp(0.85rem, 3vw, 1rem);
+            color: rgba(255, 255, 255, 0.8);
+            max-width: 420px;
+            line-height: 1.6;
+        }
+
+        .victory-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .victory-count {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.65);
+        }
+
+        @media (max-width: 900px) {
+            .header { padding: 16px; }
+            .title { font-size: 1.3rem; }
+            .header-spacer { width: 90px; }
+            .info-panel, .stats-panel {
+                position: static;
+                margin: 0 16px 12px 16px;
+            }
+            .game-area {
+                flex-grow: 1;
+                order: 3;
+            }
+            #app {
+                overflow-y: auto;
+            }
+            body, html { overflow: hidden; }
+            .controls {
+                position: static;
+                margin: 12px 16px 20px 16px;
+                justify-content: center;
+            }
+            .status-message {
+                position: static;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+            .tooltip {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <a href="/" class="back-link">← Back to Rexuvia</a>
+            <h1 class="title">Neural Knot Untangler</h1>
+            <div class="header-spacer"></div>
+        </div>
+
+        <div class="info-panel">
+            <h2>Mission Brief</h2>
+            <p><strong>Objective:</strong> Untangle the neural network so none of the pathways cross.</p>
+            <p><strong>How:</strong> Drag any node to move it through 3D space. Rotate the whole lattice by dragging empty space. Pinch/scroll to zoom.</p>
+            <p><strong>Win:</strong> Drive the crossing counter down to <strong>0</strong>. Untangled edges glow emerald and the system stabilises.</p>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stats-line">
+                <span>Network</span>
+                <span>{{ currentLevelConfig.name }}</span>
+            </div>
+            <div class="stats-line">
+                <span>Difficulty</span>
+                <span>{{ currentLevelConfig.difficultyLabel }}</span>
+            </div>
+            <div class="stats-line">
+                <span>Crossings</span>
+                <span :style="{ color: crossings > 0 ? 'var(--warning-red)' : 'var(--success-green)' }">{{ crossings }}</span>
+            </div>
+            <div class="stats-line" v-if="initialCrossings > 0">
+                <span>Stability</span>
+                <span>{{ Math.round(progressRatio * 100) }}%</span>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+                <div class="progress-fill" :style="{ '--progress': Math.round(progressRatio * 100) + '%' }"></div>
+            </div>
+            <div class="difficulty-select">
+                <button
+                    v-for="option in difficultyOptions"
+                    :key="option.id"
+                    class="difficulty-btn"
+                    :class="{ active: currentDifficulty === option.id }"
+                    @click="setDifficulty(option.id)">
+                    {{ option.label }}
+                </button>
+            </div>
+        </div>
+
+        <div class="game-area"
+             @pointerdown="onScenePointerDown"
+             @pointermove="onPointerMove"
+             @pointerup="onPointerUp"
+             @pointercancel="onPointerUp"
+             @pointerleave="onPointerUp"
+             @wheel.prevent="onWheel">
+
+            <div class="scene" :style="{ '--scene-transform': `translateZ(${zoom}px) rotateX(${rotX}deg) rotateY(${rotY}deg)` }">
+                <div class="edge-container">
+                    <div v-for="edge in edges" :key="edge.id"
+                         class="edge"
+                         :style="getEdgeStyle(edge)"></div>
+                </div>
+
+                <div v-for="node in nodes" :key="node.id"
+                     class="node"
+                     :class="{ dragging: dragNode && dragNode.id === node.id }"
+                     :style="getNodeStyle(node)"
+                     @pointerdown.stop="onNodePointerDown($event, node)"
+                     @pointerenter="hoverNode = node"
+                     @pointerleave="hoverNode = null">
+                    <div class="node-core"></div>
+                </div>
+            </div>
+
+            <div class="tooltip" :class="{ visible: showTooltip }" :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }">
+                <h3 v-if="hoverNode">{{ hoverNode.label }}</h3>
+                <p v-if="hoverNode">{{ hoverNode.desc }}</p>
+            </div>
+
+            <div class="victory-overlay" :class="{ visible: isUntangled }">
+                <div class="victory-title">OPTIMAL PATHWAY ESTABLISHED</div>
+                <div class="victory-subtitle">Signal interference eliminated. All neural conduits are flowing clean.</div>
+                <div class="victory-count">Crossings resolved: {{ initialCrossings }}</div>
+                <div class="victory-buttons">
+                    <button class="btn secondary" @click="scrambleLevel">Scramble Again</button>
+                    <button class="btn" @click="nextLevel">Next Network</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn secondary" @click="scrambleLevel">Scramble Network</button>
+            <button class="btn" @click="resetCamera">Reset View</button>
+        </div>
+
+        <div class="status-message">
+            <span v-if="!isUntangled">Interference remaining...</span>
+            <span v-else>System Stable</span>
+            <strong>{{ crossings === 0 ? 'ALL SIGNALS CLEAR' : crossings + ' CROSS-LINKS DETECTED' }}</strong>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
+
+        const LEVELS = [
+            {
+                id: 'perceptron',
+                difficulty: 'easy',
+                difficultyLabel: 'Easy',
+                name: 'PERCEPTRON CORE',
+                nodes: [
+                    { id: 'n1', x: -150, y: -100, z: 0, type: 'input', label: 'Input Node X1', desc: 'Receives raw signal. Moving this helps unfold the linear network.' },
+                    { id: 'n2', x: -150, y: 100, z: 0, type: 'input', label: 'Input Node X2', desc: 'Second feature input. Weights are calculated along connections.' },
+                    { id: 'n3', x: 150, y: 0, z: 50, type: 'output', label: 'Output Neuron', desc: 'Aggregates signals to make a decision.' },
+                    { id: 'n4', x: 0, y: 0, z: -120, type: 'hidden', label: 'Bias Stabilizer', desc: 'Keeps the perceptron stable when properly aligned.' }
+                ],
+                edges: [
+                    { id: 'e1', source: 'n1', target: 'n3' },
+                    { id: 'e2', source: 'n2', target: 'n3' },
+                    { id: 'e3', source: 'n1', target: 'n4' },
+                    { id: 'e4', source: 'n2', target: 'n4' },
+                    { id: 'e5', source: 'n4', target: 'n3' }
+                ],
+                scramble: true
+            },
+            {
+                id: 'feed-forward',
+                difficulty: 'medium',
+                difficultyLabel: 'Medium',
+                name: 'FEED-FORWARD GRID',
+                nodes: [
+                    { id: 'i1', x: -250, y: -150, z: -50, type: 'input', label: 'Input 1', desc: 'Raw sensory data source.' },
+                    { id: 'i2', x: -250, y: 0, z: 0, type: 'input', label: 'Input 2', desc: 'Raw sensory data source.' },
+                    { id: 'i3', x: -250, y: 150, z: 50, type: 'input', label: 'Input 3', desc: 'Raw sensory data source.' },
+                    { id: 'h1', x: 0, y: -110, z: 90, type: 'hidden', label: 'Hidden Unit A', desc: 'Extracts non-linear patterns from inputs. Keep pathways clear.' },
+                    { id: 'h2', x: 0, y: 110, z: -90, type: 'hidden', label: 'Hidden Unit B', desc: 'Synthesizes features. Crossings cause signal interference.' },
+                    { id: 'h3', x: 0, y: 0, z: 140, type: 'hidden', label: 'Hidden Unit C', desc: 'Balances load between channels.' },
+                    { id: 'o1', x: 250, y: 0, z: 0, type: 'output', label: 'Output Match', desc: 'Final network prediction.' }
+                ],
+                edges: [
+                    { id: 'e1', source: 'i1', target: 'h1' }, { id: 'e2', source: 'i2', target: 'h1' }, { id: 'e3', source: 'i3', target: 'h1' },
+                    { id: 'e4', source: 'i1', target: 'h2' }, { id: 'e5', source: 'i2', target: 'h2' }, { id: 'e6', source: 'i3', target: 'h2' },
+                    { id: 'e7', source: 'i1', target: 'h3' }, { id: 'e8', source: 'i2', target: 'h3' }, { id: 'e9', source: 'i3', target: 'h3' },
+                    { id: 'e10', source: 'h1', target: 'o1' }, { id: 'e11', source: 'h2', target: 'o1' }, { id: 'e12', source: 'h3', target: 'o1' }
+                ],
+                scramble: true
+            },
+            {
+                id: 'recurrent-loop',
+                difficulty: 'hard',
+                difficultyLabel: 'Hard',
+                name: 'RECURRENT MEMORY LOOP',
+                nodes: [
+                    { id: 'n1', x: -250, y: 0, z: 0, type: 'input', label: 'Time Step t', desc: 'Sequential input data.' },
+                    { id: 'n2', x: -80, y: 160, z: 120, type: 'hidden', label: 'Memory Cell 1', desc: 'Maintains state across time. Resolving this knot restores memory fidelity.' },
+                    { id: 'n3', x: 80, y: -160, z: -120, type: 'hidden', label: 'Memory Cell 2', desc: 'Interacts with previous states.' },
+                    { id: 'n4', x: 250, y: 0, z: 0, type: 'output', label: 'Prediction', desc: 'Forecasted output.' },
+                    { id: 'n5', x: 0, y: 0, z: 200, type: 'context', label: 'Context Gate', desc: 'Controls information flow loop.' },
+                    { id: 'n6', x: -40, y: 120, z: -160, type: 'hidden', label: 'Gate Memory', desc: 'Synchronizes the context bridge.' },
+                    { id: 'n7', x: 40, y: -120, z: 160, type: 'hidden', label: 'Feedback Relay', desc: 'Stabilizes the recurrent flow.' }
+                ],
+                edges: [
+                    { id: 'e1', source: 'n1', target: 'n2' }, { id: 'e2', source: 'n1', target: 'n3' },
+                    { id: 'e3', source: 'n2', target: 'n4' }, { id: 'e4', source: 'n3', target: 'n4' },
+                    { id: 'e5', source: 'n2', target: 'n5' }, { id: 'e6', source: 'n5', target: 'n3' },
+                    { id: 'e7', source: 'n2', target: 'n6' }, { id: 'e8', source: 'n6', target: 'n7' }, { id: 'e9', source: 'n7', target: 'n3' },
+                    { id: 'e10', source: 'n7', target: 'n5' }
+                ],
+                scramble: true
+            }
+        ];
+
+        const difficultyOptions = [
+            { id: 'easy', label: 'Easy' },
+            { id: 'medium', label: 'Medium' },
+            { id: 'hard', label: 'Hard' }
+        ];
+
+        createApp({
+            setup() {
+                const currentLevelIdx = ref(0);
+                const currentDifficulty = ref(LEVELS[0].difficulty);
+                const nodes = ref([]);
+                const edges = ref([]);
+                const rotX = ref(18);
+                const rotY = ref(-24);
+                const zoom = ref(0);
+
+                const hoverNode = ref(null);
+                const dragNode = ref(null);
+                const isDraggingScene = ref(false);
+
+                const initialCrossings = ref(0);
+                const crossings = ref(0);
+
+                const lastPointer = { x: 0, y: 0 };
+
+                const getColors = (type) => {
+                    const colors = {
+                        input: 'var(--neon-green)',
+                        hidden: 'var(--neon-cyan)',
+                        context: 'var(--neon-magenta)',
+                        output: 'var(--neon-magenta)'
+                    };
+                    return colors[type] || 'var(--neon-cyan)';
+                };
+
+                const currentLevelConfig = computed(() => LEVELS[currentLevelIdx.value]);
+
+                const loadLevel = (idx, options = { scramble: true }) => {
+                    const level = LEVELS[idx];
+                    nodes.value = JSON.parse(JSON.stringify(level.nodes));
+                    edges.value = JSON.parse(JSON.stringify(level.edges));
+
+                    if (level.scramble && options.scramble) {
+                        scrambleNodes();
+                    }
+
+                    resetCamera();
+                    nextTick(() => {
+                        updateEdges(true);
+                        initialCrossings.value = Math.max(crossings.value, 1);
+                    });
+                };
+
+                const scrambleNodes = () => {
+                    const radius = 260;
+                    nodes.value.forEach((node, index) => {
+                        const angle = (index / nodes.value.length) * Math.PI * 2;
+                        const jitter = (Math.random() - 0.5) * 120;
+                        node.x = Math.cos(angle) * radius + (Math.random() - 0.5) * 150;
+                        node.y = Math.sin(angle) * radius + (Math.random() - 0.5) * 150;
+                        node.z = (Math.random() - 0.5) * 420 + jitter;
+                    });
+                };
+
+                const scrambleLevel = () => {
+                    scrambleNodes();
+                    nextTick(() => {
+                        updateEdges(true);
+                        initialCrossings.value = Math.max(crossings.value, 1);
+                    });
+                };
+
+                const resetCamera = () => {
+                    rotX.value = 18;
+                    rotY.value = -24;
+                    zoom.value = 0;
+                };
+
+                const nextLevel = () => {
+                    const currentDiff = currentLevelConfig.value.difficulty;
+                    const candidates = LEVELS.filter((lvl) => lvl.difficulty === currentDiff);
+                    const currentIndexWithin = candidates.findIndex(lvl => lvl.id === currentLevelConfig.value.id);
+                    const nextIndexWithin = (currentIndexWithin + 1) % candidates.length;
+                    const nextLevelId = candidates[nextIndexWithin].id;
+                    const globalIdx = LEVELS.findIndex(lvl => lvl.id === nextLevelId);
+                    currentLevelIdx.value = globalIdx;
+                    loadLevel(globalIdx, { scramble: true });
+                };
+
+                const setDifficulty = (difficulty) => {
+                    if (currentDifficulty.value === difficulty) {
+                        scrambleLevel();
+                        return;
+                    }
+                    currentDifficulty.value = difficulty;
+                    const firstMatchIndex = LEVELS.findIndex(level => level.difficulty === difficulty);
+                    if (firstMatchIndex !== -1) {
+                        currentLevelIdx.value = firstMatchIndex;
+                        loadLevel(firstMatchIndex, { scramble: true });
+                    }
+                };
+
+                const projectNode = (node) => {
+                    const radX = rotX.value * Math.PI / 180;
+                    const radY = rotY.value * Math.PI / 180;
+
+                    const cosY = Math.cos(radY);
+                    const sinY = Math.sin(radY);
+                    const cosX = Math.cos(radX);
+                    const sinX = Math.sin(radX);
+
+                    const x1 = node.x * cosY - node.z * sinY;
+                    const z1 = node.x * sinY + node.z * cosY;
+                    const y2 = node.y * cosX - z1 * sinX;
+
+                    return { x: x1, y: y2 };
+                };
+
+                const EPSILON = 0.000001;
+
+                const orientation = (p, q, r) => {
+                    const val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+                    if (Math.abs(val) < EPSILON) return 0;
+                    return val > 0 ? 1 : 2;
+                };
+
+                const onSegment = (p, q, r) => {
+                    return q.x <= Math.max(p.x, r.x) + EPSILON &&
+                           q.x + EPSILON >= Math.min(p.x, r.x) &&
+                           q.y <= Math.max(p.y, r.y) + EPSILON &&
+                           q.y + EPSILON >= Math.min(p.y, r.y);
+                };
+
+                const segmentsIntersect = (p1, p2, p3, p4) => {
+                    const o1 = orientation(p1, p2, p3);
+                    const o2 = orientation(p1, p2, p4);
+                    const o3 = orientation(p3, p4, p1);
+                    const o4 = orientation(p3, p4, p2);
+
+                    if (o1 !== o2 && o3 !== o4) return true;
+
+                    if (o1 === 0 && onSegment(p1, p3, p2)) return true;
+                    if (o2 === 0 && onSegment(p1, p4, p2)) return true;
+                    if (o3 === 0 && onSegment(p3, p1, p4)) return true;
+                    if (o4 === 0 && onSegment(p3, p2, p4)) return true;
+
+                    return false;
+                };
+
+                const updateEdges = (includeInitial = false) => {
+                    let crossCount = 0;
+
+                    edges.value.forEach(edge => {
+                        const sourceNode = nodes.value.find(n => n.id === edge.source);
+                        const targetNode = nodes.value.find(n => n.id === edge.target);
+                        if (!sourceNode || !targetNode) return;
+
+                        const dx = targetNode.x - sourceNode.x;
+                        const dy = targetNode.y - sourceNode.y;
+                        const dz = targetNode.z - sourceNode.z;
+
+                        const hDist = Math.sqrt(dx * dx + dy * dy);
+                        const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                        const rotateY = Math.atan2(-dz, hDist) * (180 / Math.PI);
+                        const rotateZ = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                        edge._state = {
+                            x: sourceNode.x,
+                            y: sourceNode.y,
+                            z: sourceNode.z,
+                            rotateY,
+                            rotateZ,
+                            length,
+                            p1: projectNode(sourceNode),
+                            p2: projectNode(targetNode)
+                        };
+                        edge.isCrossed = false;
+                    });
+
+                    for (let i = 0; i < edges.value.length; i++) {
+                        for (let j = i + 1; j < edges.value.length; j++) {
+                            const e1 = edges.value[i];
+                            const e2 = edges.value[j];
+                            if (!e1._state || !e2._state) continue;
+
+                            if (e1.source === e2.source || e1.source === e2.target ||
+                                e1.target === e2.source || e1.target === e2.target) {
+                                continue;
+                            }
+
+                            if (segmentsIntersect(e1._state.p1, e1._state.p2, e2._state.p1, e2._state.p2)) {
+                                e1.isCrossed = true;
+                                e2.isCrossed = true;
+                                crossCount++;
+                            }
+                        }
+                    }
+
+                    crossings.value = crossCount;
+
+                    if (includeInitial && initialCrossings.value <= 1) {
+                        initialCrossings.value = Math.max(crossCount, 1);
+                    }
+                };
+
+                const progressRatio = computed(() => {
+                    if (initialCrossings.value <= 0) return crossings.value === 0 ? 1 : 0;
+                    const ratio = 1 - (crossings.value / initialCrossings.value);
+                    return Math.max(0, Math.min(1, ratio));
+                });
+
+                const isUntangled = computed(() => crossings.value === 0 && edges.value.length > 0);
+
+                const getNodeStyle = (node) => {
+                    const color = getColors(node.type);
+                    return {
+                        '--x': node.x,
+                        '--y': node.y,
+                        '--z': node.z,
+                        '--node-color': color,
+                        '--activation': isUntangled.value ? '1' : '0.45'
+                    };
+                };
+
+                const getEdgeStyle = (edge) => {
+                    if (!edge._state) return {};
+                    const st = edge._state;
+
+                    const color = edge.isCrossed ? 'var(--warning-red)' : (isUntangled.value ? 'var(--success-green)' : 'rgba(0, 240, 255, 0.55)');
+                    const glow = edge.isCrossed ? '18px' : (isUntangled.value ? '24px' : '10px');
+                    const thickness = edge.isCrossed ? '4px' : (isUntangled.value ? '5px' : '3px');
+
+                    return {
+                        transform: `translate3d(${st.x}px, ${st.y}px, ${st.z}px) rotateZ(${st.rotateZ}deg) rotateY(${st.rotateY}deg)`,
+                        width: `${st.length}px`,
+                        '--edge-color': color,
+                        '--glow': glow,
+                        '--thickness': thickness
+                    };
+                };
+
+                const releaseCapture = (event) => {
+                    try {
+                        event.target.releasePointerCapture(event.pointerId);
+                    } catch (err) {
+                        // some elements might not have capture
+                    }
+                };
+
+                const onNodePointerDown = (event, node) => {
+                    event.target.setPointerCapture(event.pointerId);
+                    dragNode.value = node;
+                    lastPointer.x = event.clientX;
+                    lastPointer.y = event.clientY;
+                };
+
+                const onScenePointerDown = (event) => {
+                    if (dragNode.value) return;
+                    event.target.setPointerCapture(event.pointerId);
+                    isDraggingScene.value = true;
+                    lastPointer.x = event.clientX;
+                    lastPointer.y = event.clientY;
+                };
+
+                const onPointerMove = (event) => {
+                    if (dragNode.value) {
+                        const dx = event.clientX - lastPointer.x;
+                        const dy = event.clientY - lastPointer.y;
+
+                        const radX = rotX.value * -Math.PI / 180;
+                        const radY = rotY.value * -Math.PI / 180;
+
+                        const cosY = Math.cos(radY);
+                        const sinY = Math.sin(radY);
+                        const cosX = Math.cos(radX);
+                        const sinX = Math.sin(radX);
+
+                        const worldDx = dx * cosY;
+                        const worldDy = dy * cosX;
+                        const worldDz = dx * sinY + dy * sinX;
+
+                        dragNode.value.x += worldDx;
+                        dragNode.value.y += worldDy;
+                        dragNode.value.z -= worldDz * 0.6;
+
+                        lastPointer.x = event.clientX;
+                        lastPointer.y = event.clientY;
+
+                        updateEdges();
+                    } else if (isDraggingScene.value) {
+                        const dx = event.clientX - lastPointer.x;
+                        const dy = event.clientY - lastPointer.y;
+                        rotY.value += dx * 0.45;
+                        rotX.value -= dy * 0.45;
+                        rotX.value = Math.max(-80, Math.min(80, rotX.value));
+                        lastPointer.x = event.clientX;
+                        lastPointer.y = event.clientY;
+                        updateEdges();
+                    }
+
+                    if (hoverNode.value) {
+                        tooltipX.value = event.clientX;
+                        tooltipY.value = event.clientY;
+                    }
+                };
+
+                const onPointerUp = (event) => {
+                    if (dragNode.value || isDraggingScene.value) {
+                        releaseCapture(event);
+                    }
+                    dragNode.value = null;
+                    isDraggingScene.value = false;
+                };
+
+                const onWheel = (event) => {
+                    const delta = event.deltaY;
+                    zoom.value += delta * -0.7;
+                    zoom.value = Math.max(-1200, Math.min(zoom.value, 1600));
+                };
+
+                const tooltipX = ref(0);
+                const tooltipY = ref(0);
+                const showTooltip = computed(() => hoverNode.value !== null && !dragNode.value && !isDraggingScene.value);
+
+                let animationFrameId;
+                const loop = () => {
+                    animationFrameId = requestAnimationFrame(loop);
+                };
+
+                onMounted(() => {
+                    loadLevel(currentLevelIdx.value);
+                    loop();
+                });
+
+                onUnmounted(() => {
+                    cancelAnimationFrame(animationFrameId);
+                });
+
+                watch(() => [rotX.value, rotY.value], () => {
+                    updateEdges();
+                });
+
+                return {
+                    nodes,
+                    edges,
+                    rotX,
+                    rotY,
+                    zoom,
+                    hoverNode,
+                    dragNode,
+                    tooltipX,
+                    tooltipY,
+                    showTooltip,
+                    crossings,
+                    initialCrossings,
+                    isUntangled,
+                    currentLevelConfig,
+                    difficultyOptions,
+                    currentDifficulty,
+                    getNodeStyle,
+                    getEdgeStyle,
+                    onNodePointerDown,
+                    onScenePointerDown,
+                    onPointerMove,
+                    onPointerUp,
+                    onWheel,
+                    resetCamera,
+                    nextLevel,
+                    scrambleLevel,
+                    setDifficulty,
+                    progressRatio
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
