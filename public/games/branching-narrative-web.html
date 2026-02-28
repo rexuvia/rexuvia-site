@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Branching Narrative Web</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0f;
+            color: #00f0ff;
+            overflow: hidden;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(1.2rem, 4vw, 2rem);
+            font-weight: 900;
+            text-align: center;
+            text-shadow: 0 0 20px #00f0ff, 0 0 40px #00f0ff;
+            letter-spacing: 0.15em;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: clamp(0.7rem, 2vw, 0.9rem);
+            color: #00ff88;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.75rem;
+            pointer-events: all;
+            z-index: 10;
+        }
+
+        .btn {
+            font-family: 'Orbitron', monospace;
+            padding: 0.6rem 1.2rem;
+            background: rgba(0, 240, 255, 0.1);
+            border: 2px solid #00f0ff;
+            color: #00f0ff;
+            font-size: clamp(0.7rem, 2vw, 0.85rem);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+            border-radius: 4px;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .info-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            width: 500px;
+            background: rgba(10, 10, 15, 0.95);
+            border: 2px solid #ff00aa;
+            border-radius: 8px;
+            padding: 2rem;
+            display: none;
+            z-index: 100;
+            pointer-events: all;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 40px rgba(255, 0, 170, 0.3);
+        }
+
+        .info-panel.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -40%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        .info-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.3rem;
+            color: #ff00aa;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px #ff00aa;
+        }
+
+        .info-text {
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            color: #ffffff;
+            font-size: 0.95rem;
+        }
+
+        .info-choices {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .choice-btn {
+            font-family: 'Inter', sans-serif;
+            padding: 0.75rem 1rem;
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-size: 0.9rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .choice-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+            transform: translateX(5px);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 30px;
+            height: 30px;
+            border: 2px solid #ff00aa;
+            background: transparent;
+            color: #ff00aa;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 0, 170, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .path-history {
+            position: fixed;
+            top: 5rem;
+            right: 1rem;
+            max-width: 200px;
+            background: rgba(10, 10, 15, 0.9);
+            border: 2px solid #00f0ff;
+            border-radius: 4px;
+            padding: 1rem;
+            pointer-events: all;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+        }
+
+        .history-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.8rem;
+            color: #00f0ff;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .history-item {
+            font-size: 0.75rem;
+            color: #ffffff;
+            padding: 0.4rem;
+            margin-bottom: 0.4rem;
+            background: rgba(0, 240, 255, 0.1);
+            border-left: 3px solid #00f0ff;
+            padding-left: 0.6rem;
+        }
+
+        .stats {
+            position: fixed;
+            top: 5rem;
+            left: 1rem;
+            background: rgba(10, 10, 15, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 4px;
+            padding: 1rem;
+            pointer-events: none;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.75rem;
+        }
+
+        .stat-line {
+            color: #00ff88;
+            margin-bottom: 0.3rem;
+        }
+
+        @media (max-width: 768px) {
+            .path-history {
+                display: none;
+            }
+            
+            .stats {
+                font-size: 0.65rem;
+                padding: 0.75rem;
+            }
+            
+            .info-panel {
+                padding: 1.5rem;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            color: #00f0ff;
+            text-shadow: 0 0 20px #00f0ff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="hud">
+        <div class="title">BRANCHING NARRATIVE WEB</div>
+        <div class="subtitle">Explore the possibility space</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="stats">
+        <div class="stat-line">NODES: <span id="nodeCount">0</span></div>
+        <div class="stat-line">EXPLORED: <span id="exploredCount">0</span></div>
+        <div class="stat-line">PATHS: <span id="pathCount">0</span></div>
+    </div>
+
+    <div class="path-history">
+        <div class="history-title">Journey</div>
+        <div id="historyList"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="app.resetView()">Reset View</button>
+        <button class="btn" onclick="app.resetJourney()">New Journey</button>
+    </div>
+
+    <div class="info-panel" id="infoPanel">
+        <button class="close-btn" onclick="app.closePanel()">×</button>
+        <div class="info-title" id="infoTitle"></div>
+        <div class="info-text" id="infoText"></div>
+        <div class="info-choices" id="infoChoices"></div>
+    </div>
+
+    <script>
+        const app = {
+            canvas: null,
+            ctx: null,
+            width: 0,
+            height: 0,
+            camera: { x: 0, y: 0, scale: 1 },
+            nodes: [],
+            edges: [],
+            visitedNodes: new Set(),
+            currentNode: null,
+            pathHistory: [],
+            isDragging: false,
+            lastMousePos: { x: 0, y: 0 },
+            hoveredNode: null,
+
+            narrativeData: {
+                start: {
+                    id: 'start',
+                    title: 'The Signal',
+                    text: 'You intercept a strange transmission from deep space. It contains coordinates and a single word: "COME."',
+                    x: 0,
+                    y: 0,
+                    choices: [
+                        { text: 'Investigate immediately', target: 'investigate' },
+                        { text: 'Report to authorities', target: 'report' },
+                        { text: 'Ignore it', target: 'ignore' }
+                    ]
+                },
+                investigate: {
+                    id: 'investigate',
+                    title: 'Into the Unknown',
+                    text: 'You chart a course to the coordinates. As you approach, your instruments detect something massive.',
+                    choices: [
+                        { text: 'Scan the object', target: 'scan' },
+                        { text: 'Attempt communication', target: 'communicate' },
+                        { text: 'Retreat and observe', target: 'observe' }
+                    ]
+                },
+                report: {
+                    id: 'report',
+                    title: 'Official Channels',
+                    text: 'The authorities thank you but classify the transmission. Days later, you see news of a military expedition.',
+                    choices: [
+                        { text: 'Follow the expedition', target: 'follow' },
+                        { text: 'Investigate on your own', target: 'investigate' },
+                        { text: 'Let it go', target: 'letgo' }
+                    ]
+                },
+                ignore: {
+                    id: 'ignore',
+                    title: 'Normal Life',
+                    text: 'You try to forget about it. But the transmission keeps repeating in your dreams.',
+                    choices: [
+                        { text: 'Give in to curiosity', target: 'investigate' },
+                        { text: 'Seek psychological help', target: 'therapy' }
+                    ]
+                },
+                scan: {
+                    id: 'scan',
+                    title: 'The Structure',
+                    text: 'Your scans reveal an artificial megastructure millions of years old. It is hollow and vast beyond measure.',
+                    choices: [
+                        { text: 'Enter the structure', target: 'enter' },
+                        { text: 'Map the exterior', target: 'map' }
+                    ]
+                },
+                communicate: {
+                    id: 'communicate',
+                    title: 'First Contact',
+                    text: 'You broadcast on all frequencies. Something answers. Not in words, but in feelings. Welcome. Fear. Hope.',
+                    choices: [
+                        { text: 'Accept the invitation', target: 'accept' },
+                        { text: 'Ask questions', target: 'questions' }
+                    ]
+                },
+                observe: {
+                    id: 'observe',
+                    title: 'Patient Watcher',
+                    text: 'You maintain a safe distance. The object begins to change, unfolding like origami on a cosmic scale.',
+                    choices: [
+                        { text: 'Document everything', target: 'document' },
+                        { text: 'Get closer', target: 'scan' }
+                    ]
+                },
+                follow: {
+                    id: 'follow',
+                    title: 'Shadow Operation',
+                    text: 'You track the military fleet. They are heavily armed and moving fast toward the coordinates.',
+                    choices: [
+                        { text: 'Warn them of danger', target: 'warn' },
+                        { text: 'Stay hidden', target: 'hidden' }
+                    ]
+                },
+                letgo: {
+                    id: 'letgo',
+                    title: 'Peaceful Ignorance',
+                    text: 'You go back to your normal life. Sometimes you wonder what might have been out there.',
+                    choices: []
+                },
+                therapy: {
+                    id: 'therapy',
+                    title: 'Inner Space',
+                    text: 'The therapist says dreams are just dreams. But you know better. The signal was real.',
+                    choices: [
+                        { text: 'Stop fighting it', target: 'investigate' }
+                    ]
+                },
+                enter: {
+                    id: 'enter',
+                    title: 'The Threshold',
+                    text: 'You pass through an opening. Inside is a civilization frozen in time, waiting.',
+                    choices: [
+                        { text: 'Explore deeper', target: 'deeper' },
+                        { text: 'Try to wake them', target: 'wake' }
+                    ]
+                },
+                map: {
+                    id: 'map',
+                    title: 'Cartographer',
+                    text: 'You spend weeks mapping every detail. The structure is a perfect sphere, 10,000 km in diameter.',
+                    choices: [
+                        { text: 'Share your findings', target: 'share' },
+                        { text: 'Enter alone', target: 'enter' }
+                    ]
+                },
+                accept: {
+                    id: 'accept',
+                    title: 'Symbiosis',
+                    text: 'The presence merges with your mind. You are no longer alone. You are many.',
+                    choices: []
+                },
+                questions: {
+                    id: 'questions',
+                    title: 'The Dialogue',
+                    text: 'You ask: Why? Where? When? The answers come in waves of understanding that transcend language.',
+                    choices: [
+                        { text: 'Embrace the knowledge', target: 'embrace' },
+                        { text: 'Resist the connection', target: 'resist' }
+                    ]
+                },
+                document: {
+                    id: 'document',
+                    title: 'Witness',
+                    text: 'Your recordings will change everything humanity knows. You have proof we are not alone.',
+                    choices: [
+                        { text: 'Return to Earth', target: 'return' }
+                    ]
+                },
+                warn: {
+                    id: 'warn',
+                    title: 'Unheeded Warning',
+                    text: 'They ignore your warnings. You watch as their weapons activate. The structure responds.',
+                    choices: [
+                        { text: 'Flee', target: 'flee' },
+                        { text: 'Try to stop them', target: 'stop' }
+                    ]
+                },
+                hidden: {
+                    id: 'hidden',
+                    title: 'Silent Observer',
+                    text: 'From the shadows, you witness first contact. It does not go well.',
+                    choices: [
+                        { text: 'Intervene', target: 'stop' },
+                        { text: 'Escape', target: 'flee' }
+                    ]
+                },
+                deeper: {
+                    id: 'deeper',
+                    title: 'The Heart',
+                    text: 'At the center, you find something incredible: a library of every civilization that ever existed.',
+                    choices: []
+                },
+                wake: {
+                    id: 'wake',
+                    title: 'Awakening',
+                    text: 'One by one, they stir. They recognize you. They have been waiting for someone like you.',
+                    choices: [
+                        { text: 'Learn from them', target: 'learn' }
+                    ]
+                },
+                share: {
+                    id: 'share',
+                    title: 'Scientific Triumph',
+                    text: 'Your data revolutionizes human understanding. But now everyone wants a piece of the discovery.',
+                    choices: [
+                        { text: 'Protect the site', target: 'protect' }
+                    ]
+                },
+                embrace: {
+                    id: 'embrace',
+                    title: 'Transcendence',
+                    text: 'You understand now. The structure is a bridge between dimensions. You become part of it.',
+                    choices: []
+                },
+                resist: {
+                    id: 'resist',
+                    title: 'Boundaries',
+                    text: 'You maintain your identity. The presence respects your choice and withdraws.',
+                    choices: [
+                        { text: 'Continue alone', target: 'document' }
+                    ]
+                },
+                return: {
+                    id: 'return',
+                    title: 'Homecoming',
+                    text: 'Earth welcomes you as a hero. Your discovery changes everything.',
+                    choices: []
+                },
+                flee: {
+                    id: 'flee',
+                    title: 'Survivor',
+                    text: 'You escape with your life and terrible knowledge. Some doors should not be opened.',
+                    choices: []
+                },
+                stop: {
+                    id: 'stop',
+                    title: 'Sacrifice',
+                    text: 'You position yourself between the fleets. Your small ship is a bridge, not a barrier.',
+                    choices: [
+                        { text: 'Make peace', target: 'peace' }
+                    ]
+                },
+                learn: {
+                    id: 'learn',
+                    title: 'Student',
+                    text: 'They teach you things that take lifetimes to learn. You are changed forever.',
+                    choices: []
+                },
+                protect: {
+                    id: 'protect',
+                    title: 'Guardian',
+                    text: 'You dedicate your life to ensuring the structure is respected, not exploited.',
+                    choices: []
+                },
+                peace: {
+                    id: 'peace',
+                    title: 'Bridge Builder',
+                    text: 'Your sacrifice opens dialogue. Humanity and the Others begin a new chapter together.',
+                    choices: []
+                }
+            },
+
+            init() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+
+                this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+                this.canvas.addEventListener('wheel', (e) => this.onWheel(e));
+
+                this.canvas.addEventListener('touchstart', (e) => this.onTouchStart(e));
+                this.canvas.addEventListener('touchmove', (e) => this.onTouchMove(e));
+                this.canvas.addEventListener('touchend', (e) => this.onTouchEnd(e));
+
+                this.buildGraph();
+                this.currentNode = this.nodes.find(n => n.id === 'start');
+                this.visitedNodes.add('start');
+                this.pathHistory.push('The Signal');
+                this.updateStats();
+                this.updateHistory();
+                this.animate();
+            },
+
+            resize() {
+                this.width = this.canvas.width = window.innerWidth;
+                this.height = this.canvas.height = window.innerHeight;
+            },
+
+            buildGraph() {
+                const positions = {};
+                let nodeIndex = 0;
+
+                const addNode = (nodeId, depth, branchIndex, totalBranches) => {
+                    if (positions[nodeId]) return;
+
+                    const angleSpread = Math.PI * 1.5;
+                    const angle = (angleSpread / Math.max(totalBranches - 1, 1)) * branchIndex - angleSpread / 2;
+                    const radius = depth * 250;
+
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius + depth * 150;
+
+                    positions[nodeId] = { x, y };
+
+                    const nodeData = this.narrativeData[nodeId];
+                    if (!nodeData) return;
+
+                    this.nodes.push({
+                        id: nodeData.id,
+                        title: nodeData.title,
+                        text: nodeData.text,
+                        choices: nodeData.choices,
+                        x,
+                        y,
+                        radius: 30
+                    });
+
+                    nodeData.choices.forEach((choice, idx) => {
+                        this.edges.push({
+                            from: nodeId,
+                            to: choice.target,
+                            label: choice.text
+                        });
+                        addNode(choice.target, depth + 1, idx, nodeData.choices.length);
+                    });
+                };
+
+                addNode('start', 0, 0, 1);
+
+                this.camera.x = this.width / 2;
+                this.camera.y = this.height / 2 - 100;
+            },
+
+            screenToWorld(x, y) {
+                return {
+                    x: (x - this.camera.x) / this.camera.scale,
+                    y: (y - this.camera.y) / this.camera.scale
+                };
+            },
+
+            worldToScreen(x, y) {
+                return {
+                    x: x * this.camera.scale + this.camera.x,
+                    y: y * this.camera.scale + this.camera.y
+                };
+            },
+
+            onMouseDown(e) {
+                this.isDragging = true;
+                this.lastMousePos = { x: e.clientX, y: e.clientY };
+
+                const worldPos = this.screenToWorld(e.clientX, e.clientY);
+                const clickedNode = this.getNodeAt(worldPos.x, worldPos.y);
+                if (clickedNode) {
+                    this.showNodeInfo(clickedNode);
+                    this.isDragging = false;
+                }
+            },
+
+            onMouseMove(e) {
+                if (this.isDragging) {
+                    const dx = e.clientX - this.lastMousePos.x;
+                    const dy = e.clientY - this.lastMousePos.y;
+                    this.camera.x += dx;
+                    this.camera.y += dy;
+                    this.lastMousePos = { x: e.clientX, y: e.clientY };
+                } else {
+                    const worldPos = this.screenToWorld(e.clientX, e.clientY);
+                    this.hoveredNode = this.getNodeAt(worldPos.x, worldPos.y);
+                }
+            },
+
+            onMouseUp(e) {
+                this.isDragging = false;
+            },
+
+            onWheel(e) {
+                e.preventDefault();
+                const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                const newScale = Math.max(0.3, Math.min(2, this.camera.scale * zoomFactor));
+                
+                const mouseX = e.clientX;
+                const mouseY = e.clientY;
+                const worldBefore = this.screenToWorld(mouseX, mouseY);
+                
+                this.camera.scale = newScale;
+                
+                const worldAfter = this.screenToWorld(mouseX, mouseY);
+                this.camera.x += (worldAfter.x - worldBefore.x) * this.camera.scale;
+                this.camera.y += (worldAfter.y - worldBefore.y) * this.camera.scale;
+            },
+
+            onTouchStart(e) {
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    this.lastMousePos = { x: touch.clientX, y: touch.clientY };
+                    
+                    const worldPos = this.screenToWorld(touch.clientX, touch.clientY);
+                    const clickedNode = this.getNodeAt(worldPos.x, worldPos.y);
+                    if (clickedNode) {
+                        this.showNodeInfo(clickedNode);
+                    } else {
+                        this.isDragging = true;
+                    }
+                }
+            },
+
+            onTouchMove(e) {
+                e.preventDefault();
+                if (this.isDragging && e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const dx = touch.clientX - this.lastMousePos.x;
+                    const dy = touch.clientY - this.lastMousePos.y;
+                    this.camera.x += dx;
+                    this.camera.y += dy;
+                    this.lastMousePos = { x: touch.clientX, y: touch.clientY };
+                }
+            },
+
+            onTouchEnd(e) {
+                this.isDragging = false;
+            },
+
+            getNodeAt(x, y) {
+                for (let node of this.nodes) {
+                    const dist = Math.sqrt((node.x - x) ** 2 + (node.y - y) ** 2);
+                    if (dist < node.radius) return node;
+                }
+                return null;
+            },
+
+            showNodeInfo(node) {
+                this.currentNode = node;
+                this.visitedNodes.add(node.id);
+                
+                document.getElementById('infoTitle').textContent = node.title;
+                document.getElementById('infoText').textContent = node.text;
+                
+                const choicesDiv = document.getElementById('infoChoices');
+                choicesDiv.innerHTML = '';
+                
+                if (node.choices && node.choices.length > 0) {
+                    node.choices.forEach(choice => {
+                        const btn = document.createElement('button');
+                        btn.className = 'choice-btn';
+                        btn.textContent = choice.text;
+                        btn.onclick = () => this.makeChoice(choice.target, choice.text);
+                        choicesDiv.appendChild(btn);
+                    });
+                } else {
+                    const endMsg = document.createElement('div');
+                    endMsg.style.color = '#ff00aa';
+                    endMsg.style.fontStyle = 'italic';
+                    endMsg.style.marginTop = '1rem';
+                    endMsg.textContent = 'The End';
+                    choicesDiv.appendChild(endMsg);
+                }
+                
+                document.getElementById('infoPanel').classList.add('active');
+                this.updateStats();
+            },
+
+            makeChoice(targetId, choiceText) {
+                const targetNode = this.nodes.find(n => n.id === targetId);
+                if (targetNode) {
+                    this.pathHistory.push(choiceText);
+                    this.updateHistory();
+                    this.closePanel();
+                    
+                    setTimeout(() => {
+                        this.panToNode(targetNode);
+                    }, 100);
+                }
+            },
+
+            closePanel() {
+                document.getElementById('infoPanel').classList.remove('active');
+            },
+
+            panToNode(node) {
+                const screenPos = this.worldToScreen(node.x, node.y);
+                const targetX = this.width / 2 - node.x * this.camera.scale;
+                const targetY = this.height / 2 - node.y * this.camera.scale;
+                
+                const animate = (progress) => {
+                    this.camera.x = screenPos.x - node.x * this.camera.scale + (targetX - (screenPos.x - node.x * this.camera.scale)) * progress;
+                    this.camera.y = screenPos.y - node.y * this.camera.scale + (targetY - (screenPos.y - node.y * this.camera.scale)) * progress;
+                };
+                
+                const duration = 500;
+                const startTime = Date.now();
+                
+                const step = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    animate(eased);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        this.showNodeInfo(node);
+                    }
+                };
+                
+                step();
+            },
+
+            updateStats() {
+                document.getElementById('nodeCount').textContent = this.nodes.length;
+                document.getElementById('exploredCount').textContent = this.visitedNodes.size;
+                document.getElementById('pathCount').textContent = this.pathHistory.length - 1;
+            },
+
+            updateHistory() {
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = '';
+                
+                this.pathHistory.slice(-5).forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.textContent = item;
+                    historyList.appendChild(div);
+                });
+            },
+
+            resetView() {
+                this.camera.x = this.width / 2;
+                this.camera.y = this.height / 2 - 100;
+                this.camera.scale = 1;
+            },
+
+            resetJourney() {
+                this.visitedNodes.clear();
+                this.visitedNodes.add('start');
+                this.pathHistory = ['The Signal'];
+                this.currentNode = this.nodes.find(n => n.id === 'start');
+                this.updateStats();
+                this.updateHistory();
+                this.resetView();
+                this.closePanel();
+            },
+
+            drawEdge(edge) {
+                const fromNode = this.nodes.find(n => n.id === edge.from);
+                const toNode = this.nodes.find(n => n.id === edge.to);
+                if (!fromNode || !toNode) return;
+
+                const fromScreen = this.worldToScreen(fromNode.x, fromNode.y);
+                const toScreen = this.worldToScreen(toNode.x, toNode.y);
+
+                const isOnPath = this.visitedNodes.has(edge.from) && this.visitedNodes.has(edge.to);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(fromScreen.x, fromScreen.y);
+                this.ctx.lineTo(toScreen.x, toScreen.y);
+                this.ctx.strokeStyle = isOnPath ? '#ff00aa' : 'rgba(0, 240, 255, 0.3)';
+                this.ctx.lineWidth = isOnPath ? 3 : 1.5;
+                this.ctx.stroke();
+
+                if (isOnPath) {
+                    this.ctx.shadowColor = '#ff00aa';
+                    this.ctx.shadowBlur = 10;
+                    this.ctx.stroke();
+                    this.ctx.shadowBlur = 0;
+                }
+            },
+
+            drawNode(node) {
+                const screen = this.worldToScreen(node.x, node.y);
+                const radius = node.radius * this.camera.scale;
+
+                const isVisited = this.visitedNodes.has(node.id);
+                const isHovered = this.hoveredNode === node;
+                const isCurrent = this.currentNode === node;
+
+                this.ctx.beginPath();
+                this.ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
+
+                if (isCurrent) {
+                    this.ctx.fillStyle = 'rgba(255, 0, 170, 0.3)';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#ff00aa';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.shadowColor = '#ff00aa';
+                    this.ctx.shadowBlur = 20;
+                } else if (isVisited) {
+                    this.ctx.fillStyle = 'rgba(0, 255, 136, 0.2)';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#00ff88';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.shadowColor = '#00ff88';
+                    this.ctx.shadowBlur = 15;
+                } else {
+                    this.ctx.fillStyle = 'rgba(0, 240, 255, 0.1)';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#00f0ff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.shadowColor = '#00f0ff';
+                    this.ctx.shadowBlur = 10;
+                }
+
+                this.ctx.stroke();
+                this.ctx.shadowBlur = 0;
+
+                if (isHovered) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(screen.x, screen.y, radius + 5, 0, Math.PI * 2);
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.stroke();
+                }
+
+                if (this.camera.scale > 0.5) {
+                    this.ctx.font = `${12 * this.camera.scale}px Orbitron`;
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    
+                    const maxWidth = radius * 1.8;
+                    const words = node.title.split(' ');
+                    let line = '';
+                    let lines = [];
+                    
+                    words.forEach(word => {
+                        const testLine = line + word + ' ';
+                        const metrics = this.ctx.measureText(testLine);
+                        if (metrics.width > maxWidth && line.length > 0) {
+                            lines.push(line);
+                            line = word + ' ';
+                        } else {
+                            line = testLine;
+                        }
+                    });
+                    lines.push(line);
+
+                    const lineHeight = 14 * this.camera.scale;
+                    const startY = screen.y - (lines.length - 1) * lineHeight / 2;
+                    
+                    lines.forEach((text, i) => {
+                        this.ctx.fillText(text.trim(), screen.x, startY + i * lineHeight);
+                    });
+                }
+            },
+
+            animate() {
+                this.ctx.fillStyle = '#0a0a0f';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                this.edges.forEach(edge => this.drawEdge(edge));
+                this.nodes.forEach(node => this.drawNode(node));
+
+                requestAnimationFrame(() => this.animate());
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>

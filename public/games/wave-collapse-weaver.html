@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Wave Collapse Weaver - Generative Circuit Art</title>
+  <meta name="description" content="Create mesmerizing circuit patterns with Wave Function Collapse algorithms. Place constraints and watch infinite patterns emerge.">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1e3f 100%);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+      min-width: 375px;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    h1 {
+      margin-bottom: 10px;
+      font-size: 2em;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: #00f3ff;
+      text-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+    }
+    
+    .subtitle {
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 20px;
+      font-size: 0.9em;
+    }
+    
+    .instructions {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 243, 255, 0.2);
+      border-radius: 10px;
+      padding: 20px;
+      max-width: 600px;
+      text-align: center;
+      line-height: 1.6;
+      font-size: 14px;
+      margin-bottom: 25px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .instructions strong {
+      color: #00f3ff;
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+    }
+    
+    .instructions ol {
+      text-align: left;
+      display: inline-block;
+      padding-left: 20px;
+    }
+    
+    .instructions li {
+      margin: 5px 0;
+    }
+    
+    .canvas-container {
+      position: relative;
+      display: inline-block;
+    }
+    
+    #canvas {
+      background-color: #0a0e27;
+      border: 2px solid rgba(0, 243, 255, 0.3);
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 243, 255, 0.2);
+      cursor: crosshair;
+      touch-action: none;
+      display: block;
+    }
+    
+    #canvas:hover {
+      border-color: rgba(0, 243, 255, 0.5);
+    }
+    
+    #canvas.placing {
+      cursor: cell;
+    }
+    
+    #canvas.generating {
+      cursor: wait;
+    }
+    
+    .tooltip {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.9);
+      color: #00f3ff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 1000;
+      border: 1px solid rgba(0, 243, 255, 0.5);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .tooltip.show {
+      opacity: 1;
+    }
+    
+    .palette {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 25px 0;
+      gap: 10px;
+      max-width: 100%;
+    }
+    
+    .tile-option {
+      width: 60px;
+      height: 60px;
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+    
+    .tile-option:hover {
+      transform: scale(1.15) translateY(-3px);
+      border-color: #00f3ff;
+      box-shadow: 0 5px 20px rgba(0, 243, 255, 0.4);
+    }
+    
+    .tile-option.selected {
+      border-color: #00f3ff;
+      border-width: 4px;
+      box-shadow: 0 5px 25px rgba(0, 243, 255, 0.6);
+      transform: scale(1.1);
+      background: rgba(0, 243, 255, 0.1);
+    }
+    
+    .tile-option::after {
+      content: attr(data-name);
+      position: absolute;
+      bottom: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.5);
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .tile-option:hover::after {
+      opacity: 1;
+    }
+    
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 30px;
+      width: 100%;
+      max-width: 700px;
+    }
+    
+    button {
+      background: rgba(0, 243, 255, 0.15);
+      border: 2px solid rgba(0, 243, 255, 0.3);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      min-width: 120px;
+    }
+    
+    button:hover:not(:disabled) {
+      background: rgba(0, 243, 255, 0.3);
+      border-color: #00f3ff;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0, 243, 255, 0.3);
+    }
+    
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .slider-container, .dropdown-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .slider-container label, .dropdown-container label {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .slider-container input {
+      width: 140px;
+    }
+    
+    input[type="range"] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.2);
+      height: 6px;
+      border-radius: 3px;
+      outline: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #00f3ff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+    }
+    
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      background: #00f3ff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+      border: none;
+    }
+    
+    select {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    select:focus {
+      outline: none;
+      border-color: #00f3ff;
+      box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+    }
+    
+    select option {
+      background: #1a1e3f;
+      color: #fff;
+    }
+    
+    #speedValue {
+      min-width: 35px;
+      text-align: center;
+      font-weight: 600;
+      color: #00f3ff;
+    }
+    
+    .status {
+      margin-top: 15px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      background: rgba(0, 243, 255, 0.1);
+      border: 1px solid rgba(0, 243, 255, 0.3);
+      font-size: 14px;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .hint {
+      margin-top: 10px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+    }
+    
+    @media (max-width: 700px) {
+      h1 {
+        font-size: 1.5em;
+        letter-spacing: 2px;
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      button {
+        width: 100%;
+      }
+      
+      .tile-option {
+        width: 50px;
+        height: 50px;
+      }
+      
+      #canvas {
+        max-width: 100%;
+        height: auto !important;
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .generating {
+      animation: pulse 1s ease-in-out infinite;
+    }
+    
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 10px rgba(0, 243, 255, 0.4); }
+      50% { box-shadow: 0 0 20px rgba(0, 243, 255, 0.8); }
+    }
+    
+    .constraint-glow {
+      animation: glow 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌊 Wave Collapse Weaver</h1>
+    <div class="subtitle">Generative Circuit Art via WFC Algorithm</div>
+    
+    <div class="instructions">
+      <strong>How to Weave Patterns:</strong>
+      <ol>
+        <li>Select a tile from the palette below</li>
+        <li>Click on the grid to place constraint tiles</li>
+        <li>Click again on same cell to cycle tile types</li>
+        <li>Hit <strong>Generate</strong> to watch the magic happen</li>
+        <li>Use Undo/Redo to adjust constraints</li>
+      </ol>
+      <div style="margin-top: 10px; font-size: 0.9em; color: rgba(255,255,255,0.7);">
+        The Wave Function Collapse algorithm fills the grid respecting your constraints!
+      </div>
+    </div>
+    
+    <div class="canvas-container">
+      <canvas id="canvas"></canvas>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+    
+    <div class="palette" id="palette"></div>
+    
+    <div class="controls">
+      <button id="generate">▶ Generate</button>
+      <button id="pause" style="display: none;">⏸ Pause</button>
+      <button id="resume" style="display: none;">▶ Resume</button>
+      <button id="reset">🔄 Reset</button>
+      <button id="clear">🗑 Clear All</button>
+      <button id="undo" disabled>↶ Undo</button>
+      <button id="redo" disabled>↷ Redo</button>
+      
+      <div class="slider-container">
+        <label>Speed:</label>
+        <input type="range" id="speed" min="1" max="50" value="15">
+        <span id="speedValue">15x</span>
+      </div>
+      
+      <div class="dropdown-container">
+        <label>Grid:</label>
+        <select id="gridSize">
+          <option value="15">15×15</option>
+          <option value="20" selected>20×20</option>
+          <option value="25">25×25</option>
+          <option value="30">30×30</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="status" id="status">Ready to weave! Select a tile and place constraints.</div>
+    <div class="hint">💡 Tip: Hover over the grid to preview placement</div>
+  </div>
+
+  <script>
+    // ============================================
+    // WAVE COLLAPSE WEAVER - WFC Implementation
+    // ============================================
+    
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const paletteContainer = document.getElementById('palette');
+    const generateBtn = document.getElementById('generate');
+    const pauseBtn = document.getElementById('pause');
+    const resumeBtn = document.getElementById('resume');
+    const resetBtn = document.getElementById('reset');
+    const clearBtn = document.getElementById('clear');
+    const undoBtn = document.getElementById('undo');
+    const redoBtn = document.getElementById('redo');
+    const speedSlider = document.getElementById('speed');
+    const speedValue = document.getElementById('speedValue');
+    const gridSizeSelect = document.getElementById('gridSize');
+    const statusEl = document.getElementById('status');
+    const tooltip = document.getElementById('tooltip');
+    
+    // State
+    let gridSize = 20;
+    let cellSize = 30;
+    let tiles = [];
+    let allTileVariants = [];
+    let wfc = null;
+    let isRunning = false;
+    let isPaused = false;
+    let animationId = null;
+    let selectedTileIndex = 0;
+    let constraints = new Map();
+    let lastCollapsed = new Set();
+    let totalCells = 0;
+    let collapsedCount = 0;
+    let hoverCell = null;
+    
+    // Undo/Redo stacks
+    let undoStack = [];
+    let redoStack = [];
+    
+    const colors = {
+      background: '#0a0e27',
+      gridLine: 'rgba(255, 255, 255, 0.08)',
+      cyan: '#00f3ff',
+      magenta: '#ff00ff',
+      yellow: '#ffff00',
+      green: '#00ff88',
+      white: '#ffffff'
+    };
+    
+    // ============================================
+    // TILE SYSTEM
+    // ============================================
+    
+    function defineTiles() {
+      tiles = [
+        { name: 'straight', edges: ['A', 'B', 'A', 'B'], color: colors.cyan },
+        { name: 'corner', edges: ['A', 'A', 'B', 'B'], color: colors.magenta },
+        { name: 'tjunction', edges: ['A', 'B', 'B', 'B'], color: colors.yellow },
+        { name: 'cross', edges: ['B', 'B', 'B', 'B'], color: colors.green },
+        { name: 'terminal', edges: ['B', 'C', 'C', 'C'], color: colors.cyan },
+        { name: 'empty', edges: ['C', 'C', 'C', 'C'], color: colors.white }
+      ];
+      
+      allTileVariants = [];
+      tiles.forEach(tile => {
+        let current = tile;
+        for (let i = 0; i < 4; i++) {
+          allTileVariants.push({
+            base: tile.name,
+            rotation: i * 90,
+            edges: [...current.edges],
+            color: tile.color,
+            index: allTileVariants.length
+          });
+          current = {
+            ...tile,
+            edges: [current.edges[3], current.edges[0], current.edges[1], current.edges[2]]
+          };
+        }
+      });
+      
+      allTileVariants = allTileVariants.filter((v, i, self) =>
+        i === self.findIndex(t => 
+          t.base === v.base && t.edges.join(',') === v.edges.join(',')
+        )
+      );
+    }
+    
+    function createPalette() {
+      paletteContainer.innerHTML = '';
+      allTileVariants.forEach((tile, index) => {
+        const tileCanvas = document.createElement('canvas');
+        tileCanvas.className = 'tile-option';
+        tileCanvas.width = 60;
+        tileCanvas.height = 60;
+        tileCanvas.dataset.index = index;
+        tileCanvas.dataset.name = `${tile.base} ${tile.rotation}°`;
+        tileCanvas.title = `${tile.base} (${tile.rotation}°)`;
+        
+        const tileCtx = tileCanvas.getContext('2d');
+        drawTile(tileCtx, tile, 30, 30, 24);
+        
+        tileCanvas.addEventListener('click', () => selectTile(index));
+        paletteContainer.appendChild(tileCanvas);
+      });
+      
+      updatePaletteSelection();
+    }
+    
+    function selectTile(index) {
+      selectedTileIndex = index;
+      updatePaletteSelection();
+      updateStatus(`Selected: ${allTileVariants[index].base} tile (${allTileVariants[index].rotation}°)`);
+    }
+    
+    function updatePaletteSelection() {
+      const options = paletteContainer.querySelectorAll('.tile-option');
+      options.forEach((opt, i) => {
+        if (i === selectedTileIndex) {
+          opt.classList.add('selected');
+        } else {
+          opt.classList.remove('selected');
+        }
+      });
+    }
+    
+    function drawTile(context, tile, cx, cy, size) {
+      context.save();
+      context.translate(cx, cy);
+      context.rotate((tile.rotation || 0) * Math.PI / 180);
+      
+      const half = size / 2;
+      context.strokeStyle = tile.color;
+      context.lineWidth = 4;
+      context.shadowBlur = 15;
+      context.shadowColor = tile.color;
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      
+      switch (tile.base) {
+        case 'straight':
+          context.beginPath();
+          context.moveTo(0, -half);
+          context.lineTo(0, half);
+          context.stroke();
+          break;
+          
+        case 'corner':
+          context.beginPath();
+          context.arc(half, -half, half * 2, Math.PI, Math.PI * 1.5);
+          context.stroke();
+          break;
+          
+        case 'tjunction':
+          context.beginPath();
+          context.moveTo(0, -half);
+          context.lineTo(0, 0);
+          context.moveTo(-half, 0);
+          context.lineTo(half, 0);
+          context.stroke();
+          break;
+          
+        case 'cross':
+          context.beginPath();
+          context.moveTo(0, -half);
+          context.lineTo(0, half);
+          context.moveTo(-half, 0);
+          context.lineTo(half, 0);
+          context.stroke();
+          break;
+          
+        case 'terminal':
+          context.beginPath();
+          context.moveTo(0, -half);
+          context.lineTo(0, -half * 0.3);
+          context.stroke();
+          context.beginPath();
+          context.arc(0, 0, 3, 0, Math.PI * 2);
+          context.fill();
+          break;
+          
+        case 'empty':
+          context.beginPath();
+          context.arc(0, 0, 4, 0, Math.PI * 2);
+          context.fill();
+          context.shadowBlur = 8;
+          context.stroke();
+          break;
+      }
+      
+      context.restore();
+    }
+    
+    // ============================================
+    // WFC ALGORITHM
+    // ============================================
+    
+    class WFC {
+      constructor(width, height) {
+        this.width = width;
+        this.height = height;
+        this.grid = Array.from({length: height}, () =>
+          Array.from({length: width}, () => ({
+            collapsed: null,
+            possibilities: [...allTileVariants],
+            x: 0,
+            y: 0
+          }))
+        );
+        
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            this.grid[y][x].x = x;
+            this.grid[y][x].y = y;
+          }
+        }
+        
+        this.applyConstraints();
+        collapsedCount = constraints.size;
+        totalCells = width * height;
+      }
+      
+      applyConstraints() {
+        constraints.forEach((tileIndex, key) => {
+          const [x, y] = key.split(',').map(Number);
+          if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            const tile = allTileVariants[tileIndex];
+            this.grid[y][x].collapsed = tile;
+            this.grid[y][x].possibilities = [tile];
+          }
+        });
+        
+        constraints.forEach((tileIndex, key) => {
+          const [x, y] = key.split(',').map(Number);
+          this.propagate(x, y);
+        });
+      }
+      
+      findLowestEntropyCell() {
+        let minEntropy = Infinity;
+        let candidates = [];
+        
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            const cell = this.grid[y][x];
+            const entropy = cell.possibilities.length;
+            
+            if (!cell.collapsed && entropy > 0 && entropy < minEntropy) {
+              minEntropy = entropy;
+              candidates = [cell];
+            } else if (!cell.collapsed && entropy === minEntropy) {
+              candidates.push(cell);
+            }
+          }
+        }
+        
+        if (candidates.length === 0) {
+          return this.checkCompletion() ? null : this.handleContradiction();
+        }
+        
+        return candidates[Math.floor(Math.random() * candidates.length)];
+      }
+      
+      checkCompletion() {
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            if (!this.grid[y][x].collapsed) return false;
+          }
+        }
+        return true;
+      }
+      
+      handleContradiction() {
+        console.warn('Contradiction detected! Restarting...');
+        updateStatus('⚠️ Contradiction detected! Restarting generation...');
+        
+        this.grid = Array.from({length: this.height}, () =>
+          Array.from({length: this.width}, () => ({
+            collapsed: null,
+            possibilities: [...allTileVariants],
+            x: 0,
+            y: 0
+          }))
+        );
+        
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            this.grid[y][x].x = x;
+            this.grid[y][x].y = y;
+          }
+        }
+        
+        this.applyConstraints();
+        collapsedCount = constraints.size;
+        return null;
+      }
+      
+      step() {
+        const cell = this.findLowestEntropyCell();
+        
+        if (!cell) {
+          isRunning = false;
+          generateBtn.style.display = 'inline-block';
+          pauseBtn.style.display = 'none';
+          resumeBtn.style.display = 'none';
+          canvas.classList.remove('generating');
+          updateStatus('✨ Pattern complete! Click Reset to generate another.');
+          return 'DONE';
+        }
+        
+        const tile = cell.possibilities[Math.floor(Math.random() * cell.possibilities.length)];
+        cell.collapsed = tile;
+        cell.possibilities = [tile];
+        
+        lastCollapsed.clear();
+        lastCollapsed.add(`${cell.x},${cell.y}`);
+        
+        collapsedCount++;
+        updateStatus(`Generating... ${Math.round(collapsedCount / totalCells * 100)}% complete`);
+        
+        this.propagate(cell.x, cell.y);
+        
+        return 'CONTINUE';
+      }
+      
+      isCompatible(tile1, tile2, direction) {
+        switch (direction) {
+          case 'top':    return tile1.edges[0] === tile2.edges[2];
+          case 'right':  return tile1.edges[1] === tile2.edges[3];
+          case 'bottom': return tile1.edges[2] === tile2.edges[0];
+          case 'left':   return tile1.edges[3] === tile2.edges[1];
+        }
+        return false;
+      }
+      
+      propagate(cx, cy) {
+        const stack = [{x: cx, y: cy}];
+        const visited = new Set();
+        
+        while (stack.length > 0) {
+          const {x, y} = stack.pop();
+          const key = `${x},${y}`;
+          
+          if (visited.has(key)) continue;
+          visited.add(key);
+          
+          const cell = this.grid[y][x];
+          
+          if (cell.possibilities.length === 0 && !cell.collapsed) {
+            this.handleContradiction();
+            return;
+          }
+          
+          const neighbors = [
+            { dx: 0, dy: -1, dir: 'top' },
+            { dx: 1, dy: 0, dir: 'right' },
+            { dx: 0, dy: 1, dir: 'bottom' },
+            { dx: -1, dy: 0, dir: 'left' }
+          ];
+          
+          for (const {dx, dy, dir} of neighbors) {
+            const nx = x + dx;
+            const ny = y + dy;
+            
+            if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+            
+            const neighbor = this.grid[ny][nx];
+            if (neighbor.collapsed) continue;
+            
+            const originalLength = neighbor.possibilities.length;
+            
+            neighbor.possibilities = neighbor.possibilities.filter(nTile =>
+              cell.possibilities.some(cTile => this.isCompatible(cTile, nTile, dir))
+            );
+            
+            if (neighbor.possibilities.length !== originalLength) {
+              stack.push({x: nx, y: ny});
+            }
+          }
+        }
+      }
+    }
+    
+    // ============================================
+    // UNDO/REDO SYSTEM
+    // ============================================
+    
+    function saveState() {
+      undoStack.push(new Map(constraints));
+      redoStack = [];
+      updateUndoRedoButtons();
+    }
+    
+    function undo() {
+      if (undoStack.length === 0) return;
+      
+      redoStack.push(new Map(constraints));
+      constraints = undoStack.pop();
+      
+      if (wfc) {
+        wfc = new WFC(gridSize, gridSize);
+      }
+      
+      updateUndoRedoButtons();
+      drawGrid();
+      updateStatus('↶ Undid last action');
+    }
+    
+    function redo() {
+      if (redoStack.length === 0) return;
+      
+      undoStack.push(new Map(constraints));
+      constraints = redoStack.pop();
+      
+      if (wfc) {
+        wfc = new WFC(gridSize, gridSize);
+      }
+      
+      updateUndoRedoButtons();
+      drawGrid();
+      updateStatus('↷ Redid last action');
+    }
+    
+    function updateUndoRedoButtons() {
+      undoBtn.disabled = undoStack.length === 0;
+      redoBtn.disabled = redoStack.length === 0;
+    }
+    
+    // ============================================
+    // RENDERING
+    // ============================================
+    
+    function resizeCanvas() {
+      const maxSize = Math.min(800, window.innerWidth - 40);
+      cellSize = Math.floor(maxSize / gridSize);
+      canvas.width = gridSize * cellSize;
+      canvas.height = gridSize * cellSize;
+    }
+    
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = colors.background;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw grid lines
+      ctx.strokeStyle = colors.gridLine;
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= gridSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * cellSize, 0);
+        ctx.lineTo(i * cellSize, canvas.height);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(0, i * cellSize);
+        ctx.lineTo(canvas.width, i * cellSize);
+        ctx.stroke();
+      }
+      
+      // Draw tiles
+      if (wfc) {
+        for (let y = 0; y < gridSize; y++) {
+          for (let x = 0; x < gridSize; x++) {
+            const cell = wfc.grid[y][x];
+            const cx = x * cellSize + cellSize / 2;
+            const cy = y * cellSize + cellSize / 2;
+            
+            if (cell.collapsed) {
+              drawTile(ctx, cell.collapsed, cx, cy, cellSize * 0.65);
+              
+              const key = `${x},${y}`;
+              if (constraints.has(key)) {
+                ctx.strokeStyle = 'rgba(0, 243, 255, 0.8)';
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'rgba(0, 243, 255, 0.6)';
+                ctx.strokeRect(x * cellSize + 2, y * cellSize + 2, cellSize - 4, cellSize - 4);
+                ctx.shadowBlur = 0;
+              }
+              
+              if (lastCollapsed.has(key)) {
+                ctx.fillStyle = 'rgba(0, 243, 255, 0.15)';
+                ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+              }
+            } else if (cell.possibilities.length > 0) {
+              const entropy = cell.possibilities.length;
+              ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + (1 - entropy / allTileVariants.length) * 0.3})`;
+              ctx.font = `${Math.max(10, cellSize * 0.3)}px sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(entropy, cx, cy);
+            }
+          }
+        }
+      }
+      
+      // Draw hover preview
+      if (hoverCell && !isRunning) {
+        const {x, y} = hoverCell;
+        const cx = x * cellSize + cellSize / 2;
+        const cy = y * cellSize + cellSize / 2;
+        const key = `${x},${y}`;
+        
+        // Preview background
+        ctx.fillStyle = 'rgba(0, 243, 255, 0.2)';
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+        
+        // Preview tile
+        ctx.globalAlpha = 0.6;
+        const previewTile = allTileVariants[selectedTileIndex];
+        drawTile(ctx, previewTile, cx, cy, cellSize * 0.65);
+        ctx.globalAlpha = 1.0;
+        
+        // Show what action will happen
+        if (constraints.has(key)) {
+          const currentTileIndex = constraints.get(key);
+          const nextIndex = (currentTileIndex + 1) % allTileVariants.length;
+          const nextTile = allTileVariants[nextIndex];
+          
+          // Show cycle indicator
+          ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.strokeRect(x * cellSize + 4, y * cellSize + 4, cellSize - 8, cellSize - 8);
+          ctx.setLineDash([]);
+        }
+      }
+    }
+    
+    function animate() {
+      if (isRunning && !isPaused) {
+        const speed = parseInt(speedSlider.value);
+        
+        for (let i = 0; i < speed; i++) {
+          if (!wfc || wfc.step() === 'DONE') {
+            isRunning = false;
+            break;
+          }
+        }
+      }
+      
+      drawGrid();
+      
+      if (isRunning) {
+        animationId = requestAnimationFrame(animate);
+      }
+    }
+    
+    // ============================================
+    // UI INTERACTIONS
+    // ============================================
+    
+    function updateStatus(msg) {
+      statusEl.textContent = msg;
+    }
+    
+    function getCellFromEvent(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height) / cellSize);
+      
+      if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+        return {x, y};
+      }
+      return null;
+    }
+    
+    function showTooltip(e, text) {
+      tooltip.textContent = text;
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+      tooltip.classList.add('show');
+    }
+    
+    function hideTooltip() {
+      tooltip.classList.remove('show');
+    }
+    
+    canvas.addEventListener('mousemove', (e) => {
+      if (isRunning) {
+        hoverCell = null;
+        hideTooltip();
+        return;
+      }
+      
+      const cell = getCellFromEvent(e);
+      hoverCell = cell;
+      
+      if (cell) {
+        const key = `${cell.x},${cell.y}`;
+        const tile = allTileVariants[selectedTileIndex];
+        
+        if (constraints.has(key)) {
+          const currentIndex = constraints.get(key);
+          const nextIndex = (currentIndex + 1) % allTileVariants.length;
+          const nextTile = allTileVariants[nextIndex];
+          showTooltip(e, `Click to cycle to: ${nextTile.base} (${nextTile.rotation}°)`);
+        } else {
+          showTooltip(e, `Click to place: ${tile.base} (${tile.rotation}°)`);
+        }
+        
+        canvas.classList.add('placing');
+      } else {
+        hideTooltip();
+        canvas.classList.remove('placing');
+      }
+      
+      if (!isRunning) {
+        drawGrid();
+      }
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      hoverCell = null;
+      hideTooltip();
+      canvas.classList.remove('placing');
+      if (!isRunning) {
+        drawGrid();
+      }
+    });
+    
+    canvas.addEventListener('click', (e) => {
+      if (isRunning) return;
+      
+      const cell = getCellFromEvent(e);
+      if (!cell) return;
+      
+      const key = `${cell.x},${cell.y}`;
+      
+      saveState();
+      
+      if (constraints.has(key)) {
+        // Cycle to next tile type
+        const currentIndex = constraints.get(key);
+        const nextIndex = (currentIndex + 1) % allTileVariants.length;
+        constraints.set(key, nextIndex);
+        
+        const nextTile = allTileVariants[nextIndex];
+        updateStatus(`🔄 Cycled to ${nextTile.base} (${nextTile.rotation}°) at (${cell.x}, ${cell.y})`);
+      } else {
+        // Place new constraint
+        constraints.set(key, selectedTileIndex);
+        updateStatus(`✓ Placed ${allTileVariants[selectedTileIndex].base} at (${cell.x}, ${cell.y})`);
+      }
+      
+      // BUG FIX: Always ensure WFC instance exists when constraints are present
+      if (!wfc || constraints.size > 0) {
+        wfc = new WFC(gridSize, gridSize);
+      }
+      
+      drawGrid();
+    });
+    
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (isRunning) return;
+      
+      const cell = getCellFromEvent(e);
+      if (!cell) return;
+      
+      const key = `${cell.x},${cell.y}`;
+      
+      if (constraints.has(key)) {
+        saveState();
+        constraints.delete(key);
+        updateStatus(`🗑 Removed constraint at (${cell.x}, ${cell.y})`);
+        
+        if (wfc) {
+          wfc = new WFC(gridSize, gridSize);
+        }
+        
+        drawGrid();
+      }
+    });
+    
+    // Touch support with better responsiveness
+    let touchStartTime = 0;
+    let touchStartPos = null;
+    
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      touchStartTime = Date.now();
+      const touch = e.touches[0];
+      touchStartPos = {x: touch.clientX, y: touch.clientY};
+    });
+    
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const cell = getCellFromEvent(touch);
+      hoverCell = cell;
+      
+      if (!isRunning && cell) {
+        drawGrid();
+      }
+    });
+    
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      const touchDuration = Date.now() - touchStartTime;
+      
+      // Only register as click if touch was quick (not a scroll)
+      if (touchDuration < 300 && touchStartPos) {
+        const touch = e.changedTouches[0];
+        const dx = Math.abs(touch.clientX - touchStartPos.x);
+        const dy = Math.abs(touch.clientY - touchStartPos.y);
+        
+        // Check if finger didn't move much (not a scroll)
+        if (dx < 10 && dy < 10) {
+          const mouseEvent = new MouseEvent('click', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+          });
+          canvas.dispatchEvent(mouseEvent);
+        }
+      }
+      
+      hoverCell = null;
+      touchStartPos = null;
+    });
+    
+    generateBtn.addEventListener('click', () => {
+      if (!wfc) {
+        wfc = new WFC(gridSize, gridSize);
+      }
+      
+      isRunning = true;
+      isPaused = false;
+      generateBtn.style.display = 'none';
+      pauseBtn.style.display = 'inline-block';
+      resumeBtn.style.display = 'none';
+      canvas.classList.add('generating');
+      updateStatus('⚡ Generating pattern...');
+      animate();
+    });
+    
+    pauseBtn.addEventListener('click', () => {
+      isPaused = true;
+      pauseBtn.style.display = 'none';
+      resumeBtn.style.display = 'inline-block';
+      updateStatus('⏸ Paused. Click Resume to continue.');
+    });
+    
+    resumeBtn.addEventListener('click', () => {
+      isPaused = false;
+      pauseBtn.style.display = 'inline-block';
+      resumeBtn.style.display = 'none';
+      updateStatus('▶ Resumed generation...');
+      if (isRunning) animate();
+    });
+    
+    resetBtn.addEventListener('click', () => {
+      isRunning = false;
+      isPaused = false;
+      if (animationId) cancelAnimationFrame(animationId);
+      
+      // Keep constraints but reset the generation
+      if (constraints.size > 0) {
+        wfc = new WFC(gridSize, gridSize);
+      } else {
+        wfc = null;
+      }
+      
+      generateBtn.style.display = 'inline-block';
+      pauseBtn.style.display = 'none';
+      resumeBtn.style.display = 'none';
+      canvas.classList.remove('generating');
+      
+      updateStatus('🔄 Reset! Ready to generate again.');
+      drawGrid();
+    });
+    
+    clearBtn.addEventListener('click', () => {
+      isRunning = false;
+      isPaused = false;
+      if (animationId) cancelAnimationFrame(animationId);
+      
+      saveState();
+      constraints.clear();
+      wfc = null;
+      generateBtn.style.display = 'inline-block';
+      pauseBtn.style.display = 'none';
+      resumeBtn.style.display = 'none';
+      canvas.classList.remove('generating');
+      
+      updateStatus('🗑 Cleared! Start fresh with new constraints.');
+      drawGrid();
+    });
+    
+    undoBtn.addEventListener('click', undo);
+    redoBtn.addEventListener('click', redo);
+    
+    speedSlider.addEventListener('input', () => {
+      speedValue.textContent = speedSlider.value + 'x';
+    });
+    
+    gridSizeSelect.addEventListener('change', () => {
+      gridSize = parseInt(gridSizeSelect.value);
+      constraints.clear();
+      wfc = null;
+      isRunning = false;
+      undoStack = [];
+      redoStack = [];
+      updateUndoRedoButtons();
+      
+      resizeCanvas();
+      updateStatus(`Grid changed to ${gridSize}×${gridSize}. Ready to weave!`);
+      drawGrid();
+    });
+    
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      drawGrid();
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+    });
+    
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    
+    defineTiles();
+    createPalette();
+    resizeCanvas();
+    drawGrid();
+    updateStatus('Ready to weave! Select a tile and place constraints.');
+  </script>
+</body>
+</html>
