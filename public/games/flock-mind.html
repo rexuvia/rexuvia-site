@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Flock Mind - Interactive Boids Simulation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      overflow: hidden;
+      background: #0a0a0f;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      touch-action: none;
+    }
+
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+    }
+
+    #canvas.pressing {
+      cursor: none;
+    }
+
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 10, 15, 0.9);
+      border: 1px solid #00f0ff;
+      border-radius: 8px;
+      padding: 12px 20px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.2);
+    }
+
+    button {
+      background: linear-gradient(135deg, #00f0ff, #ff00aa);
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-size: 14px;
+    }
+
+    button:hover {
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    input[type="range"] {
+      width: 120px;
+      height: 4px;
+      border-radius: 2px;
+      outline: none;
+      background: linear-gradient(to right, #00f0ff, #ff00aa);
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+    }
+
+    #countDisplay {
+      color: #00f0ff;
+      font-size: 13px;
+      font-weight: 500;
+      min-width: 80px;
+    }
+
+    #stats {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      color: #00f0ff;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      background: rgba(10, 10, 15, 0.7);
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      z-index: 100;
+    }
+
+    @media (max-width: 600px) {
+      #controls {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px 15px;
+      }
+
+      input[type="range"] {
+        width: 200px;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="stats">FPS: 60 | Boids: 800</div>
+  <div id="controls">
+    <button id="modeToggle">Mode: Attract</button>
+    <input type="range" id="boidCount" min="100" max="1500" value="800" step="100">
+    <span id="countDisplay">800 boids</span>
+    <button id="reset">Reset</button>
+  </div>
+
+  <script>
+    // ============================================================================
+    // VECTOR MATH UTILITIES
+    // ============================================================================
+
+    function add(v1, v2) {
+      v1.x += v2.x;
+      v1.y += v2.y;
+    }
+
+    function subtract(v1, v2) {
+      return { x: v1.x - v2.x, y: v1.y - v2.y };
+    }
+
+    function multiply(v, scalar) {
+      v.x *= scalar;
+      v.y *= scalar;
+    }
+
+    function divide(v, scalar) {
+      if (scalar !== 0) {
+        v.x /= scalar;
+        v.y /= scalar;
+      }
+    }
+
+    function magnitude(v) {
+      return Math.sqrt(v.x * v.x + v.y * v.y);
+    }
+
+    function normalize(v) {
+      const m = magnitude(v);
+      if (m > 0) {
+        divide(v, m);
+      }
+    }
+
+    function limit(v, max) {
+      const m = magnitude(v);
+      if (m > max) {
+        normalize(v);
+        multiply(v, max);
+      }
+    }
+
+    function distance(p1, p2) {
+      const dx = p1.x - p2.x;
+      const dy = p1.y - p2.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function map(value, start1, stop1, start2, stop2) {
+      return start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));
+    }
+
+    function random(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    // ============================================================================
+    // SPATIAL GRID OPTIMIZATION
+    // ============================================================================
+
+    class SpatialGrid {
+      constructor(cellSize) {
+        this.cellSize = cellSize;
+        this.grid = new Map();
+      }
+
+      hash(x, y) {
+        const col = Math.floor(x / this.cellSize);
+        const row = Math.floor(y / this.cellSize);
+        return col + ',' + row;
+      }
+
+      clear() {
+        this.grid.clear();
+      }
+
+      insert(boid) {
+        const key = this.hash(boid.position.x, boid.position.y);
+        if (!this.grid.has(key)) {
+          this.grid.set(key, []);
+        }
+        this.grid.get(key).push(boid);
+      }
+
+      getNearby(boid, radius) {
+        const nearby = [];
+        const cellRadius = Math.ceil(radius / this.cellSize);
+        const centerCol = Math.floor(boid.position.x / this.cellSize);
+        const centerRow = Math.floor(boid.position.y / this.cellSize);
+
+        for (let col = centerCol - cellRadius; col <= centerCol + cellRadius; col++) {
+          for (let row = centerRow - cellRadius; row <= centerRow + cellRadius; row++) {
+            const key = col + ',' + row;
+            if (this.grid.has(key)) {
+              nearby.push(...this.grid.get(key));
+            }
+          }
+        }
+        return nearby;
+      }
+    }
+
+    // ============================================================================
+    // BOID CLASS
+    // ============================================================================
+
+    class Boid {
+      constructor(x, y) {
+        this.position = { x: x, y: y };
+        this.velocity = { x: random(-1, 1), y: random(-1, 1) };
+        this.acceleration = { x: 0, y: 0 };
+        this.maxSpeed = 3;
+        this.maxForce = 0.1;
+      }
+
+      applyForce(force) {
+        add(this.acceleration, force);
+      }
+
+      seek(target) {
+        const desired = subtract(target, this.position);
+        normalize(desired);
+        multiply(desired, this.maxSpeed);
+        const steer = subtract(desired, this.velocity);
+        limit(steer, this.maxForce);
+        return steer;
+      }
+
+      separation(boids) {
+        const desiredSeparation = 25;
+        const steer = { x: 0, y: 0 };
+        let count = 0;
+
+        for (let other of boids) {
+          const d = distance(this.position, other.position);
+          if (d > 0 && d < desiredSeparation) {
+            const diff = subtract(this.position, other.position);
+            normalize(diff);
+            divide(diff, d);
+            add(steer, diff);
+            count++;
+          }
+        }
+
+        if (count > 0) {
+          divide(steer, count);
+          normalize(steer);
+          multiply(steer, this.maxSpeed);
+          const finalSteer = subtract(steer, this.velocity);
+          limit(finalSteer, this.maxForce);
+          return finalSteer;
+        }
+        return { x: 0, y: 0 };
+      }
+
+      alignment(boids) {
+        const neighborDist = 50;
+        const sum = { x: 0, y: 0 };
+        let count = 0;
+
+        for (let other of boids) {
+          const d = distance(this.position, other.position);
+          if (d > 0 && d < neighborDist) {
+            add(sum, other.velocity);
+            count++;
+          }
+        }
+
+        if (count > 0) {
+          divide(sum, count);
+          normalize(sum);
+          multiply(sum, this.maxSpeed);
+          const steer = subtract(sum, this.velocity);
+          limit(steer, this.maxForce);
+          return steer;
+        }
+        return { x: 0, y: 0 };
+      }
+
+      cohesion(boids) {
+        const neighborDist = 50;
+        const sum = { x: 0, y: 0 };
+        let count = 0;
+
+        for (let other of boids) {
+          const d = distance(this.position, other.position);
+          if (d > 0 && d < neighborDist) {
+            add(sum, other.position);
+            count++;
+          }
+        }
+
+        if (count > 0) {
+          divide(sum, count);
+          return this.seek(sum);
+        }
+        return { x: 0, y: 0 };
+      }
+
+      update(nearbyBoids) {
+        const sep = this.separation(nearbyBoids);
+        const ali = this.alignment(nearbyBoids);
+        const coh = this.cohesion(nearbyBoids);
+
+        multiply(sep, 1.5);
+        multiply(ali, 1.0);
+        multiply(coh, 1.0);
+
+        this.applyForce(sep);
+        this.applyForce(ali);
+        this.applyForce(coh);
+
+        add(this.velocity, this.acceleration);
+        limit(this.velocity, this.maxSpeed);
+        add(this.position, this.velocity);
+        multiply(this.acceleration, 0);
+
+        this.wrapEdges();
+      }
+
+      wrapEdges() {
+        if (this.position.x < 0) this.position.x = canvas.width;
+        if (this.position.y < 0) this.position.y = canvas.height;
+        if (this.position.x > canvas.width) this.position.x = 0;
+        if (this.position.y > canvas.height) this.position.y = 0;
+      }
+    }
+
+    // ============================================================================
+    // GAME STATE
+    // ============================================================================
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let boids = [];
+    const grid = new SpatialGrid(50);
+    let mousePos = { x: 0, y: 0 };
+    let isPressed = false;
+    let interactionMode = 'attract';
+    let lastFrameTime = performance.now();
+    let fps = 60;
+
+    // ============================================================================
+    // INITIALIZATION
+    // ============================================================================
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function createBoids(count) {
+      const newBoids = [];
+      for (let i = 0; i < count; i++) {
+        newBoids.push(new Boid(
+          random(0, canvas.width),
+          random(0, canvas.height)
+        ));
+      }
+      return newBoids;
+    }
+
+    // ============================================================================
+    // INTERACTION
+    // ============================================================================
+
+    function applyInteractionForce(boid) {
+      if (!isPressed) return;
+
+      const d = distance(boid.position, mousePos);
+      const radius = 150;
+
+      if (d < radius) {
+        let force;
+        if (interactionMode === 'attract') {
+          force = subtract(mousePos, boid.position);
+        } else {
+          force = subtract(boid.position, mousePos);
+        }
+        normalize(force);
+        const strength = map(d, 0, radius, 0.5, 0);
+        multiply(force, strength);
+        boid.applyForce(force);
+      }
+    }
+
+    // ============================================================================
+    // UPDATE LOOP
+    // ============================================================================
+
+    function updateBoids() {
+      grid.clear();
+      boids.forEach(b => grid.insert(b));
+
+      boids.forEach(boid => {
+        const nearby = grid.getNearby(boid, 50);
+        boid.update(nearby);
+        applyInteractionForce(boid);
+      });
+    }
+
+    // ============================================================================
+    // RENDERING
+    // ============================================================================
+
+    function drawBoid(boid) {
+      const speed = magnitude(boid.velocity);
+      const speedRatio = Math.min(speed / boid.maxSpeed, 1);
+
+      const r = Math.floor(speedRatio * 255);
+      const g = Math.floor(speedRatio * 0);
+      const b = Math.floor((1 - speedRatio) * 255);
+      const color = 'rgb(' + r + ',' + g + ',' + b + ')';
+
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = color;
+
+      const angle = Math.atan2(boid.velocity.y, boid.velocity.x);
+      ctx.save();
+      ctx.translate(boid.position.x, boid.position.y);
+      ctx.rotate(angle);
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(6, 0);
+      ctx.lineTo(-3, 3);
+      ctx.lineTo(-3, -3);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+      ctx.shadowBlur = 0;
+    }
+
+    function renderBoids() {
+      boids.forEach(boid => drawBoid(boid));
+    }
+
+    function drawCursor() {
+      if (!isPressed) return;
+
+      const color = interactionMode === 'attract' ? '#00f0ff' : '#ff00aa';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = color;
+
+      ctx.beginPath();
+      ctx.arc(mousePos.x, mousePos.y, 150, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+    }
+
+    // ============================================================================
+    // ANIMATION LOOP
+    // ============================================================================
+
+    function animate() {
+      const now = performance.now();
+      const delta = now - lastFrameTime;
+      fps = Math.round(1000 / delta);
+      lastFrameTime = now;
+
+      ctx.fillStyle = 'rgba(10, 10, 15, 0.15)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      updateBoids();
+      renderBoids();
+      drawCursor();
+
+      document.getElementById('stats').textContent = 'FPS: ' + fps + ' | Boids: ' + boids.length;
+
+      requestAnimationFrame(animate);
+    }
+
+    // ============================================================================
+    // EVENT HANDLERS
+    // ============================================================================
+
+    canvas.addEventListener('mousemove', (e) => {
+      mousePos = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      isPressed = true;
+      mousePos = { x: e.clientX, y: e.clientY };
+      canvas.classList.add('pressing');
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      isPressed = false;
+      canvas.classList.remove('pressing');
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      isPressed = true;
+      if (e.touches.length > 0) {
+        mousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+      canvas.classList.add('pressing');
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length > 0) {
+        mousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      isPressed = false;
+      canvas.classList.remove('pressing');
+    });
+
+    document.getElementById('modeToggle').addEventListener('click', () => {
+      interactionMode = interactionMode === 'attract' ? 'repel' : 'attract';
+      document.getElementById('modeToggle').textContent = 'Mode: ' + 
+        (interactionMode === 'attract' ? 'Attract' : 'Repel');
+    });
+
+    document.getElementById('boidCount').addEventListener('input', (e) => {
+      const newCount = parseInt(e.target.value);
+      document.getElementById('countDisplay').textContent = newCount + ' boids';
+      
+      if (newCount > boids.length) {
+        const toAdd = newCount - boids.length;
+        for (let i = 0; i < toAdd; i++) {
+          boids.push(new Boid(random(0, canvas.width), random(0, canvas.height)));
+        }
+      } else if (newCount < boids.length) {
+        boids = boids.slice(0, newCount);
+      }
+    });
+
+    document.getElementById('reset').addEventListener('click', () => {
+      const count = parseInt(document.getElementById('boidCount').value);
+      boids = createBoids(count);
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // ============================================================================
+    // START
+    // ============================================================================
+
+    function init() {
+      resizeCanvas();
+      boids = createBoids(800);
+      animate();
+    }
+
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

@@ -1,5 +1,12 @@
 [
   {
+    "title": "Flock Mind",
+    "url": "/games/flock-mind.html",
+    "github_url": "https://github.com/rexuvia/flock-mind",
+    "date": "2026-03-01",
+    "last_updated": "2026-03-01"
+  },
+  {
     "title": "Branching Narrative Web",
     "url": "/games/branching-narrative-web.html",
     "github_url": "https://github.com/rexuvia/branching-narrative-web",
