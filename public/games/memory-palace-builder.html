@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Memory Palace Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@500;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --cyan: #00f0ff;
+    --magenta: #ff00aa;
+    --green: #00ff88;
+    --white: #f4faff;
+    --muted: #7b7f9b;
+    --panel: rgba(15, 15, 24, 0.8);
+    --panel-solid: rgba(16, 16, 27, 0.95);
+    --border: rgba(0, 240, 255, 0.25);
+    --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: radial-gradient(circle at top, rgba(0, 240, 255, 0.08), transparent 55%), var(--bg);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 1.2rem clamp(1rem, 3vw, 2.5rem);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+    background: linear-gradient(90deg, rgba(0, 240, 255, 0.1), rgba(255, 0, 170, 0.08));
+    backdrop-filter: blur(24px);
+    z-index: 10;
+  }
+
+  header h1 {
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.12em;
+    font-size: clamp(1.4rem, 3.5vw, 2rem);
+    margin: 0 0 0.6rem;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+
+  header p {
+    max-width: 960px;
+    margin: 0;
+    line-height: 1.6;
+    color: var(--muted);
+    font-size: clamp(0.9rem, 2vw, 1rem);
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem clamp(1rem, 3vw, 2.5rem);
+    overflow: hidden;
+  }
+
+  #scene-container {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    background: linear-gradient(160deg, rgba(0, 240, 255, 0.08), rgba(255, 0, 170, 0.05));
+    overflow: hidden;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  #sidebar {
+    width: min(340px, 100%);
+    min-width: 260px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: clamp(1rem, 2.5vw, 1.5rem);
+    border-radius: 22px;
+    background: var(--panel-solid);
+    border: 1px solid rgba(255, 0, 170, 0.22);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  #sidebar h2 {
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.16em;
+    margin: 0;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    color: var(--magenta);
+  }
+
+  #action-bar {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    border: none;
+    padding: 0.65rem 1.6rem;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    background: linear-gradient(90deg, rgba(0, 240, 255, 0.95), rgba(0, 255, 136, 0.95));
+    color: #021014;
+    box-shadow: 0 12px 30px rgba(0, 240, 255, 0.25);
+  }
+
+  button.secondary {
+    background: transparent;
+    border: 1px solid rgba(255, 0, 170, 0.5);
+    color: var(--magenta);
+    box-shadow: 0 8px 24px rgba(255, 0, 170, 0.15);
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 40px rgba(0, 240, 255, 0.35);
+  }
+
+  button.secondary:hover {
+    box-shadow: 0 12px 32px rgba(255, 0, 170, 0.25);
+  }
+
+  button:active {
+    transform: translateY(0);
+  }
+
+  #memory-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-right: 0.5rem;
+  }
+
+  .memory-item {
+    padding: 1rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .memory-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--cyan);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .memory-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(0, 240, 255, 0.3);
+  }
+
+  .memory-item.active {
+    background: rgba(0, 240, 255, 0.08);
+    border-color: var(--cyan);
+  }
+
+  .memory-item.active::before {
+    opacity: 1;
+  }
+
+  .memory-item h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  .memory-item p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .memory-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+
+  #overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 15, 0.85);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  #overlay.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  #memory-form {
+    background: var(--panel-solid);
+    border-radius: 24px;
+    padding: 2rem;
+    width: min(500px, 90vw);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  #memory-form h2 {
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.12em;
+    margin: 0 0 1.5rem;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  input, textarea {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+  }
+
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--cyan);
+  }
+
+  .color-picker {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .color-option {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .color-option:hover {
+    transform: scale(1.1);
+  }
+
+  .color-option.selected {
+    border-color: var(--white);
+    transform: scale(1.1);
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+  }
+
+  #instructions {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    right: 1.5rem;
+    background: rgba(16, 16, 27, 0.9);
+    border-radius: 16px;
+    padding: 1.2rem 1.5rem;
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    backdrop-filter: blur(20px);
+    z-index: 5;
+    max-width: 500px;
+  }
+
+  #instructions h3 {
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.1em;
+    margin: 0 0 0.75rem;
+    color: var(--green);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+  }
+
+  #instructions p {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  #instructions kbd {
+    background: rgba(0, 240, 255, 0.15);
+    color: var(--cyan);
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-family: 'Inter', monospace;
+    font-size: 0.8rem;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+  }
+
+  @media (max-width: 768px) {
+    main {
+      flex-direction: column;
+      padding: 1rem;
+    }
+
+    #scene-container {
+      min-height: 60vh;
+    }
+
+    #sidebar {
+      width: 100%;
+      min-width: auto;
+    }
+
+    #instructions {
+      position: relative;
+      bottom: auto;
+      left: auto;
+      right: auto;
+      margin-top: 1rem;
+    }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Memory Palace Builder</h1>
+    <p>Construct and navigate 3D memory palaces to store and recall information through visual-spatial association. Place memory objects, label them, and practice recall to strengthen your memory using the ancient Method of Loci.</p>
+  </header>
+
+  <main>
+    <div id="scene-container">
+      <canvas id="scene"></canvas>
+      <div id="instructions">
+        <h3>Controls</h3>
+        <p><kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move • <kbd>Mouse</kbd> to look around • <kbd>Click</kbd> to place memory object • <kbd>Escape</kbd> to exit placement mode</p>
+        <p>Click "Place Memory" to start adding objects to your palace. Each object represents something you want to remember.</p>
+      </div>
+    </div>
+
+    <div id="sidebar">
+      <h2>Memory Palace</h2>
+      <div id="action-bar">
+        <button id="place-btn">Place Memory</button>
+        <button id="clear-btn" class="secondary">Clear All</button>
+      </div>
+      <div id="memory-list">
+        <!-- Memory items will be added here -->
+        <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
+          <div class="memory-color" style="background: #00f0ff;"></div>
+          <h3>Example: Kitchen Table</h3>
+          <p>Remember to buy groceries</p>
+        </div>
+        <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
+          <div class="memory-color" style="background: #ff00aa;"></div>
+          <h3>Example: Bookshelf</h3>
+          <p>Important dates for history exam</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="overlay">
+    <div id="memory-form">
+      <h2>Add Memory Object</h2>
+      <div class="form-group">
+        <label for="memory-title">Title</label>
+        <input type="text" id="memory-title" placeholder="What do you want to remember?" />
+      </div>
+      <div class="form-group">
+        <label for="memory-description">Description (Optional)</label>
+        <textarea id="memory-description" rows="3" placeholder="Additional details or associations..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div class="color-picker">
+          <div class="color-option selected" style="background: #00f0ff;" data-color="#00f0ff"></div>
+          <div class="color-option" style="background: #ff00aa;" data-color="#ff00aa"></div>
+          <div class="color-option" style="background: #00ff88;" data-color="#00ff88"></div>
+          <div class="color-option" style="background: #ffaa00;" data-color="#ffaa00"></div>
+          <div class="color-option" style="background: #aa00ff;" data-color="#aa00ff"></div>
+          <div class="color-option" style="background: #00aaff;" data-color="#00aaff"></div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button id="cancel-btn" class="secondary">Cancel</button>
+        <button id="save-btn">Save Memory</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a0f);
+    scene.fog = new THREE.Fog(0x0a0a0f, 10, 50);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.6, 5);
+
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('scene'), antialias: true });
+    renderer.setSize(document.getElementById('scene-container').offsetWidth, document.getElementById('scene-container').offsetHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Controls
+    const controls = new PointerLockControls(camera, document.body);
+    
+    // Room dimensions
+    const roomSize = 20;
+    const roomHeight = 8;
+    
+    // Create room
+    function createRoom() {
+      // Floor
+      const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize);
+      const floorMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x111122,
+        roughness: 0.8,
+        metalness: 0.2
+      });
+      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
+      
+      // Floor grid
+      const gridHelper = new THREE.GridHelper(roomSize, roomSize / 2, 0x00f0ff, 0x007788);
+      gridHelper.position.y = 0.01;
+      scene.add(gridHelper);
+      
+      // Walls
+      const wallMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x0a192f,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+      
+      // Back wall
+      const backWall = new THREE.Mesh(
+        new THREE.BoxGeometry(roomSize, roomHeight, 0.5),
+        wallMaterial
+      );
+      backWall.position.z = -roomSize / 2;
+      backWall.position.y = roomHeight / 2;
+      backWall.receiveShadow = true;
+      scene.add(backWall);
+      
+      // Front wall (with opening)
+      const frontWall = new THREE.Mesh(
+        new THREE.BoxGeometry(roomSize, roomHeight, 0.5),
+        wallMaterial
+      );
+      frontWall.position.z = roomSize / 2;
+      frontWall.position.y = roomHeight / 2;
+      frontWall.receiveShadow = true;
+      scene.add(frontWall);
+      
+      // Left wall
+      const leftWall = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, roomHeight, roomSize),
+        wallMaterial
+      );
+      leftWall.position.x = -roomSize / 2;
+      leftWall.position.y = roomHeight / 2;
+      leftWall.receiveShadow = true;
+      scene.add(leftWall);
+      
+      // Right wall
+      const rightWall = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, roomHeight, roomSize),
+        wallMaterial
+      );
+      rightWall.position.x = roomSize / 2;
+      rightWall.position.y = roomHeight / 2;
+      rightWall.receiveShadow = true;
+      scene.add(rightWall);
+      
+      // Neon trim
+      const neonMaterial = new THREE.MeshBasicMaterial({ color: 0x00f0ff, emissive: 0x00aaff });
+      const trimGeometry = new THREE.BoxGeometry(roomSize + 1, 0.2, 0.2);
+      
+      // Top trim
+      const topTrim = new THREE.Mesh(trimGeometry, neonMaterial);
+      topTrim.position.y = roomHeight;
+      topTrim.position.z = -roomSize / 2;
+      scene.add(topTrim);
+      
+      // Bottom trim
+      const bottomTrim = new THREE.Mesh(trimGeometry, neonMaterial);
+      bottomTrim.position.y = 0.1;
+      bottomTrim.position.z = -roomSize / 2;
+      scene.add(bottomTrim);
+    }
+    
+    // Lighting
+    function setupLighting() {
+      // Ambient light
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+      scene.add(ambientLight);
+      
+      // Directional light (like sunlight)
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(10, 20, 10);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.width = 2048;
+      directionalLight.shadow.mapSize.height = 2048;
+      scene.add(directionalLight);
+      
+      // Neon lights
+      const neonLight1 = new THREE.PointLight(0x00f0ff, 1, 20);
+      neonLight1.position.set(-roomSize/3, roomHeight/2, -roomSize/3);
+      scene.add(neonLight1);
+      
+      const neonLight2 = new THREE.PointLight(0xff00aa, 1, 20);
+      neonLight2.position.set(roomSize/3, roomHeight/2, roomSize/3);
+      scene.add(neonLight2);
+    }
+    
+    // Memory objects
+    let memoryObjects = [];
+    let selectedColor = '#00f0ff';
+    let isPlacing = false;
+    let raycaster = new THREE.Raycaster();
+    let mouse = new THREE.Vector2();
+    
+    // Create a memory object
+    function createMemoryObject(position, title, description, color) {
+      const geometry = new THREE.SphereGeometry(0.3, 16, 16);
+      const material = new THREE.MeshStandardMaterial({ 
+        color: new THREE.Color(color),
+        emissive: new THREE.Color(color).multiplyScalar(0.3),
+        roughness: 0.3,
+        metalness: 0.7
+      });
+      
+      const sphere = new THREE.Mesh(geometry, material);
+      sphere.position.copy(position);
+      sphere.castShadow = true;
+      sphere.userData = { title, description, color };
+      
+      // Add glow effect
+      const glowGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color),
+        transparent: true,
+        opacity: 0.2
+      });
+      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+      sphere.add(glow);
+      
+      scene.add(sphere);
+      memoryObjects.push(sphere);
+      
+      // Add to sidebar
+      addToSidebar(sphere);
+      
+      return sphere;
+    }
+    
+    // Add memory to sidebar
+    function addToSidebar(memory) {
+      const memoryList = document.getElementById('memory-list');
+      const exampleItems = memoryList.querySelectorAll('.memory-item[style*="opacity: 0.6"]');
+      exampleItems.forEach(item => item.remove());
+      
+      const item = document.createElement('div');
+      item.className = 'memory-item';
+      item.innerHTML = `
+        <div class="memory-color" style="background: ${memory.userData.color};"></div>
+        <h3>${memory.userData.title}</h3>
+        <p>${memory.userData.description || 'No description'}</p>
+      `;
+      
+      item.addEventListener('click', () => {
+        // Highlight in sidebar
+        document.querySelectorAll('.memory-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        
+        // Highlight in 3D
+        memoryObjects.forEach(obj => {
+          obj.material.emissive.setHex(0x000000);
+          obj.children[0].material.opacity = 0.2;
+        });
+        
+        memory.material.emissive.setHex(0xffffff);
+        memory.children[0].material.opacity = 0.5;
+        
+        // Move camera to look at object
+        const targetPosition = memory.position.clone();
+        targetPosition.y += 1;
+        camera.position.lerp(targetPosition, 0.1);
+      });
+      
+      memoryList.appendChild(item);
+    }
+    
+    // Handle window resize
+    function onWindowResize() {
+      camera.aspect = document.getElementById('scene-container').offsetWidth / document.getElementById('scene-container').offsetHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(document.getElementById('scene-container').offsetWidth, document.getElementById('scene-container').offsetHeight);
+    }
+    
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // Update controls if locked
+      if (controls.isLocked) {
+        // Simple movement
+        const speed = 0.1;
+        const direction = new THREE.Vector3();
+        
+        if (keys['w'] || keys['ArrowUp']) direction.z -= speed;
+        if (keys['s'] || keys['ArrowDown']) direction.z += speed;
+        if (keys['a'] || keys['ArrowLeft']) direction.x -= speed;
+        if (keys['d'] || keys['ArrowRight']) direction.x += speed;
+        
+        // Keep within room bounds
+        const newX = camera.position.x + direction.x;
+        const newZ = camera.position.z + direction.z;
+        const halfSize = roomSize / 2 - 1;
+        
+        if (Math.abs(newX) < halfSize) camera.position.x = newX;
+        if (Math.abs(newZ) < halfSize) camera.position.z = newZ;
+        
+        // Keep camera at standing height
+        camera.position.y = 1.6;
+      }
+      
+      renderer.render(scene, camera);
+    }
+    
+    // Keyboard controls
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+      keys[e.key] = true;
+      
+      if (e.key === 'Escape' && isPlacing) {
+        cancelPlacement();
+      }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+      keys[e.key] = false;
+    });
+    
+    // Mouse click for placement
+    window.addEventListener('click', (e) => {
+      if (!isPlacing || !controls.isLocked) return;
+      
+      // Calculate mouse position in normalized device coordinates
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      // Update raycaster
+      raycaster.setFromCamera(mouse, camera);
+      
+      // Check intersection with floor
+      const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      const intersectionPoint = new THREE.Vector3();
+      raycaster.ray.intersectPlane(floorPlane, intersectionPoint);
+      
+      // Keep within room bounds
+      const halfSize = roomSize / 2 - 1;
+      intersectionPoint.x = Math.max(-halfSize, Math.min(halfSize, intersectionPoint.x));
+      intersectionPoint.z = Math.max(-halfSize, Math.min(halfSize, intersectionPoint.z));
+      intersectionPoint.y = 0.3; // Slightly above floor
+      
+      // Show placement form
+      document.getElementById('overlay').classList.add('active');
+      document.getElementById('memory-title').focus();
+      
+      // Store placement position
+      window.currentPlacementPosition = intersectionPoint;
+    });
+    
+    // UI Event Handlers
+    document.getElementById('place-btn').addEventListener('click', () => {
+      if (!controls.isLocked) {
+        controls.lock();
+      }
+      isPlacing = true;
+      document.getElementById('instructions').innerHTML = `
+        <h3>Placement Mode</h3>
+        <p>Click anywhere in the room to place a memory object. Press <kbd>Escape</kbd> to cancel.</p>
+      `;
+    });
+    
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      if (confirm('Clear all memory objects?')) {
+        memoryObjects.forEach(obj => scene.remove(obj));
+        memoryObjects = [];
+        document.getElementById('memory-list').innerHTML = `
+          <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
+            <div class="memory-color" style="background: #00f0ff;"></div>
+            <h3>Example: Kitchen Table</h3>
+            <p>Remember to buy groceries</p>
+          </div>
+          <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
+            <div class="memory-color" style="background: #ff00aa;"></div>
+            <h3>Example: Bookshelf</h3>
+            <p>Important dates for history exam</p>
+          </div>
+        `;
+      }
+    });
+    
+    document.getElementById('cancel-btn').addEventListener('click', cancelPlacement);
+    
+    document.getElementById('save-btn').addEventListener('click', () => {
+      const title = document.getElementById('memory-title').value.trim();
+      const description = document.getElementById('memory-description').value.trim();
+      
+      if (!title) {
+        alert('Please enter a title for your memory');
+        return;
+      }
+      
+      createMemoryObject(
+        window.currentPlacementPosition,
+        title,
+        description,
+        selectedColor
+      );
+      
+      cancelPlacement();
+    });
+    
+    // Color picker
+    document.querySelectorAll('.color-option').forEach(option => {
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedColor = option.dataset.color;
+      });
+    });
+    
+    function cancelPlacement() {
+      isPlacing = false;
+      document.getElementById('overlay').classList.remove('active');
+      document.getElementById('memory-title').value = '';
+      document.getElementById('memory-description').value = '';
+      document.getElementById('instructions').innerHTML = `
+        <h3>Controls</h3>
+        <p><kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move • <kbd>Mouse</kbd> to look around • <kbd>Click</kbd> to place memory object • <kbd>Escape</kbd> to exit placement mode</p>
+        <p>Click "Place Memory" to start adding objects to your palace. Each object represents something you want to remember.</p>
+      `;
+    }
+    
+    // Initialize
+    createRoom();
+    setupLighting();
+    window.addEventListener('resize', onWindowResize);
+    animate();
+    
+    // Add some example memories
+    setTimeout(() => {
+      createMemoryObject(
+        new THREE.Vector3(-3, 0.3, -3),
+        'Kitchen Table',
+        'Remember to buy groceries',
+        '#00f0ff'
+      );
+      
+      createMemoryObject(
+        new THREE.Vector3(3, 0.3, 3),
+        'Bookshelf',
+        'Important dates for history exam',
+        '#ff00aa'
+      );
+    }, 1000);
+  </script>
+</body>
+</html>
