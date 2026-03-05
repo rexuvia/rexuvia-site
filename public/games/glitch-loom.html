@@ -915,6 +915,22 @@ function stopAnimation() {
   if(currentImageData) renderCurrent();
 }
 
+// ─── TOUCH UTILS ────────────────────────────────────
+// Add touch-as-click support to a button element (eliminates 300ms tap delay)
+function addTouchClick(el, handler) {
+  if (!el) return;
+  let touchMoved = false;
+  el.addEventListener('touchstart', () => { touchMoved = false; }, { passive: true });
+  el.addEventListener('touchmove', () => { touchMoved = true; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (!touchMoved) {
+      e.preventDefault(); // prevent the ghost click
+      handler(e);
+    }
+  }, { passive: false });
+  el.addEventListener('click', handler);
+}
+
 // ─── TOUCH SLIDER ENHANCEMENT ───────────────────────
 let touchIndicatorEl=null;
 function ensureTouchIndicator(){
@@ -927,7 +943,6 @@ function ensureTouchIndicator(){
 }
 
 function attachTouchSlider(el, displayEl){
-  if(!window.matchMedia('(pointer:coarse)').matches) return;
   const indicator=ensureTouchIndicator();
   let active=false;
   const min=parseFloat(el.min||0);
@@ -1093,7 +1108,7 @@ class GifEncoder {
   }
 }
 
-async async function exportGif() {
+async function exportGif() {
   if(!originalImageData){
     canvasStatusPulse('Load art before exporting GIF');
     return;
@@ -1162,7 +1177,7 @@ function renderPalette() {
       s.style.cssText=`width:14px;height:14px;background:${c};border:none;border-radius:2px`;
       wrap.appendChild(s);
     });
-    wrap.addEventListener('click',()=>{
+    addTouchClick(wrap,()=>{
       state.palette=pal;
       document.querySelectorAll('#palette-row > div').forEach(e=>e.style.borderColor='transparent');
       wrap.style.borderColor='var(--cyan)';
@@ -1178,7 +1193,7 @@ function renderPresets() {
     const chip=document.createElement('div');
     chip.className='preset-chip';
     chip.textContent=p.name;
-    chip.addEventListener('click',()=>{
+    addTouchClick(chip,()=>{
       Object.assign(state, p.state);
       syncUI();
       drawWeavePreview();
@@ -1194,13 +1209,13 @@ function initToggleGroup(groupId, stateKey) {
   const group=$(groupId);
   if(!group) return;
   group.querySelectorAll('.toggle-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
+    const handler=()=>{
       group.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       state[stateKey]=btn.dataset.val;
       if(stateKey==='weavePattern') drawWeavePreview();
-      if(stateKey==='sortDirection') {}
-    });
+    };
+    addTouchClick(btn, handler);
   });
 }
 
@@ -1272,7 +1287,7 @@ function syncUI() {
 // ─── TABS ─────────────────────────────────────────────
 function initTabs() {
   document.querySelectorAll('.tab').forEach(tab=>{
-    tab.addEventListener('click',()=>{
+    addTouchClick(tab,()=>{
       document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
       tab.classList.add('active');
@@ -1390,7 +1405,7 @@ function init() {
   });
 
   // Procedural generate
-  $('btn-procedural').addEventListener('click',()=>{
+  const doGenerate=()=>{
     const size=512;
     const type=$('proc-type').value;
     const pal=state.palette||PALETTE_COLORS[0];
@@ -1401,23 +1416,24 @@ function init() {
       animFrames=[];
       setStatus(`Generated ${type} image`);
     },10);
-  });
+  };
+  addTouchClick($('btn-procedural'), doGenerate);
 
   // Apply
-  $('btn-apply').addEventListener('click',()=>applyAll());
-  $('btn-apply-m').addEventListener('click',()=>applyAll());
+  addTouchClick($('btn-apply'), ()=>applyAll());
+  addTouchClick($('btn-apply-m'), ()=>applyAll());
 
   // Randomize
-  $('btn-randomize').addEventListener('click',randomize);
+  addTouchClick($('btn-randomize'), randomize);
 
   // Export
-  $('btn-export-png').addEventListener('click',exportPng);
-  $('btn-export-png-m').addEventListener('click',exportPng);
-  $('btn-export-gif').addEventListener('click',exportGif);
-  $('btn-export-gif2').addEventListener('click',exportGif);
+  addTouchClick($('btn-export-png'), exportPng);
+  addTouchClick($('btn-export-png-m'), exportPng);
+  addTouchClick($('btn-export-gif'), ()=>exportGif());
+  addTouchClick($('btn-export-gif2'), ()=>exportGif());
 
   // Animation
-  $('btn-preview-anim').addEventListener('click',previewAnimation);
+  addTouchClick($('btn-preview-anim'), previewAnimation);
 
   // Presets
   renderPresets();
@@ -1492,6 +1508,15 @@ Changelog — 2026-03-05
 • Upgraded mobile interaction: global touch slider overlay + gesture helpers
 • Hardened export safeguards and status messaging for PNG/GIF flows
 • Lightweight randomize and sync UI feedback refinements (kept Rexuvia palette)
+
+Bugfix — 2026-03-05 (mobile fix)
+• CRITICAL: Fixed "async async function exportGif()" syntax error that crashed the
+  entire JS engine, making Generate, Weave, and all buttons non-functional on ALL devices
+• Added addTouchClick() helper — all buttons (Generate, Weave, presets, tabs, toggle
+  groups, palette swatches, export, animation) now handle both touchend + click for
+  instant mobile response without the 300ms tap delay
+• Removed pointer:coarse guard from attachTouchSlider — touch events now attach for
+  all users, improving compatibility with hybrid devices
 -->
 </body>
 </html>

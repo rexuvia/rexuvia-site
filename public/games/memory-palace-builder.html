@@ -811,6 +811,7 @@
     let lookPadId = null;
 
     function handleJoystickStart(event) {
+      event.preventDefault();
       const touch = event.changedTouches[0];
       joystickId = touch.identifier;
       updateJoystick(touch);
@@ -839,23 +840,36 @@
       joystickStick.style.transform = 'translate(-50%, -50%)';
     }
 
+    let lookPadLastX = 0;
+    let lookPadLastY = 0;
+
     function handleLookStart(event) {
+      event.preventDefault();
       const touch = event.changedTouches[0];
       lookPadId = touch.identifier;
+      lookPadLastX = touch.clientX;
+      lookPadLastY = touch.clientY;
     }
 
     function handleLookMove(event) {
+      event.preventDefault();
       const touch = [...event.changedTouches].find(t => t.identifier === lookPadId);
       if (!touch) return;
       if (!isRecallMode) {
-        mobileYaw -= touch.movementX * 0.004;
-        mobilePitch -= touch.movementY * 0.004;
+        const dx = touch.clientX - lookPadLastX;
+        const dy = touch.clientY - lookPadLastY;
+        mobileYaw -= dx * 0.004;
+        mobilePitch -= dy * 0.004;
         mobilePitch = Math.max(-ANGLE_LIMIT, Math.min(ANGLE_LIMIT, mobilePitch));
       }
+      lookPadLastX = touch.clientX;
+      lookPadLastY = touch.clientY;
     }
 
     function resetLookPad() {
       lookPadId = null;
+      lookPadLastX = 0;
+      lookPadLastY = 0;
     }
 
     if (isMobile) {
@@ -867,18 +881,14 @@
         updateJoystick(touch);
       }, { passive: false });
       joystick.addEventListener('touchend', (event) => {
+        event.preventDefault();
         const touch = [...event.changedTouches].find(t => t.identifier === joystickId);
         if (touch) resetJoystick();
       });
       joystick.addEventListener('touchcancel', resetJoystick);
 
-      lookPad.addEventListener('touchstart', (event) => {
-        handleLookStart(event);
-      }, { passive: false });
-      lookPad.addEventListener('touchmove', (event) => {
-        event.preventDefault();
-        handleLookMove(event);
-      }, { passive: false });
+      lookPad.addEventListener('touchstart', handleLookStart, { passive: false });
+      lookPad.addEventListener('touchmove', handleLookMove, { passive: false });
       lookPad.addEventListener('touchend', (event) => {
         const touch = [...event.changedTouches].find(t => t.identifier === lookPadId);
         if (touch) resetLookPad();
@@ -1351,7 +1361,7 @@
       if (movementVector.lengthSq() < 0.0001) return;
       const moveSpeed = 0.09;
       const moveDirection = new THREE.Vector3(movementVector.x, 0, movementVector.y);
-      moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), -mobileYaw + Math.PI / 2);
+      moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), mobileYaw);
 
       const newPosition = camera.position.clone().add(moveDirection.multiplyScalar(moveSpeed));
       const halfSize = roomSize / 2 - 1;
