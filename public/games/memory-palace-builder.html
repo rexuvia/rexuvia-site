@@ -85,8 +85,12 @@
     display: block;
   }
 
+  #scene-container.mobile canvas {
+    touch-action: none;
+  }
+
   #sidebar {
-    width: min(340px, 100%);
+    width: min(360px, 100%);
     min-width: 260px;
     max-height: 100%;
     display: flex;
@@ -124,7 +128,7 @@
     border: none;
     padding: 0.65rem 1.6rem;
     cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
     background: linear-gradient(90deg, rgba(0, 240, 255, 0.95), rgba(0, 255, 136, 0.95));
     color: #021014;
     box-shadow: 0 12px 30px rgba(0, 240, 255, 0.25);
@@ -135,6 +139,10 @@
     border: 1px solid rgba(255, 0, 170, 0.5);
     color: var(--magenta);
     box-shadow: 0 8px 24px rgba(255, 0, 170, 0.15);
+  }
+
+  button[data-active="true"] {
+    filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.6));
   }
 
   button:hover {
@@ -210,6 +218,15 @@
     line-height: 1.4;
   }
 
+  .memory-item small {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
   .memory-color {
     width: 16px;
     height: 16px;
@@ -272,7 +289,7 @@
     font-family: 'Orbitron', sans-serif;
   }
 
-  input, textarea {
+  input, textarea, select {
     width: 100%;
     padding: 0.85rem 1rem;
     border-radius: 12px;
@@ -284,7 +301,16 @@
     transition: border-color 0.2s ease;
   }
 
-  input:focus, textarea:focus {
+  select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, rgba(0, 240, 255, 0.8) 50%),
+      linear-gradient(135deg, rgba(0, 240, 255, 0.8) 50%, transparent 50%);
+    background-position: calc(100% - 1.3rem) calc(1.1rem), calc(100% - 0.9rem) calc(1.1rem);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+  }
+
+  input:focus, textarea:focus, select:focus {
     outline: none;
     border-color: var(--cyan);
   }
@@ -331,7 +357,7 @@
     border: 1px solid rgba(0, 240, 255, 0.2);
     backdrop-filter: blur(20px);
     z-index: 5;
-    max-width: 500px;
+    max-width: 520px;
   }
 
   #instructions h3 {
@@ -360,7 +386,127 @@
     border: 1px solid rgba(0, 240, 255, 0.3);
   }
 
-  @media (max-width: 768px) {
+  #recall-panel {
+    position: fixed;
+    right: clamp(1rem, 3vw, 2rem);
+    bottom: clamp(1rem, 4vw, 2rem);
+    width: min(320px, 90vw);
+    background: rgba(16, 16, 27, 0.95);
+    border-radius: 18px;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    padding: 1.2rem 1.4rem;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+    display: none;
+    z-index: 95;
+  }
+
+  #recall-panel.active {
+    display: block;
+  }
+
+  #recall-panel h3 {
+    margin: 0 0 0.5rem;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    font-size: 0.85rem;
+  }
+
+  #recall-panel p {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  #recall-panel strong {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--white);
+    font-size: 1rem;
+  }
+
+  #recall-panel .recall-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  #recall-panel button {
+    flex: 1;
+    font-size: 0.7rem;
+  }
+
+  #touch-controls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: none;
+  }
+
+  #touch-controls.active {
+    display: block;
+  }
+
+  .joystick,
+  .look-pad {
+    position: absolute;
+    bottom: 1.5rem;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: rgba(10, 10, 20, 0.5);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    pointer-events: all;
+    touch-action: none;
+  }
+
+  .joystick {
+    left: 1.5rem;
+  }
+
+  .look-pad {
+    right: 1.5rem;
+  }
+
+  .joystick .stick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 240, 255, 0.35);
+    border: 2px solid rgba(0, 240, 255, 0.4);
+    transition: transform 0.1s ease;
+  }
+
+  .look-pad::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    transform: translate(-50%, -50%);
+  }
+
+  @media (max-width: 1024px) {
+    header {
+      padding-bottom: 1.4rem;
+    }
+
+    #sidebar {
+      width: 100%;
+      min-width: auto;
+    }
+  }
+
+  @media (max-width: 900px) {
     main {
       flex-direction: column;
       padding: 1rem;
@@ -370,17 +516,25 @@
       min-height: 60vh;
     }
 
-    #sidebar {
-      width: 100%;
-      min-width: auto;
-    }
-
     #instructions {
       position: relative;
       bottom: auto;
       left: auto;
       right: auto;
       margin-top: 1rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .joystick,
+    .look-pad {
+      width: 120px;
+      height: 120px;
+    }
+
+    .joystick .stick {
+      width: 64px;
+      height: 64px;
     }
   }
 </style>
@@ -394,30 +548,35 @@
   <main>
     <div id="scene-container">
       <canvas id="scene"></canvas>
-      <div id="instructions">
-        <h3>Controls</h3>
-        <p><kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move • <kbd>Mouse</kbd> to look around • <kbd>Click</kbd> to place memory object • <kbd>Escape</kbd> to exit placement mode</p>
-        <p>Click "Place Memory" to start adding objects to your palace. Each object represents something you want to remember.</p>
+      <div id="touch-controls">
+        <div class="joystick" id="joystick">
+          <div class="stick" id="joystick-stick"></div>
+        </div>
+        <div class="look-pad" id="look-pad"></div>
       </div>
+      <div id="instructions"></div>
     </div>
 
     <div id="sidebar">
       <h2>Memory Palace</h2>
       <div id="action-bar">
+        <button id="explore-btn">Explore</button>
         <button id="place-btn">Place Memory</button>
+        <button id="recall-btn" class="secondary">Recall Mode</button>
         <button id="clear-btn" class="secondary">Clear All</button>
       </div>
       <div id="memory-list">
-        <!-- Memory items will be added here -->
         <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
           <div class="memory-color" style="background: #00f0ff;"></div>
           <h3>Example: Kitchen Table</h3>
           <p>Remember to buy groceries</p>
+          <small>Sphere</small>
         </div>
         <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
           <div class="memory-color" style="background: #ff00aa;"></div>
           <h3>Example: Bookshelf</h3>
           <p>Important dates for history exam</p>
+          <small>Pillar</small>
         </div>
       </div>
     </div>
@@ -435,6 +594,15 @@
         <textarea id="memory-description" rows="3" placeholder="Additional details or associations..."></textarea>
       </div>
       <div class="form-group">
+        <label for="memory-shape">Object Style</label>
+        <select id="memory-shape">
+          <option value="sphere">Sphere Glow</option>
+          <option value="cube">Cube Anchor</option>
+          <option value="pillar">Pillar Beacon</option>
+          <option value="crystal">Crystal Shard</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Color</label>
         <div class="color-picker">
           <div class="color-option selected" style="background: #00f0ff;" data-color="#00f0ff"></div>
@@ -449,6 +617,17 @@
         <button id="cancel-btn" class="secondary">Cancel</button>
         <button id="save-btn">Save Memory</button>
       </div>
+    </div>
+  </div>
+
+  <div id="recall-panel">
+    <h3>Recall Sequence</h3>
+    <strong id="recall-title"></strong>
+    <p id="recall-description"></p>
+    <div class="recall-controls">
+      <button id="recall-prev" class="secondary">Prev</button>
+      <button id="recall-exit" class="secondary">Exit</button>
+      <button id="recall-next">Next</button>
     </div>
   </div>
 
@@ -469,26 +648,60 @@
     scene.background = new THREE.Color(0x0a0a0f);
     scene.fog = new THREE.Fog(0x0a0a0f, 10, 50);
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const canvas = document.getElementById('scene');
+    const container = document.getElementById('scene-container');
+
+    const camera = new THREE.PerspectiveCamera(75, container.offsetWidth / container.offsetHeight, 0.1, 1000);
     camera.position.set(0, 1.6, 5);
 
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('scene'), antialias: true });
-    renderer.setSize(document.getElementById('scene-container').offsetWidth, document.getElementById('scene-container').offsetHeight);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.setSize(container.offsetWidth, container.offsetHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+    const STORAGE_KEY = 'memory-palace-objects-v2';
+    const isMobile = window.matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+    const usePointerLock = !isMobile;
+
+    if (isMobile) {
+      container.classList.add('mobile');
+      document.getElementById('touch-controls').classList.add('active');
+    }
+
     // Controls
     const controls = new PointerLockControls(camera, document.body);
-    
+
+    const exploreBtn = document.getElementById('explore-btn');
+
+    if (usePointerLock) {
+      exploreBtn.addEventListener('click', () => {
+        controls.lock();
+      });
+
+      controls.addEventListener('lock', () => {
+        exploreBtn.dataset.active = 'true';
+        updateInstructions();
+      });
+
+      controls.addEventListener('unlock', () => {
+        exploreBtn.dataset.active = 'false';
+        updateInstructions();
+      });
+    } else {
+      exploreBtn.disabled = true;
+      exploreBtn.classList.add('secondary');
+      exploreBtn.textContent = 'Touch Explore';
+    }
+
     // Room dimensions
     const roomSize = 20;
     const roomHeight = 8;
-    
+
     // Create room
     function createRoom() {
-      // Floor
       const floorGeometry = new THREE.PlaneGeometry(roomSize, roomSize);
-      const floorMaterial = new THREE.MeshStandardMaterial({ 
+      const floorMaterial = new THREE.MeshStandardMaterial({
         color: 0x111122,
         roughness: 0.8,
         metalness: 0.2
@@ -497,315 +710,510 @@
       floor.rotation.x = -Math.PI / 2;
       floor.receiveShadow = true;
       scene.add(floor);
-      
-      // Floor grid
+
       const gridHelper = new THREE.GridHelper(roomSize, roomSize / 2, 0x00f0ff, 0x007788);
       gridHelper.position.y = 0.01;
       scene.add(gridHelper);
-      
-      // Walls
-      const wallMaterial = new THREE.MeshStandardMaterial({ 
+
+      const wallMaterial = new THREE.MeshStandardMaterial({
         color: 0x0a192f,
         roughness: 0.7,
         metalness: 0.1
       });
-      
-      // Back wall
+
       const backWall = new THREE.Mesh(
         new THREE.BoxGeometry(roomSize, roomHeight, 0.5),
         wallMaterial
       );
-      backWall.position.z = -roomSize / 2;
-      backWall.position.y = roomHeight / 2;
+      backWall.position.set(0, roomHeight / 2, -roomSize / 2);
       backWall.receiveShadow = true;
       scene.add(backWall);
-      
-      // Front wall (with opening)
+
       const frontWall = new THREE.Mesh(
         new THREE.BoxGeometry(roomSize, roomHeight, 0.5),
         wallMaterial
       );
-      frontWall.position.z = roomSize / 2;
-      frontWall.position.y = roomHeight / 2;
+      frontWall.position.set(0, roomHeight / 2, roomSize / 2);
       frontWall.receiveShadow = true;
       scene.add(frontWall);
-      
-      // Left wall
+
       const leftWall = new THREE.Mesh(
         new THREE.BoxGeometry(0.5, roomHeight, roomSize),
         wallMaterial
       );
-      leftWall.position.x = -roomSize / 2;
-      leftWall.position.y = roomHeight / 2;
+      leftWall.position.set(-roomSize / 2, roomHeight / 2, 0);
       leftWall.receiveShadow = true;
       scene.add(leftWall);
-      
-      // Right wall
+
       const rightWall = new THREE.Mesh(
         new THREE.BoxGeometry(0.5, roomHeight, roomSize),
         wallMaterial
       );
-      rightWall.position.x = roomSize / 2;
-      rightWall.position.y = roomHeight / 2;
+      rightWall.position.set(roomSize / 2, roomHeight / 2, 0);
       rightWall.receiveShadow = true;
       scene.add(rightWall);
-      
-      // Neon trim
-      const neonMaterial = new THREE.MeshBasicMaterial({ color: 0x00f0ff, emissive: 0x00aaff });
+
+      const neonMaterial = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
       const trimGeometry = new THREE.BoxGeometry(roomSize + 1, 0.2, 0.2);
-      
-      // Top trim
+
       const topTrim = new THREE.Mesh(trimGeometry, neonMaterial);
-      topTrim.position.y = roomHeight;
-      topTrim.position.z = -roomSize / 2;
+      topTrim.position.set(0, roomHeight, -roomSize / 2);
       scene.add(topTrim);
-      
-      // Bottom trim
+
       const bottomTrim = new THREE.Mesh(trimGeometry, neonMaterial);
-      bottomTrim.position.y = 0.1;
-      bottomTrim.position.z = -roomSize / 2;
+      bottomTrim.position.set(0, 0.1, -roomSize / 2);
       scene.add(bottomTrim);
     }
-    
-    // Lighting
+
     function setupLighting() {
-      // Ambient light
-      const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.55);
       scene.add(ambientLight);
-      
-      // Directional light (like sunlight)
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(10, 20, 10);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+      directionalLight.position.set(10, 18, 6);
       directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.width = 2048;
-      directionalLight.shadow.mapSize.height = 2048;
+      directionalLight.shadow.bias = -0.0002;
+      directionalLight.shadow.mapSize.width = 1536;
+      directionalLight.shadow.mapSize.height = 1536;
       scene.add(directionalLight);
-      
-      // Neon lights
+
       const neonLight1 = new THREE.PointLight(0x00f0ff, 1, 20);
-      neonLight1.position.set(-roomSize/3, roomHeight/2, -roomSize/3);
+      neonLight1.position.set(-roomSize / 3, roomHeight / 2, -roomSize / 3);
       scene.add(neonLight1);
-      
+
       const neonLight2 = new THREE.PointLight(0xff00aa, 1, 20);
-      neonLight2.position.set(roomSize/3, roomHeight/2, roomSize/3);
+      neonLight2.position.set(roomSize / 3, roomHeight / 2, roomSize / 3);
       scene.add(neonLight2);
     }
-    
-    // Memory objects
-    let memoryObjects = [];
+
+    const memoryObjects = [];
     let selectedColor = '#00f0ff';
+    let selectedShape = 'sphere';
     let isPlacing = false;
-    let raycaster = new THREE.Raycaster();
-    let mouse = new THREE.Vector2();
-    
-    // Create a memory object
-    function createMemoryObject(position, title, description, color) {
-      const geometry = new THREE.SphereGeometry(0.3, 16, 16);
-      const material = new THREE.MeshStandardMaterial({ 
-        color: new THREE.Color(color),
-        emissive: new THREE.Color(color).multiplyScalar(0.3),
-        roughness: 0.3,
-        metalness: 0.7
+    let isRecallMode = false;
+    let recallIndex = 0;
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const placementPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+    // Mobile movement state
+    let mobileYaw = camera.rotation.y;
+    let mobilePitch = 0;
+    const movementVector = new THREE.Vector2();
+    const ANGLE_LIMIT = THREE.MathUtils.degToRad(80);
+
+    const joystick = document.getElementById('joystick');
+    const joystickStick = document.getElementById('joystick-stick');
+    const lookPad = document.getElementById('look-pad');
+
+    let joystickId = null;
+    let lookPadId = null;
+
+    function handleJoystickStart(event) {
+      const touch = event.changedTouches[0];
+      joystickId = touch.identifier;
+      updateJoystick(touch);
+    }
+
+    function updateJoystick(touch) {
+      const rect = joystick.getBoundingClientRect();
+      const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const deltaX = touch.clientX - center.x;
+      const deltaY = touch.clientY - center.y;
+      const maxRadius = rect.width / 2 - 20;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      const clamped = Math.min(distance, maxRadius);
+
+      const angle = Math.atan2(deltaY, deltaX);
+      const normalizedX = (clamped / maxRadius) * Math.cos(angle);
+      const normalizedY = (clamped / maxRadius) * Math.sin(angle);
+
+      joystickStick.style.transform = `translate(calc(${normalizedX * 40}px - 50%), calc(${normalizedY * 40}px - 50%))`;
+      movementVector.set(normalizedX, normalizedY);
+    }
+
+    function resetJoystick() {
+      joystickId = null;
+      movementVector.set(0, 0);
+      joystickStick.style.transform = 'translate(-50%, -50%)';
+    }
+
+    function handleLookStart(event) {
+      const touch = event.changedTouches[0];
+      lookPadId = touch.identifier;
+    }
+
+    function handleLookMove(event) {
+      const touch = [...event.changedTouches].find(t => t.identifier === lookPadId);
+      if (!touch) return;
+      if (!isRecallMode) {
+        mobileYaw -= touch.movementX * 0.004;
+        mobilePitch -= touch.movementY * 0.004;
+        mobilePitch = Math.max(-ANGLE_LIMIT, Math.min(ANGLE_LIMIT, mobilePitch));
+      }
+    }
+
+    function resetLookPad() {
+      lookPadId = null;
+    }
+
+    if (isMobile) {
+      joystick.addEventListener('touchstart', handleJoystickStart, { passive: false });
+      joystick.addEventListener('touchmove', (event) => {
+        const touch = [...event.changedTouches].find(t => t.identifier === joystickId);
+        if (!touch) return;
+        event.preventDefault();
+        updateJoystick(touch);
+      }, { passive: false });
+      joystick.addEventListener('touchend', (event) => {
+        const touch = [...event.changedTouches].find(t => t.identifier === joystickId);
+        if (touch) resetJoystick();
       });
-      
-      const sphere = new THREE.Mesh(geometry, material);
-      sphere.position.copy(position);
-      sphere.castShadow = true;
-      sphere.userData = { title, description, color };
-      
-      // Add glow effect
-      const glowGeometry = new THREE.SphereGeometry(0.5, 16, 16);
-      const glowMaterial = new THREE.MeshBasicMaterial({
+      joystick.addEventListener('touchcancel', resetJoystick);
+
+      lookPad.addEventListener('touchstart', (event) => {
+        handleLookStart(event);
+      }, { passive: false });
+      lookPad.addEventListener('touchmove', (event) => {
+        event.preventDefault();
+        handleLookMove(event);
+      }, { passive: false });
+      lookPad.addEventListener('touchend', (event) => {
+        const touch = [...event.changedTouches].find(t => t.identifier === lookPadId);
+        if (touch) resetLookPad();
+      });
+      lookPad.addEventListener('touchcancel', resetLookPad);
+    }
+
+    function buildLabel(text, color) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(10, 10, 20, 0.72)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, '#0a0a0f');
+
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
+
+      ctx.font = '42px "Orbitron"';
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height / 2);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.minFilter = THREE.LinearFilter;
+      texture.encoding = THREE.sRGBEncoding;
+
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, opacity: 0.95 });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(2.8, 0.7, 1);
+      sprite.position.set(0, 1.1, 0);
+
+      return sprite;
+    }
+
+    function createGeometry(shape) {
+      switch (shape) {
+        case 'cube':
+          return new THREE.BoxGeometry(0.6, 0.6, 0.6);
+        case 'pillar':
+          return new THREE.CylinderGeometry(0.25, 0.25, 1.1, 24);
+        case 'crystal':
+          return new THREE.OctahedronGeometry(0.4, 0);
+        case 'sphere':
+        default:
+          return new THREE.SphereGeometry(0.3, 20, 20);
+      }
+    }
+
+    function createGlow(shape, color) {
+      let geometry;
+      switch (shape) {
+        case 'pillar':
+          geometry = new THREE.CylinderGeometry(0.35, 0.35, 1.4, 24);
+          break;
+        case 'cube':
+          geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+          break;
+        case 'crystal':
+          geometry = new THREE.OctahedronGeometry(0.65, 0);
+          break;
+        default:
+          geometry = new THREE.SphereGeometry(0.5, 20, 20);
+      }
+      const material = new THREE.MeshBasicMaterial({
         color: new THREE.Color(color),
         transparent: true,
-        opacity: 0.2
+        opacity: 0.18
       });
-      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-      sphere.add(glow);
-      
-      scene.add(sphere);
-      memoryObjects.push(sphere);
-      
-      // Add to sidebar
-      addToSidebar(sphere);
-      
-      return sphere;
+      return new THREE.Mesh(geometry, material);
     }
-    
-    // Add memory to sidebar
+
+    function createMemoryObject(position, title, description, color, shape) {
+      const geometry = createGeometry(shape);
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color),
+        emissive: new THREE.Color(color).multiplyScalar(0.25),
+        roughness: 0.35,
+        metalness: 0.65
+      });
+
+      const object = new THREE.Mesh(geometry, material);
+      object.position.copy(position);
+      if (shape === 'pillar') {
+        object.position.y = 0.55;
+        object.castShadow = true;
+      } else {
+        object.castShadow = true;
+        object.position.y = 0.3;
+      }
+
+      object.userData = { title, description, color, shape };
+
+      const glow = createGlow(shape, color);
+      glow.position.set(0, shape === 'pillar' ? 0 : 0, 0);
+      object.add(glow);
+
+      const label = buildLabel(title, color);
+      object.add(label);
+      object.userData.glow = glow;
+      object.userData.label = label;
+
+      scene.add(object);
+      memoryObjects.push(object);
+      addToSidebar(object);
+      saveState();
+      return object;
+    }
+
+    function disposeMemoryObject(object) {
+      if (object.userData.label) {
+        object.userData.label.material.map.dispose();
+        object.userData.label.material.dispose();
+      }
+      object.geometry.dispose();
+      object.material.dispose();
+      if (object.userData.glow) {
+        object.userData.glow.geometry.dispose();
+        object.userData.glow.material.dispose();
+      }
+      scene.remove(object);
+    }
+
     function addToSidebar(memory) {
       const memoryList = document.getElementById('memory-list');
       const exampleItems = memoryList.querySelectorAll('.memory-item[style*="opacity: 0.6"]');
       exampleItems.forEach(item => item.remove());
-      
+
       const item = document.createElement('div');
       item.className = 'memory-item';
       item.innerHTML = `
         <div class="memory-color" style="background: ${memory.userData.color};"></div>
         <h3>${memory.userData.title}</h3>
         <p>${memory.userData.description || 'No description'}</p>
+        <small>${memory.userData.shape === 'sphere' ? 'Sphere' : memory.userData.shape.charAt(0).toUpperCase() + memory.userData.shape.slice(1)}</small>
       `;
-      
+
       item.addEventListener('click', () => {
-        // Highlight in sidebar
-        document.querySelectorAll('.memory-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        
-        // Highlight in 3D
-        memoryObjects.forEach(obj => {
-          obj.material.emissive.setHex(0x000000);
-          obj.children[0].material.opacity = 0.2;
-        });
-        
-        memory.material.emissive.setHex(0xffffff);
-        memory.children[0].material.opacity = 0.5;
-        
-        // Move camera to look at object
-        const targetPosition = memory.position.clone();
-        targetPosition.y += 1;
-        camera.position.lerp(targetPosition, 0.1);
+        focusMemory(memory);
       });
-      
+
+      memory.userData.sidebarItem = item;
       memoryList.appendChild(item);
     }
-    
-    // Handle window resize
-    function onWindowResize() {
-      camera.aspect = document.getElementById('scene-container').offsetWidth / document.getElementById('scene-container').offsetHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(document.getElementById('scene-container').offsetWidth, document.getElementById('scene-container').offsetHeight);
-    }
-    
-    // Animation loop
-    function animate() {
-      requestAnimationFrame(animate);
-      
-      // Update controls if locked
-      if (controls.isLocked) {
-        // Simple movement
-        const speed = 0.1;
-        const direction = new THREE.Vector3();
-        
-        if (keys['w'] || keys['ArrowUp']) direction.z -= speed;
-        if (keys['s'] || keys['ArrowDown']) direction.z += speed;
-        if (keys['a'] || keys['ArrowLeft']) direction.x -= speed;
-        if (keys['d'] || keys['ArrowRight']) direction.x += speed;
-        
-        // Keep within room bounds
-        const newX = camera.position.x + direction.x;
-        const newZ = camera.position.z + direction.z;
-        const halfSize = roomSize / 2 - 1;
-        
-        if (Math.abs(newX) < halfSize) camera.position.x = newX;
-        if (Math.abs(newZ) < halfSize) camera.position.z = newZ;
-        
-        // Keep camera at standing height
-        camera.position.y = 1.6;
+
+    function focusMemory(memory) {
+      document.querySelectorAll('.memory-item').forEach(i => i.classList.remove('active'));
+      if (memory.userData.sidebarItem) {
+        memory.userData.sidebarItem.classList.add('active');
       }
-      
-      renderer.render(scene, camera);
+
+      memoryObjects.forEach(obj => {
+        obj.material.emissiveIntensity = 0.25;
+        if (obj.userData.glow) obj.userData.glow.material.opacity = 0.18;
+      });
+
+      memory.material.emissiveIntensity = 1.2;
+      if (memory.userData.glow) memory.userData.glow.material.opacity = 0.55;
+
+      const lookPosition = memory.position.clone();
+      const offset = new THREE.Vector3(0, 1.2, 2.8).applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * 0.2 - 0.1);
+      const targetPosition = lookPosition.clone().add(offset);
+
+      camera.position.lerp(targetPosition, 0.4);
+      camera.lookAt(memory.position);
     }
-    
-    // Keyboard controls
-    const keys = {};
-    window.addEventListener('keydown', (e) => {
-      keys[e.key.toLowerCase()] = true;
-      keys[e.key] = true;
-      
-      if (e.key === 'Escape' && isPlacing) {
-        cancelPlacement();
+
+    function highlightNone() {
+      memoryObjects.forEach(obj => {
+        obj.material.emissiveIntensity = 0.25;
+        if (obj.userData.glow) obj.userData.glow.material.opacity = 0.18;
+        if (obj.userData.sidebarItem) obj.userData.sidebarItem.classList.remove('active');
+      });
+    }
+
+    function saveState() {
+      const payload = memoryObjects.map(obj => ({
+        title: obj.userData.title,
+        description: obj.userData.description,
+        color: obj.userData.color,
+        shape: obj.userData.shape,
+        position: obj.position.toArray()
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        data.forEach(entry => {
+          const position = new THREE.Vector3().fromArray(entry.position);
+          createMemoryObject(position, entry.title, entry.description, entry.color, entry.shape || 'sphere');
+        });
+      } catch (err) {
+        console.warn('Failed to load saved palace:', err);
+      }
+    }
+
+    function clearMemories() {
+      memoryObjects.splice(0, memoryObjects.length).forEach(obj => disposeMemoryObject(obj));
+      document.getElementById('memory-list').innerHTML = `
+        <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
+          <div class="memory-color" style="background: #00f0ff;"></div>
+          <h3>Example: Kitchen Table</h3>
+          <p>Remember to buy groceries</p>
+          <small>Sphere</small>
+        </div>
+        <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
+          <div class="memory-color" style="background: #ff00aa;"></div>
+          <h3>Example: Bookshelf</h3>
+          <p>Important dates for history exam</p>
+          <small>Pillar</small>
+        </div>
+      `;
+      localStorage.removeItem(STORAGE_KEY);
+      highlightNone();
+    }
+
+    // Recall mode
+    const recallPanel = document.getElementById('recall-panel');
+    const recallTitle = document.getElementById('recall-title');
+    const recallDescription = document.getElementById('recall-description');
+    const recallBtn = document.getElementById('recall-btn');
+
+    function enterRecallMode() {
+      if (!memoryObjects.length) {
+        alert('Add at least one memory to start recall mode.');
+        return;
+      }
+      isRecallMode = true;
+      recallIndex = 0;
+      recallPanel.classList.add('active');
+      recallBtn.dataset.active = 'true';
+      updateInstructions();
+      if (usePointerLock) controls.unlock();
+      showRecallStep();
+    }
+
+    function exitRecallMode() {
+      isRecallMode = false;
+      recallPanel.classList.remove('active');
+      recallBtn.dataset.active = 'false';
+      updateInstructions();
+      highlightNone();
+    }
+
+    function showRecallStep() {
+      const memory = memoryObjects[recallIndex];
+      recallTitle.textContent = memory.userData.title;
+      recallDescription.textContent = memory.userData.description || 'No description recorded.';
+      focusMemory(memory);
+    }
+
+    document.getElementById('recall-next').addEventListener('click', () => {
+      if (!isRecallMode) return;
+      recallIndex = (recallIndex + 1) % memoryObjects.length;
+      showRecallStep();
+    });
+
+    document.getElementById('recall-prev').addEventListener('click', () => {
+      if (!isRecallMode) return;
+      recallIndex = (recallIndex - 1 + memoryObjects.length) % memoryObjects.length;
+      showRecallStep();
+    });
+
+    document.getElementById('recall-exit').addEventListener('click', exitRecallMode);
+    recallBtn.addEventListener('click', () => {
+      if (isRecallMode) {
+        exitRecallMode();
+      } else {
+        enterRecallMode();
       }
     });
-    
-    window.addEventListener('keyup', (e) => {
-      keys[e.key.toLowerCase()] = false;
-      keys[e.key] = false;
-    });
-    
-    // Mouse click for placement
-    window.addEventListener('click', (e) => {
-      if (!isPlacing || !controls.isLocked) return;
-      
-      // Calculate mouse position in normalized device coordinates
-      const rect = renderer.domElement.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      
-      // Update raycaster
-      raycaster.setFromCamera(mouse, camera);
-      
-      // Check intersection with floor
-      const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-      const intersectionPoint = new THREE.Vector3();
-      raycaster.ray.intersectPlane(floorPlane, intersectionPoint);
-      
-      // Keep within room bounds
-      const halfSize = roomSize / 2 - 1;
-      intersectionPoint.x = Math.max(-halfSize, Math.min(halfSize, intersectionPoint.x));
-      intersectionPoint.z = Math.max(-halfSize, Math.min(halfSize, intersectionPoint.z));
-      intersectionPoint.y = 0.3; // Slightly above floor
-      
-      // Show placement form
-      document.getElementById('overlay').classList.add('active');
-      document.getElementById('memory-title').focus();
-      
-      // Store placement position
-      window.currentPlacementPosition = intersectionPoint;
-    });
-    
-    // UI Event Handlers
+
+    // Event handlers
     document.getElementById('place-btn').addEventListener('click', () => {
-      if (!controls.isLocked) {
+      if (isRecallMode) exitRecallMode();
+      if (usePointerLock && !controls.isLocked) {
         controls.lock();
       }
       isPlacing = true;
-      document.getElementById('instructions').innerHTML = `
-        <h3>Placement Mode</h3>
-        <p>Click anywhere in the room to place a memory object. Press <kbd>Escape</kbd> to cancel.</p>
-      `;
+      document.getElementById('overlay').classList.add('active');
+      document.getElementById('memory-title').focus();
+      updateInstructions(true);
     });
-    
+
     document.getElementById('clear-btn').addEventListener('click', () => {
       if (confirm('Clear all memory objects?')) {
-        memoryObjects.forEach(obj => scene.remove(obj));
-        memoryObjects = [];
-        document.getElementById('memory-list').innerHTML = `
-          <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
-            <div class="memory-color" style="background: #00f0ff;"></div>
-            <h3>Example: Kitchen Table</h3>
-            <p>Remember to buy groceries</p>
-          </div>
-          <div class="memory-item" style="opacity: 0.6; pointer-events: none;">
-            <div class="memory-color" style="background: #ff00aa;"></div>
-            <h3>Example: Bookshelf</h3>
-            <p>Important dates for history exam</p>
-          </div>
-        `;
+        clearMemories();
       }
     });
-    
-    document.getElementById('cancel-btn').addEventListener('click', cancelPlacement);
-    
+
+    document.getElementById('cancel-btn').addEventListener('click', () => {
+      cancelPlacement();
+    });
+
     document.getElementById('save-btn').addEventListener('click', () => {
       const title = document.getElementById('memory-title').value.trim();
       const description = document.getElementById('memory-description').value.trim();
-      
+
       if (!title) {
         alert('Please enter a title for your memory');
         return;
       }
-      
+
+      if (!window.currentPlacementPosition) {
+        alert('Choose a spot in the room for this memory.');
+        return;
+      }
+
       createMemoryObject(
-        window.currentPlacementPosition,
+        window.currentPlacementPosition.clone(),
         title,
         description,
-        selectedColor
+        selectedColor,
+        selectedShape
       );
-      
+
       cancelPlacement();
     });
-    
-    // Color picker
+
+    document.getElementById('memory-shape').addEventListener('change', (event) => {
+      selectedShape = event.target.value;
+    });
+
     document.querySelectorAll('.color-option').forEach(option => {
       option.addEventListener('click', () => {
         document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
@@ -813,41 +1221,190 @@
         selectedColor = option.dataset.color;
       });
     });
-    
+
     function cancelPlacement() {
       isPlacing = false;
+      window.currentPlacementPosition = null;
       document.getElementById('overlay').classList.remove('active');
       document.getElementById('memory-title').value = '';
       document.getElementById('memory-description').value = '';
-      document.getElementById('instructions').innerHTML = `
+      document.getElementById('memory-shape').value = 'sphere';
+      selectedShape = 'sphere';
+      updateInstructions();
+    }
+
+    function updateInstructions(isPlacement = false) {
+      const instructions = document.getElementById('instructions');
+      if (isRecallMode) {
+        instructions.innerHTML = `
+          <h3>Recall Mode</h3>
+          <p>Step through each locus and rehearse aloud what is stored there. Use <kbd>Next</kbd> / <kbd>Prev</kbd> or tap highlights.</p>
+        `;
+        return;
+      }
+
+      if (isPlacement) {
+        instructions.innerHTML = `
+          <h3>Placement Mode</h3>
+          <p>${usePointerLock ? 'Click on the floor to anchor your memory object. Press <kbd>Escape</kbd> to cancel.' : 'Tap on the floor to anchor your memory object. Use the pads to move and look around.'}</p>
+        `;
+        return;
+      }
+
+      instructions.innerHTML = `
         <h3>Controls</h3>
-        <p><kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move • <kbd>Mouse</kbd> to look around • <kbd>Click</kbd> to place memory object • <kbd>Escape</kbd> to exit placement mode</p>
-        <p>Click "Place Memory" to start adding objects to your palace. Each object represents something you want to remember.</p>
+        ${usePointerLock
+          ? '<p><kbd>Explore</kbd> to lock the cursor • <kbd>WASD</kbd> or <kbd>Arrow Keys</kbd> to move • <kbd>Mouse</kbd> to look around • <kbd>Place Memory</kbd> to add an object</p>'
+          : '<p>Use the left pad to move • Drag on the right pad to look • Tap the room to place memory objects • Pinch zoom with two fingers</p>'}
+        <p>Highlight memories from the list to refocus on them instantly.</p>
       `;
     }
-    
-    // Initialize
+
+    updateInstructions();
+
+    // Placement handler
+    function handlePlacement(event) {
+      if (!isPlacing) return;
+      if (isRecallMode) return;
+      if (usePointerLock && !controls.isLocked) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      const clientX = event.clientX ?? (event.touches && event.touches[0].clientX);
+      const clientY = event.clientY ?? (event.touches && event.touches[0].clientY);
+      if (clientX == null || clientY == null) return;
+
+      pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+      const intersectionPoint = new THREE.Vector3();
+      raycaster.ray.intersectPlane(placementPlane, intersectionPoint);
+
+      const halfSize = roomSize / 2 - 1;
+      intersectionPoint.x = Math.max(-halfSize, Math.min(halfSize, intersectionPoint.x));
+      intersectionPoint.z = Math.max(-halfSize, Math.min(halfSize, intersectionPoint.z));
+      intersectionPoint.y = 0.3;
+
+      window.currentPlacementPosition = intersectionPoint;
+    }
+
+    renderer.domElement.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      handlePlacement(event);
+    });
+
+    if (isMobile) {
+      renderer.domElement.addEventListener('touchstart', (event) => {
+        if (event.touches.length === 1) {
+          handlePlacement(event);
+        }
+      }, { passive: true });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isPlacing) {
+        cancelPlacement();
+      }
+      if (e.key === 'Escape' && isRecallMode) {
+        exitRecallMode();
+      }
+    });
+
+    // Resize handler
+    function onWindowResize() {
+      const width = container.offsetWidth;
+      const height = container.offsetHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+
+    window.addEventListener('resize', onWindowResize);
+
+    // Animation loop
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+    });
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    function applyDesktopMovement() {
+      const speed = 0.12;
+      const direction = new THREE.Vector3();
+
+      if (keys['w'] || keys['arrowup']) direction.z -= speed;
+      if (keys['s'] || keys['arrowdown']) direction.z += speed;
+      if (keys['a'] || keys['arrowleft']) direction.x -= speed;
+      if (keys['d'] || keys['arrowright']) direction.x += speed;
+
+      const newPosition = camera.position.clone().add(new THREE.Vector3(direction.x, 0, direction.z).applyQuaternion(camera.quaternion));
+      const halfSize = roomSize / 2 - 1;
+
+      camera.position.x = THREE.MathUtils.clamp(newPosition.x, -halfSize, halfSize);
+      camera.position.z = THREE.MathUtils.clamp(newPosition.z, -halfSize, halfSize);
+      camera.position.y = 1.6;
+    }
+
+    function applyMobileMovement() {
+      if (movementVector.lengthSq() < 0.0001) return;
+      const moveSpeed = 0.09;
+      const moveDirection = new THREE.Vector3(movementVector.x, 0, movementVector.y);
+      moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), -mobileYaw + Math.PI / 2);
+
+      const newPosition = camera.position.clone().add(moveDirection.multiplyScalar(moveSpeed));
+      const halfSize = roomSize / 2 - 1;
+      camera.position.x = THREE.MathUtils.clamp(newPosition.x, -halfSize, halfSize);
+      camera.position.z = THREE.MathUtils.clamp(newPosition.z, -halfSize, halfSize);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (usePointerLock && controls.isLocked && !isRecallMode) {
+        applyDesktopMovement();
+      }
+
+      if (isMobile && !isRecallMode) {
+        applyMobileMovement();
+        camera.rotation.order = 'YXZ';
+        camera.rotation.y = mobileYaw;
+        camera.rotation.x = mobilePitch;
+      }
+
+      renderer.render(scene, camera);
+    }
+
     createRoom();
     setupLighting();
-    window.addEventListener('resize', onWindowResize);
+    loadState();
+    updateInstructions();
     animate();
-    
-    // Add some example memories
-    setTimeout(() => {
-      createMemoryObject(
-        new THREE.Vector3(-3, 0.3, -3),
-        'Kitchen Table',
-        'Remember to buy groceries',
-        '#00f0ff'
-      );
-      
-      createMemoryObject(
-        new THREE.Vector3(3, 0.3, 3),
-        'Bookshelf',
-        'Important dates for history exam',
-        '#ff00aa'
-      );
-    }, 1000);
+
+    // Seed demo memories if nothing saved
+    if (!memoryObjects.length) {
+      setTimeout(() => {
+        const first = createMemoryObject(
+          new THREE.Vector3(-3, 0.3, -3),
+          'Kitchen Table',
+          'Remember to buy groceries',
+          '#00f0ff',
+          'sphere'
+        );
+
+        const second = createMemoryObject(
+          new THREE.Vector3(3, 0.55, 3),
+          'Bookshelf',
+          'Important dates for history exam',
+          '#ff00aa',
+          'pillar'
+        );
+
+        focusMemory(first);
+        setTimeout(() => highlightNone(), 1200);
+      }, 600);
+    }
   </script>
 </body>
 </html>
