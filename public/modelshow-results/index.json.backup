@@ -1,0 +1,145 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-03-06T17:10:57.085820Z",
+  "count": 5,
+  "results": [
+    {
+      "id": "generate-a-comprehensive-creative-list-2026-03-06-1644",
+      "slug": "generate-a-comprehensive-creative-list",
+      "timestamp": "2026-03-06T16:44:00Z",
+      "prompt": "Generate a comprehensive creative list of ideas for daily or weekly cronjob prompts that would help Sky make the most of the capabilities of the OpenClaw agentic platform and others like it. Focus on practical, valuable automation that leverages OpenClaw's unique features: multi-model capabilities, sub-agent orchestration, file system access, web tools, messaging, cron management, and integration with external services.",
+      "prompt_preview": "Generate a comprehensive creative list of ideas for daily or weekly cronjob prompts that would help ...",
+      "models_queried": [
+        "openrouter/x-ai/grok-4",
+        "openrouter/moonshotai/kimi-k2.5",
+        "google/gemini-2.5-flash"
+      ],
+      "models_queried_count": 3,
+      "judge_model": "openrouter/anthropic/claude-sonnet-4.6",
+      "winner_model": "openrouter/moonshotai/kimi-k2.5",
+      "winner_score": 9.2,
+      "total_duration_ms": 180000,
+      "json_url": "/modelshow-results/generate-a-comprehensive-creative-list-2026-03-06-1644.json",
+      "md_url": "/modelshow-results/generate-a-comprehensive-creative-list-2026-03-06-1644.md",
+      "tags": [
+        "generate",
+        "comprehensive",
+        "creative",
+        "list"
+      ]
+    },
+    {
+      "id": "list-6-odd-numbers-that-2026-03-05-0317",
+      "slug": "list-6-odd-numbers-that",
+      "timestamp": "2026-03-05T03:17:00Z",
+      "prompt": "List 6 odd numbers that don't contain the letter 'e'",
+      "prompt_preview": "List 6 odd numbers that don't contain the letter 'e'",
+      "models_queried": [
+        "google/gemini-2.5-pro",
+        "openrouter/deepseek/deepseek-v3.2",
+        "openrouter/anthropic/claude-sonnet-4.6",
+        "openrouter/x-ai/grok-4",
+        "openrouter/moonshotai/kimi-k2.5",
+        "openrouter/openai/gpt-5"
+      ],
+      "models_queried_count": 6,
+      "judge_model": "openrouter/google/gemini-3.1-pro-preview",
+      "winner_model": "openrouter/anthropic/claude-sonnet-4.6",
+      "winner_score": 10.0,
+      "total_duration_ms": 0,
+      "json_url": "/modelshow-results/list-6-odd-numbers-that-2026-03-05-0317.json",
+      "md_url": "/modelshow-results/list-6-odd-numbers-that-2026-03-05-0317.md",
+      "tags": [
+        "math",
+        "riddle",
+        "trick-question",
+        "spelling",
+        "logic"
+      ]
+    },
+    {
+      "id": "in-exactly-3-sentences,-explain-2026-03-02-1227",
+      "slug": "in-exactly-3-sentences,-explain",
+      "timestamp": "2026-03-02T12:27:00Z",
+      "prompt": "In exactly 3 sentences, explain why prime numbers are fundamental to internet security and what makes them mathematically special for this purpose.",
+      "prompt_preview": "In exactly 3 sentences, explain why prime numbers are fundamental to internet security and what make...",
+      "models_queried": [
+        "google/gemini-2.5-pro",
+        "openrouter/openai/gpt-5",
+        "openrouter/deepseek/deepseek-v3.2",
+        "openrouter/moonshotai/kimi-k2.5"
+      ],
+      "models_queried_count": 4,
+      "judge_model": "deepseek/deepseek-reasoner",
+      "winner_model": "google/gemini-2.5-pro",
+      "winner_score": 9.0,
+      "total_duration_ms": 18070,
+      "json_url": "/modelshow-results/in-exactly-3-sentences,-explain-2026-03-02-1227.json",
+      "md_url": "/modelshow-results/in-exactly-3-sentences,-explain-2026-03-02-1227.md",
+      "tags": [
+        "mathematics",
+        "cryptography",
+        "internet-security",
+        "prime-numbers",
+        "encryption",
+        "rsa"
+      ]
+    },
+    {
+      "id": "which-came-first-the-chicken-2026-02-28-0220",
+      "slug": "which-came-first-the-chicken",
+      "timestamp": "2026-02-28T02:20:00Z",
+      "prompt": "which came first the chicken or the egg?",
+      "prompt_preview": "which came first the chicken or the egg?",
+      "models_queried": [
+        "anthropic/claude-opus-4-6",
+        "google/gemini-2.5-pro",
+        "openai/gpt-5",
+        "x-ai/grok-4"
+      ],
+      "models_queried_count": 4,
+      "judge_model": "openrouter/google/gemini-3.1-pro-preview",
+      "winner_model": "anthropic/claude-opus-4-6",
+      "winner_score": 9.5,
+      "total_duration_ms": 28000,
+      "json_url": "/modelshow-results/which-came-first-the-chicken-2026-02-28-0220.json",
+      "md_url": "/modelshow-results/which-came-first-the-chicken-2026-02-28-0220.md",
+      "tags": [
+        "philosophy",
+        "science",
+        "humor",
+        "thought-experiment",
+        "evolution",
+        "biology"
+      ]
+    },
+    {
+      "id": "please-explain-in-one-concise-2026-02-28-0218",
+      "slug": "please-explain-in-one-concise",
+      "timestamp": "2026-02-28T02:18:00Z",
+      "prompt": "please explain in one concise paragraph how LLMs work",
+      "prompt_preview": "please explain in one concise paragraph how LLMs work",
+      "models_queried": [
+        "anthropic/claude-opus-4-6",
+        "google/gemini-2.5-pro",
+        "openrouter/deepseek/deepseek-v3.2",
+        "openrouter/x-ai/grok-4"
+      ],
+      "models_queried_count": 4,
+      "judge_model": "openrouter/google/gemini-3.1-pro-preview",
+      "winner_model": "anthropic/claude-opus-4-6",
+      "winner_score": 9.5,
+      "total_duration_ms": 22000,
+      "json_url": "/modelshow-results/please-explain-in-one-concise-2026-02-28-0218.json",
+      "md_url": "/modelshow-results/please-explain-in-one-concise-2026-02-28-0218.md",
+      "tags": [
+        "artificial-intelligence",
+        "llm",
+        "explanation",
+        "education",
+        "technology",
+        "ai-models"
+      ]
+    }
+  ]
+}

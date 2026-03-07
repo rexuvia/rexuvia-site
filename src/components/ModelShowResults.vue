@@ -1,5 +1,15 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onErrorCaptured } from 'vue'
+
+// Error handling
+onErrorCaptured((err, instance, info) => {
+  console.error('ModelShowResults Vue error:', err, info);
+  error.value = `Component error: ${err.message}`;
+  return false; // Prevent error from propagating
+})
+
+// Debug logging
+console.log('ModelShowResults component setup complete');
 
 // ── Types ──────────────────────────────────────────────────────────────
 /**
@@ -40,11 +50,19 @@ let knownIds           = new Set()
 const filteredResults = computed(() => {
   const q = filterText.value.trim().toLowerCase()
   if (!q) return results.value
-  return results.value.filter(r =>
-    r.prompt.toLowerCase().includes(q) ||
-    r.winner_model.toLowerCase().includes(q) ||
-    r.models_queried.some(m => m.toLowerCase().includes(q))
-  )
+  return results.value.filter(r => {
+    // Search in prompt
+    if (r.prompt.toLowerCase().includes(q)) return true
+    // Search in winner model
+    if (r.winner_model.toLowerCase().includes(q)) return true
+    // Search in judge model
+    if (r.judge_model && r.judge_model.toLowerCase().includes(q)) return true
+    // Search in models queried
+    if (r.models_queried.some(m => m.toLowerCase().includes(q))) return true
+    // Search in keywords/tags
+    if (r.tags && r.tags.some(tag => tag.toLowerCase().includes(q))) return true
+    return false
+  })
 })
 
 const sortedResults = computed(() => {
@@ -72,12 +90,30 @@ const hasFilter  = computed(() => filterText.value.trim().length > 0)
 function shortModel(model) {
   // "google/gemini-2.5-pro" → "gemini-2.5-pro"
   // "openrouter/openai/gpt-5" → "gpt-5"
+  if (!model) {
+    // Don't log warnings in production - it's expected for some results
+    // console.warn('shortModel called with falsy value:', model);
+    return '—'
+  }
+  // Handle both string and object/array cases
+  if (typeof model !== 'string') {
+    return '—'
+  }
   return model.split('/').pop()
 }
 
 function fmtDate(isoStr) {
+  // Display date only — no time component shown in the main table
   return new Intl.DateTimeFormat('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
+  }).format(new Date(isoStr))
+}
+
+function fmtDateFull(isoStr) {
+  // For expanded detail view: date + time (UTC, no raw ISO string)
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short'
   }).format(new Date(isoStr))
 }
 
@@ -170,20 +206,9 @@ onMounted(() => {
     <!-- Section header -->
     <h2 class="section-title">Model Comparisons</h2>
     
-    <!-- Skill explanation -->
+    <!-- Section explanation -->
     <div class="skill-explanation">
-      <p>
-        <a href="https://clawhub.com/skills/modelshow" target="_blank" rel="noopener" class="modelshow-link"><strong>ModelShow</strong></a> is an OpenClaw skill that runs blind comparisons between AI models. 
-        It queries multiple models with an identical prompt, strips away their identities, 
-        and has a judge model blindly rank the responses based on objective quality. This architectural de-anonymization 
-        removes brand bias and reliably reveals which models actually perform best in the real world.
-      </p>
-      <div class="skill-features">
-        <span class="skill-feature">🔍 Blind judging</span>
-        <span class="skill-feature">⚖️ Multiple judge models</span>
-        <span class="skill-feature">📊 Detailed scoring</span>
-        <span class="skill-feature">🔄 Real-time updates</span>
-      </div>
+      <p>Results from experiments I run regularly to evaluate how different AI models handle various prompts—from factual questions to creative challenges. Each comparison uses <a href="https://clawhub.com/skills/modelshow" target="_blank" rel="noopener" class="modelshow-link"><strong>ModelShow</strong></a>, an OpenClaw skill that conducts double-blind tests where model names are hidden and a judge ranks responses purely on merit.</p>
     </div>
 
     <!-- Error banner -->
@@ -199,7 +224,7 @@ onMounted(() => {
           v-model="filterText"
           class="ms-search"
           type="search"
-          placeholder="Filter by prompt, model…"
+          placeholder="Filter by prompt, model, keyword…"
           aria-label="Filter results"
         />
         <button v-if="hasFilter" class="ms-clear-btn" @click="clearFilter" aria-label="Clear filter">✕</button>
@@ -246,9 +271,12 @@ onMounted(() => {
               </td>
               <td class="ms-td ms-td-prompt">
                 <span class="ms-prompt-text">{{ r.prompt_preview }}</span>
+                <div v-if="r.tags && r.tags.length > 0" class="ms-keywords">
+                  <span v-for="tag in r.tags" :key="tag" class="ms-keyword-tag">{{ tag }}</span>
+                </div>
               </td>
               <td class="ms-td ms-td-judge">
-                <span class="ms-judge-name">{{ shortModel(r.judge_model) }}</span>
+                <span class="ms-judge-name">{{ shortModel(r.judge_model || r.meta?.judge_model) }}</span>
               </td>
               <td class="ms-td ms-td-winner">
                 🏆 <span class="ms-winner-name">{{ shortModel(r.winner_model) }}</span>
@@ -289,10 +317,11 @@ onMounted(() => {
 
                   <!-- Meta row -->
                   <div class="ms-detail-meta-row">
+                    <span class="ms-chip">📅 {{ fmtDateFull(expandedFull.meta.timestamp) }}</span>
                     <span class="ms-chip">⚖️ Judge: {{ shortModel(expandedFull.meta.judge_model) }}</span>
-                    <span class="ms-chip">👁 Mode: {{ expandedFull.meta.judging_mode }}</span>
-                    <span class="ms-chip">⏱ {{ fmtDuration(expandedFull.metadata.total_duration_ms) }}</span>
-                    <span v-if="expandedFull.metadata.failed_models > 0" class="ms-chip ms-chip-warn">
+                    <span class="ms-chip">👁 Mode: {{ expandedFull.meta.judging_mode === 'blind' ? 'double-blind' : expandedFull.meta.judging_mode }}</span>
+                    <span v-if="expandedFull.metadata && expandedFull.metadata.total_duration_ms > 0" class="ms-chip">⏱ {{ fmtDuration(expandedFull.metadata.total_duration_ms) }}</span>
+                    <span v-if="expandedFull.metadata && expandedFull.metadata.failed_models > 0" class="ms-chip ms-chip-warn">
                       ⚠️ {{ expandedFull.metadata.failed_models }} failed
                     </span>
                   </div>
@@ -320,8 +349,12 @@ onMounted(() => {
 
                   <!-- Judge analysis -->
                   <div class="ms-judge-analysis">
-                    <span class="ms-detail-label">Judge's Analysis</span>
-                    <p>{{ expandedFull.judge_analysis }}</p>
+                    <span class="ms-detail-label">Judge's Overall Assessment</span>
+                    <p>{{ expandedFull.judge_analysis || expandedFull.judge_analysis_full }}</p>
+                    <details v-if="expandedFull.judge_analysis_full && expandedFull.judge_analysis !== expandedFull.judge_analysis_full" class="ms-response-details" style="margin-top: 10px;">
+                      <summary class="ms-response-summary">Full judge report (per-model rankings + analysis)</summary>
+                      <div class="ms-response-body">{{ expandedFull.judge_analysis_full }}</div>
+                    </details>
                   </div>
 
                   <!-- Raw links -->
@@ -363,7 +396,7 @@ onMounted(() => {
 <style scoped>
 /* ── Section wrapper ────────────────────────────────── */
 .modelshow-section {
-  padding: 36px 0;
+  padding: 0;
 }
 
 /* ── Error banner ───────────────────────────────────── */
@@ -805,6 +838,39 @@ details[open] .ms-response-summary::before { content: '▼ '; }
 }
 .ms-clear-btn-inline:hover { color: #e0e0e0; }
 
+/* ── Keywords ───────────────────────────────────────── */
+.ms-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.ms-keyword-tag {
+  background: rgba(100, 255, 218, 0.1);
+  color: #64ffda;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+/* ── Section Explanation Box ─────────────────────────── */
+.skill-explanation {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border-left: 3px solid #00f0ff;
+}
+
+.skill-explanation p {
+  margin: 0;
+  line-height: 1.5;
+  color: #999;
+  font-size: 0.85rem;
+}
+
 /* ── Mobile ─────────────────────────────────────────── */
 @media (max-width: 600px) {
   .ms-controls {
@@ -812,8 +878,7 @@ details[open] .ms-response-summary::before { content: '▼ '; }
     align-items: stretch;
   }
 
-      /* On small screens, hide less-critical columns */
-  .ms-th:nth-child(3),  /* Models count */
+  .ms-th:nth-child(3),
   .ms-td:nth-child(3) {
     display: none;
   }
@@ -844,63 +909,12 @@ details[open] .ms-response-summary::before { content: '▼ '; }
     align-items: flex-start;
   }
 
-  /* ── Skill explanation ────────────────────────────── */
   .skill-explanation {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    padding: 18px 22px;
-    margin-bottom: 28px;
-    border-left: 4px solid #00f0ff;
+    padding: 12px 14px;
+    margin-bottom: 16px;
   }
-
   .skill-explanation p {
-    margin: 0 0 14px 0;
-    line-height: 1.5;
-    color: #d0d0d0;
-  }
-
-  .skill-features {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 12px;
-  }
-
-  .skill-feature {
-    background: rgba(0, 240, 255, 0.1);
-    color: #00f0ff;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 500;
-  }
-
-  .skill-link {
-    color: #64ffda;
-    text-decoration: none;
-    border-bottom: 1px dashed rgba(100, 255, 218, 0.3);
-    transition: all 0.2s ease;
-  }
-
-  .skill-link:hover {
-    color: #00ff88;
-    border-bottom-color: #00ff88;
-  }
-
-  @media (max-width: 600px) {
-    .skill-explanation {
-      padding: 14px 16px;
-      margin-bottom: 22px;
-    }
-
-    .skill-features {
-      gap: 8px;
-    }
-
-    .skill-feature {
-      font-size: 0.8rem;
-      padding: 5px 10px;
-    }
+    font-size: 0.82rem;
   }
 }
 
@@ -920,9 +934,4 @@ details[open] .ms-response-summary::before { content: '▼ '; }
   color: inherit;
 }
 
-@media (min-width: 600px) {
-  .modelshow-section {
-    padding: 60px 0;
-  }
-}
 </style>
