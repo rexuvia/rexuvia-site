@@ -18,9 +18,9 @@ onMounted(async () => {
       // Sort games by most recent date first
       // Use last_updated if available, otherwise use date
       games.value = gameList.sort((a, b) => {
-        const dateA = a.last_updated || a.date
-        const dateB = b.last_updated || b.date
-        return new Date(dateB) - new Date(dateA)
+        const dateA = a.last_updated || a.date || '1970-01-01'
+        const dateB = b.last_updated || b.date || '1970-01-01'
+        return new Date(dateB).getTime() - new Date(dateA).getTime()
       })
     }
   } catch (e) {

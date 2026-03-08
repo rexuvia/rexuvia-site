@@ -1,15 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, onErrorCaptured } from 'vue'
 
-// Error handling
-onErrorCaptured((err, instance, info) => {
-  console.error('ModelShowResults Vue error:', err, info);
-  error.value = `Component error: ${err.message}`;
-  return false; // Prevent error from propagating
-})
 
-// Debug logging
-console.log('ModelShowResults component setup complete');
 
 // ── Types ──────────────────────────────────────────────────────────────
 /**
@@ -34,6 +26,14 @@ const INDEX_URL = '/modelshow-results/index.json'
 const results          = ref([])
 const loading          = ref(true)        // initial load
 const error            = ref(null)
+
+// Error handling
+onErrorCaptured((err, instance, info) => {
+  console.error('ModelShowResults Vue error:', err, info);
+  error.value = `Component error: ${err.message}`;
+  return false; // Prevent error from propagating
+})
+
 const newIds           = ref(new Set())   // IDs that appeared since first load
 
 const expandedId       = ref(null)        // currently open row
