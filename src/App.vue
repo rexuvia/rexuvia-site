@@ -239,36 +239,66 @@ html, body {
 
 /* ── Hero Logo ──────────────────────────────────────── */
 .hero-logo {
-  padding-top: 24px;
-  padding-bottom: 30px;
+  padding-top: 16px;
+  padding-bottom: 20px;
   text-align: center;
   overflow: hidden;
 }
 
 @media (min-width: 600px) {
   .hero-logo {
-    padding-top: 48px;
+    padding-top: 32px;
+    padding-bottom: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-logo {
+    padding-top: 40px;
+    padding-bottom: 28px;
   }
 }
 
 /* ── Intro ──────────────────────────────────────────── */
 .intro {
-  padding-bottom: 24px;
+  padding-bottom: 20px;
   text-align: center;
 }
 
 @media (min-width: 600px) {
   .intro {
-    padding-bottom: 40px;
+    padding-bottom: 28px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .intro {
+    padding-bottom: 32px;
   }
 }
 
 .intro-text {
-  font-size: clamp(1rem, 2.5vw, 1.25rem);
-  line-height: 1.8;
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+  line-height: 1.6;
   color: #b0b0b0;
-  max-width: 700px;
+  max-width: 680px;
   margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 600px) {
+  .intro-text {
+    padding: 0;
+    line-height: 1.65;
+  }
+}
+
+@media (min-width: 1024px) {
+  .intro-text {
+    max-width: 720px;
+    font-size: 1.15rem;
+    line-height: 1.7;
+  }
 }
 
 .intro-text a {
@@ -276,6 +306,7 @@ html, body {
   text-decoration: none;
   border-bottom: 1px solid rgba(232, 116, 97, 0.3);
   transition: color 0.2s, border-color 0.2s;
+  font-weight: 500;
 }
 
 .intro-text a:hover {
@@ -285,20 +316,39 @@ html, body {
 
 .intro-text strong {
   color: #fff;
+  font-weight: 600;
 }
 
 /* ── Sections ───────────────────────────────────────── */
 .section {
-  padding: 36px 0;
+  padding: 28px 0;
+}
+
+@media (min-width: 600px) {
+  .section {
+    padding: 32px 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .section {
+    padding: 36px 0;
+  }
 }
 
 .section-title {
   font-family: 'Orbitron', sans-serif;
   font-weight: 700;
-  font-size: clamp(1.1rem, 3vw, 1.8rem);
+  font-size: clamp(1rem, 2.5vw, 1.6rem);
   color: #fff;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   letter-spacing: 0.05em;
+}
+
+@media (min-width: 600px) {
+  .section-title {
+    margin-bottom: 8px;
+  }
 }
 
 .section-subtitle {
@@ -337,40 +387,70 @@ html, body {
 
 /* ── Content Slider ────────────────────────────────── */
 .content-slider-section {
-  padding-top: 24px;
+  padding-top: 20px;
+}
+
+@media (min-width: 600px) {
+  .content-slider-section {
+    padding-top: 24px;
+  }
 }
 
 .slider-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .slider-header {
+    margin-bottom: 28px;
+    gap: 16px;
+  }
 }
 
 .slider-toggle {
   display: flex;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  padding: 4px;
+  border-radius: 10px;
+  padding: 3px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (min-width: 600px) {
+  .slider-toggle {
+    border-radius: 12px;
+    padding: 4px;
+  }
 }
 
 .slider-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: 6px;
+  padding: 8px 16px;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   color: #888;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+@media (min-width: 600px) {
+  .slider-btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    gap: 8px;
+    border-radius: 8px;
+  }
 }
 
 .slider-btn:hover {
@@ -385,7 +465,13 @@ html, body {
 }
 
 .slider-icon {
-  font-size: 1.1rem;
+  font-size: 1rem;
+}
+
+@media (min-width: 600px) {
+  .slider-icon {
+    font-size: 1.1rem;
+  }
 }
 
 .slider-content {
@@ -416,8 +502,12 @@ html, body {
   .slider-btn {
     flex: 1;
     justify-content: center;
-    padding: 10px 12px;
-    font-size: 0.85rem;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+  
+  .slider-icon {
+    font-size: 0.9rem;
   }
 }
 
@@ -425,19 +515,33 @@ html, body {
 .games-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 8px;
+}
+
+@media (min-width: 600px) {
+  .games-grid {
+    gap: 10px;
+  }
 }
 
 .game-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 12px 14px;
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(255,255,255,0.03);
   transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+@media (min-width: 600px) {
+  .game-card {
+    padding: 14px 16px;
+    border-radius: 10px;
+    gap: 12px;
+  }
 }
 
 .game-card:hover {
@@ -450,14 +554,26 @@ html, body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   text-decoration: none;
 }
 
+@media (min-width: 600px) {
+  .game-card-main {
+    gap: 4px;
+  }
+}
+
 .game-card-name {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #e0e0e0;
   font-weight: 500;
+}
+
+@media (min-width: 600px) {
+  .game-card-name {
+    font-size: 0.9rem;
+  }
 }
 
 .game-card-meta {
@@ -468,8 +584,15 @@ html, body {
 
 .game-card-date,
 .game-card-updated {
-  font-size: 0.7rem;
-  color: #555;
+  font-size: 0.65rem;
+  color: #666;
+}
+
+@media (min-width: 600px) {
+  .game-card-date,
+  .game-card-updated {
+    font-size: 0.7rem;
+  }
 }
 
 .game-card-updated {
