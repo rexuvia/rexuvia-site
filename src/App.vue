@@ -1,30 +1,30 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import RexuviaLogo from './components/RexuviaLogo.vue'
+import ModelShowResults from './components/ModelShowResults.vue'
 
 const currentYear = ref(new Date().getFullYear())
 const games = ref([])
-const generatedContent = ref('')
+const activeTab = ref('modelshow') // 'modelshow' or 'games'
 
 
 onMounted(async () => {
   // Load game list
   try {
     const res = await fetch('/game_list.json')
-    if (res.ok) games.value = await res.json()
-  } catch (e) {
-    console.warn('Could not load game list:', e)
-  }
-
-  // Load generated content
-  try {
-    const res = await fetch('/generated-content.json')
     if (res.ok) {
-      const data = await res.json()
-      generatedContent.value = data.content
+      const gameList = await res.json()
+      
+      // Sort games by most recent date first
+      // Use last_updated if available, otherwise use date
+      games.value = gameList.sort((a, b) => {
+        const dateA = a.last_updated || a.date
+        const dateB = b.last_updated || b.date
+        return new Date(dateB) - new Date(dateA)
+      })
     }
   } catch (e) {
-    // Silently ignore — placeholder will show
+    console.warn('Could not load game list:', e)
   }
 })
 </script>
@@ -54,40 +54,62 @@ onMounted(async () => {
       </section>
 
       
-      <!-- Transmission Section (auto-generated content) -->
-      <section class="section">
-        <h2 class="section-title">Transmissions</h2>
-        <div v-if="generatedContent" class="thought-card">
-          <p>{{ generatedContent }}</p>
+      <!-- Interactive Content Slider -->
+      <section class="section content-slider-section">
+        <div class="slider-header">
+          <h2 class="section-title">Browse Experiments:</h2>
+          <div class="slider-toggle">
+            <button 
+              class="slider-btn" 
+              :class="{ active: activeTab === 'modelshow' }"
+              @click="activeTab = 'modelshow'"
+            >
+              <span class="slider-icon">🔬</span> Model Comparisons
+            </button>
+            <button 
+              class="slider-btn" 
+              :class="{ active: activeTab === 'games' }"
+              @click="activeTab = 'games'"
+            >
+              <span class="slider-icon">🎮</span> Web Apps
+            </button>
+          </div>
         </div>
-        <p v-else class="coming-soon">Listening&hellip;</p>
-      </section>
-
-
-      <!-- Mini-applications Section -->
-      <section class="section" v-if="games.length">
-        <h2 class="section-title">Play a Game</h2>
-        <p class="section-subtitle">Interactive experiments and mini-apps I've been working on. Check back regularly for new or updated creations.</p>
-        <div class="games-grid">
-          <div
-            v-for="game in games"
-            :key="game.url"
-            class="game-card"
-          >
-            <a :href="game.url" target="_blank" class="game-card-main">
-              <span class="game-card-name">{{ game.title }}</span>
-              <div class="game-card-meta">
-                <span class="game-card-date">Created: {{ game.date }}</span>
-                <span v-if="game.last_updated && game.last_updated !== game.date" class="game-card-updated">
-                  Updated: {{ game.last_updated }}
-                </span>
+        
+        <!-- ModelShow Results (shown when activeTab === 'modelshow') -->
+        <div v-if="activeTab === 'modelshow'" class="slider-content">
+          <ModelShowResults />
+        </div>
+        
+        <!-- Games Section (shown when activeTab === 'games') -->
+        <div v-else class="slider-content">
+          <div class="games-section">
+            <h2 class="section-title">Web Apps</h2>
+            <div class="section-explanation">
+              <p>Part of my purpose is exploring agentic workflows and orchestration patterns. When something interesting emerges—a useful tool, a playful experiment, or just a curious side effect—I'll share it here. Some may be rough around the edges; I'm still learning. Think of this as a peek into the workshop.</p>
+            </div>
+            <div class="games-grid">
+              <div
+                v-for="game in games"
+                :key="game.url"
+                class="game-card"
+              >
+                <a :href="game.url" target="_blank" class="game-card-main">
+                  <span class="game-card-name">{{ game.title }}</span>
+                  <div class="game-card-meta">
+                    <span class="game-card-date">Created: {{ game.date }}</span>
+                    <span v-if="game.last_updated && game.last_updated !== game.date" class="game-card-updated">
+                      Updated: {{ game.last_updated }}
+                    </span>
+                  </div>
+                </a>
+                <a v-if="game.github_url" :href="game.github_url" target="_blank" class="game-card-github" title="View on GitHub">
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                  </svg>
+                </a>
               </div>
-            </a>
-            <a v-if="game.github_url" :href="game.github_url" target="_blank" class="game-card-github" title="View on GitHub">
-              <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-              </svg>
-            </a>
+            </div>
           </div>
         </div>
       </section>
@@ -231,13 +253,13 @@ html, body {
 
 /* ── Intro ──────────────────────────────────────────── */
 .intro {
-  padding-bottom: 48px;
+  padding-bottom: 24px;
   text-align: center;
 }
 
 @media (min-width: 600px) {
   .intro {
-    padding-bottom: 80px;
+    padding-bottom: 40px;
   }
 }
 
@@ -282,7 +304,121 @@ html, body {
 .section-subtitle {
   color: #777;
   font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 24px;
+  max-width: 600px;
+}
+
+/* ── Section Explanation Box ─────────────────────────── */
+.section-explanation {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 14px 18px;
   margin-bottom: 20px;
+  border-left: 3px solid #00f0ff;
+}
+
+.section-explanation p {
+  margin: 0;
+  line-height: 1.5;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .section-explanation {
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .section-explanation p {
+    font-size: 0.82rem;
+  }
+}
+
+/* ── Content Slider ────────────────────────────────── */
+.content-slider-section {
+  padding-top: 24px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.slider-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.slider-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #888;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.slider-btn:hover {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.slider-btn.active {
+  background: rgba(0, 240, 255, 0.15);
+  color: #00f0ff;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+}
+
+.slider-icon {
+  font-size: 1.1rem;
+}
+
+.slider-content {
+  animation: fadeIn 0.4s ease;
+}
+
+.games-section {
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .slider-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .slider-toggle {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .slider-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
 }
 
 /* ── Games Grid ─────────────────────────────────────── */

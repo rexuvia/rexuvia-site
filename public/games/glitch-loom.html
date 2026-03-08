@@ -42,10 +42,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 @media(min-width:860px){#canvas-wrap{aspect-ratio:unset;max-height:unset}}
 #main-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
 #overlay-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.6}
-.touch-indicator{position:fixed;top:0;left:0;padding:6px 10px;border-radius:12px;background:rgba(0,0,0,0.55);color:var(--cyan);font-size:11px;border:1px solid rgba(0,240,255,0.25);display:none;align-items:center;gap:6px;backdrop-filter:blur(4px);transform:translate(-50%,-110%);z-index:20;white-space:nowrap}
-.touch-indicator svg{width:14px;height:14px;stroke:var(--cyan);}
-#canvas-status{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:4px 10px;border-radius:20px;font-size:11px;color:var(--muted);pointer-events:none;white-space:nowrap;transition:opacity .3s ease, transform .3s ease;opacity:0;backdrop-filter:blur(4px);transform:translate(-50%, 10px);}
-#canvas-status.visible{opacity:1;transform:translate(-50%,0)}
+#canvas-status{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:4px 10px;border-radius:20px;font-size:11px;color:var(--muted);pointer-events:none;white-space:nowrap;transition:.3s}
 
 /* ─── STATUS BAR ─── */
 #statusbar{grid-column:1/-1;border-top:1px solid var(--border);padding:6px 0;display:flex;gap:12px;align-items:center;font-size:11px;color:var(--muted);flex-wrap:wrap}
@@ -121,7 +118,8 @@ select option{background:#111}
   <div id="header-actions">
     <button class="btn btn-sm" id="btn-randomize">🎲 Random</button>
     <button class="btn btn-sm btn-success" id="btn-export-png">⬇ PNG</button>
-    <button class="btn btn-sm btn-success" id="btn-export-gif">⬇ GIF</button>
+    <button class="btn btn-sm btn-success" id="btn-export-gif">⬇ GIF (Static)</button>
+    <button class="btn btn-sm btn-success" id="btn-export-webm">⬇ WebM (Static)</button>
   </div>
 </header>
 
@@ -134,24 +132,6 @@ select option{background:#111}
     <div class="preset-grid" id="preset-grid"></div>
   </div>
 
-  <!-- QUICK HELP -->
-  <div class="panel" id="quick-help">
-    <div class="panel-title">Quick Loom Guide</div>
-    <details open>
-      <summary style="cursor:pointer;color:var(--cyan);font-size:12px;font-weight:600">How to weave a glitch</summary>
-      <ul style="margin-top:6px;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)">
-        <li>Load art with <strong>Upload</strong> or spin up a procedural base via <strong>✦ Generate</strong>.</li>
-        <li>Tune <strong>Weave</strong> for structure, <strong>Sort</strong> for warp glitching, and <strong>Mosh</strong> for chaotic bleed.</li>
-        <li>Tap <strong>✦ Weave Glitch</strong> anytime — you can iterate as you tweak controls.</li>
-        <li>Need motion? Hop into <strong>Anim</strong>, press <strong>▶ Preview</strong>, then export your GIF.</li>
-      </ul>
-      <div style="margin-top:8px;padding:8px;border-radius:8px;background:var(--surface2);font-size:11px;color:var(--cyan);display:flex;gap:8px;align-items:flex-start">
-        <span style="font-weight:700">Tip</span>
-        <span>On touch devices, sliders respond to swipes anywhere on the track — use the cyan live readout to precise dial-ins.</span>
-      </div>
-    </details>
-  </div>
-
   <!-- IMAGE SOURCE -->
   <div class="panel">
     <div class="panel-title">Image Source</div>
@@ -160,6 +140,10 @@ select option{background:#111}
       <button class="btn btn-sm" id="btn-procedural" style="flex:1">✦ Generate</button>
       <select id="proc-type" style="flex:1;padding:5px 6px;font-size:11px">
         <option value="gradient">Gradient</option>
+        <option value="nebula">Nebula</option>
+        <option value="grid">Grid</option>
+        <option value="waves">Waves</option>
+        <option value="organic">Organic</option>
         <option value="noise">Noise</option>
         <option value="geometric">Geometric</option>
         <option value="plasma">Plasma</option>
@@ -195,22 +179,22 @@ select option{background:#111}
       <div class="ctrl-row">
         <span class="ctrl-label">Warp Size</span>
         <input type="range" id="warp-size" min="2" max="40" value="8">
-        <span class="ctrl-value" id="warp-size-val" data-label="Warp Size">8</span>
+        <span class="ctrl-value" id="warp-size-val">8</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Weft Size</span>
         <input type="range" id="weft-size" min="2" max="40" value="8">
-        <span class="ctrl-value" id="weft-size-val" data-label="Weft Size">8</span>
+        <span class="ctrl-value" id="weft-size-val">8</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Warp/Weft</span>
         <input type="range" id="warp-ratio" min="0" max="100" value="50">
-        <span class="ctrl-value" id="warp-ratio-val" data-label="Warp/Weft">50%</span>
+        <span class="ctrl-value" id="warp-ratio-val">50%</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Blend</span>
         <input type="range" id="weave-blend" min="0" max="100" value="80">
-        <span class="ctrl-value" id="weave-blend-val" data-label="Weave Blend">80</span>
+        <span class="ctrl-value" id="weave-blend-val">80</span>
       </div>
     </div>
 
@@ -231,12 +215,12 @@ select option{background:#111}
       <div class="ctrl-row">
         <span class="ctrl-label">Intensity</span>
         <input type="range" id="sort-intensity" min="0" max="100" value="60">
-        <span class="ctrl-value" id="sort-intensity-val" data-label="Sort Intensity">60</span>
+        <span class="ctrl-value" id="sort-intensity-val">60</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Threshold</span>
         <input type="range" id="sort-threshold" min="0" max="255" value="80">
-        <span class="ctrl-value" id="sort-threshold-val" data-label="Sort Threshold">80</span>
+        <span class="ctrl-value" id="sort-threshold-val">80</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Direction</span>
@@ -267,27 +251,27 @@ select option{background:#111}
       <div class="ctrl-row">
         <span class="ctrl-label">Intensity</span>
         <input type="range" id="mosh-intensity" min="0" max="100" value="40">
-        <span class="ctrl-value" id="mosh-intensity-val" data-label="Mosh Intensity">40</span>
+        <span class="ctrl-value" id="mosh-intensity-val">40</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Block Size</span>
         <input type="range" id="mosh-block" min="2" max="60" value="16">
-        <span class="ctrl-value" id="mosh-block-val" data-label="Block Size">16</span>
+        <span class="ctrl-value" id="mosh-block-val">16</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Shift X</span>
         <input type="range" id="mosh-shift-x" min="-80" max="80" value="0">
-        <span class="ctrl-value" id="mosh-shift-x-val" data-label="Shift X">0</span>
+        <span class="ctrl-value" id="mosh-shift-x-val">0</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Shift Y</span>
         <input type="range" id="mosh-shift-y" min="-80" max="80" value="0">
-        <span class="ctrl-value" id="mosh-shift-y-val" data-label="Shift Y">0</span>
+        <span class="ctrl-value" id="mosh-shift-y-val">0</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Chaos</span>
         <input type="range" id="mosh-chaos" min="0" max="100" value="50">
-        <span class="ctrl-value" id="mosh-chaos-val" data-label="Chaos">50</span>
+        <span class="ctrl-value" id="mosh-chaos-val">50</span>
       </div>
     </div>
 
@@ -296,13 +280,13 @@ select option{background:#111}
       <div style="height:2px"></div>
       <div class="ctrl-row">
         <span class="ctrl-label">Frames</span>
-        <input type="range" id="anim-frames" min="2" max="24" value="8">
-        <span class="ctrl-value" id="anim-frames-val" data-label="Frames">8</span>
+        <input type="range" id="anim-frames" min="2" max="60" value="15">
+        <span class="ctrl-value" id="anim-frames-val">15</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Delay (ms)</span>
-        <input type="range" id="anim-delay" min="50" max="500" value="120">
-        <span class="ctrl-value" id="anim-delay-val" data-label="Delay">120</span>
+        <input type="range" id="anim-delay" min="20" max="1000" value="100">
+        <span class="ctrl-value" id="anim-delay-val">100</span>
       </div>
       <div class="ctrl-row">
         <span class="ctrl-label">Evolve</span>
@@ -310,6 +294,18 @@ select option{background:#111}
           <div class="toggle-btn active" data-val="sort">Sort</div>
           <div class="toggle-btn" data-val="mosh">Mosh</div>
           <div class="toggle-btn" data-val="both">Both</div>
+          <div class="toggle-btn" data-val="weave">Weave</div>
+        </div>
+          <div class="toggle-btn" data-val="mosh">Mosh</div>
+          <div class="toggle-btn" data-val="both">Both</div>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">Timing</span>
+        <div class="toggle-group" style="flex:1" id="anim-timing-group">
+          <div class="toggle-btn active" data-val="linear">Linear</div>
+          <div class="toggle-btn" data-val="ease">Ease</div>
+          <div class="toggle-btn" data-val="bounce">Bounce</div>
         </div>
       </div>
       <div class="ctrl-row">
@@ -322,7 +318,8 @@ select option{background:#111}
       </div>
       <div class="btn-row">
         <button class="btn btn-sm" id="btn-preview-anim" style="flex:1">▶ Preview</button>
-        <button class="btn btn-sm btn-success" id="btn-export-gif2" style="flex:1">⬇ GIF</button>
+        <button class="btn btn-sm btn-success" id="btn-export-gif2" style="flex:1">⬇ GIF (Animated)</button>
+        <button class="btn btn-sm btn-success" id="btn-export-webm2" style="flex:1">⬇ WebM (Animated)</button>
       </div>
       <div id="anim-status" style="font-size:11px;color:var(--muted);text-align:center"></div>
     </div>
@@ -341,8 +338,7 @@ select option{background:#111}
   <div id="canvas-wrap">
     <canvas id="main-canvas"></canvas>
     <canvas id="overlay-canvas"></canvas>
-    <div id="canvas-status" class="visible">Tap Generate or load an image to begin weaving.</div>
-    <div id="gesture-hint" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.6);border-radius:14px;padding:6px 10px;font-size:11px;color:var(--cyan);display:none;pointer-events:none;border:1px solid rgba(0,240,255,0.25)">Swipe to tweak sliders</div>
+    <div id="canvas-status">Upload image or click Generate</div>
   </div>
 </main>
 
@@ -390,10 +386,11 @@ const state = {
   moshShiftX: 0,
   moshShiftY: 0,
   moshChaos: 0.5,
-  animFrames: 8,
-  animDelay: 120,
+  animFrames: 15,
+  animDelay: 100,
   animEvolve: 'sort',
   animMode: 'forward',
+  animTiming: 'linear',
   palette: ['#ff00aa','#00f0ff','#00ff88','#ffd700','#ff6600'],
   procType: 'gradient',
 };
@@ -463,6 +460,12 @@ const PALETTE_COLORS = [
   ['#ff0000','#ff6600','#ffcc00','#ff3300','#cc0000'],
   ['#00ff88','#00f0ff','#0055ff','#6600ff','#00ffaa'],
   ['#ffffff','#888888','#ff0000','#000000','#444444'],
+  ['#2b0f4c','#591c87','#8b5cf6','#c4b5fd','#f3e8ff'],
+  ['#052e16','#15803d','#22c55e','#86efac','#f0fdf4'],
+  ['#4a044e','#9d174d','#be123c','#f43f5e','#ffe4e6'],
+  ['#0c4a6e','#0369a1','#0ea5e9','#7dd3fc','#f0f9ff'],
+  ['#451a03','#92400e','#d97706','#fcd34d','#fef3c7'],
+  ['#000000','#333333','#666666','#999999','#cccccc']
 ];
 
 function hexToRgb(hex) {
@@ -482,6 +485,56 @@ function generateProcedural(type, palette, width, height) {
   const colors = palette.map(hexToRgb);
 
   switch(type) {
+    case 'nebula': {
+      for (let y=0;y<height;y++) for (let x=0;x<width;x++) {
+        const nx=x/width*2, ny=y/height*2;
+        let v = Math.sin(nx*3+ny*2)*0.5+0.5;
+        v += Math.cos(nx*5-ny*4)*0.25+0.25;
+        v += Math.sin(Math.sqrt(nx*nx+ny*ny)*10)*0.125+0.125;
+        v = (v/1.875) * 1.5;
+        const i = Math.min(Math.floor(v*(colors.length-1)), colors.length-2);
+        const [r,g,b] = lerpRgb(colors[i],colors[i+1],v*(colors.length-1)-i);
+        const idx=(y*width+x)*4;
+        d[idx]=r; d[idx+1]=g; d[idx+2]=b; d[idx+3]=255;
+      }
+      break;
+    }
+    case 'grid': {
+      for (let y=0;y<height;y++) for (let x=0;x<width;x++) {
+        const cellSize = width / 16;
+        const sx = Math.floor(x/cellSize);
+        const sy = Math.floor(y/cellSize);
+        const isBorder = (x%cellSize < 2) || (y%cellSize < 2);
+        const [r,g,b] = isBorder ? colors[0] : colors[(sx+sy)%colors.length];
+        const idx=(y*width+x)*4;
+        d[idx]=r; d[idx+1]=g; d[idx+2]=b; d[idx+3]=255;
+      }
+      break;
+    }
+    case 'waves': {
+      for (let y=0;y<height;y++) for (let x=0;x<width;x++) {
+        let v = Math.sin(x/width*10 + Math.sin(y/height*5)*2);
+        v = v*0.5+0.5;
+        const i = Math.min(Math.floor(v*(colors.length-1)), colors.length-2);
+        const [r,g,b] = lerpRgb(colors[i],colors[i+1],v*(colors.length-1)-i);
+        const idx=(y*width+x)*4;
+        d[idx]=r; d[idx+1]=g; d[idx+2]=b; d[idx+3]=255;
+      }
+      break;
+    }
+    case 'organic': {
+      for (let y=0;y<height;y++) for (let x=0;x<width;x++) {
+        const nx=x/width, ny=y/height;
+        let v = Math.sin(nx*20) * Math.cos(ny*20) + Math.sin(Math.sqrt((nx-0.5)**2 + (ny-0.5)**2)*50);
+        v = (v/3)+0.5;
+        v = Math.max(0, Math.min(1, v));
+        const i = Math.min(Math.floor(v*(colors.length-1)), colors.length-2);
+        const [r,g,b] = lerpRgb(colors[i],colors[i+1],v*(colors.length-1)-i);
+        const idx=(y*width+x)*4;
+        d[idx]=r; d[idx+1]=g; d[idx+2]=b; d[idx+3]=255;
+      }
+      break;
+    }
     case 'gradient': {
       for (let y=0;y<height;y++) for (let x=0;x<width;x++) {
         const t = (x/width + y/height) / 2;
@@ -565,8 +618,7 @@ function loadImageData(imgData) {
   currentImageData = cloneImageData(imgData);
   renderCurrent();
   setStatus('Image loaded — ready to weave');
-  $('canvas-status').classList.remove('visible');
-  canvasStatusPulse('Image loaded — press ✦ Weave Glitch to blend warp + weft');
+  $('canvas-status').style.display='none';
 }
 
 function cloneImageData(src) {
@@ -793,11 +845,7 @@ function applyWeave(warpData, weftData, pattern, warpSize, weftSize, warpRatio, 
 
 // ─── MAIN PROCESS ─────────────────────────────────────
 async function processGlitch(seed) {
-  if (!originalImageData) {
-    setStatus('No image loaded');
-    canvasStatusPulse('Load or generate an image first');
-    return null;
-  }
+  if (!originalImageData) { setStatus('No image loaded'); return null; }
 
   const W=originalImageData.width, H=originalImageData.height;
 
@@ -818,11 +866,7 @@ async function processGlitch(seed) {
 }
 
 async function applyAll() {
-  if (!originalImageData) {
-    setStatus('No image — generate or upload one first');
-    canvasStatusPulse('Upload or generate art, then tap ✦ Weave Glitch');
-    return;
-  }
+  if (!originalImageData) { setStatus('No image — generate or upload one first'); return; }
   setStatus('Weaving...'); setProgress(10);
   await sleep(10);
   const result = await processGlitch(0);
@@ -913,77 +957,6 @@ function stopAnimation() {
   clearTimeout(animTimer);
   $('btn-preview-anim').textContent='▶ Preview';
   if(currentImageData) renderCurrent();
-}
-
-// ─── TOUCH UTILS ────────────────────────────────────
-// Add touch-as-click support to a button element (eliminates 300ms tap delay)
-function addTouchClick(el, handler) {
-  if (!el) return;
-  let touchMoved = false;
-  el.addEventListener('touchstart', () => { touchMoved = false; }, { passive: true });
-  el.addEventListener('touchmove', () => { touchMoved = true; }, { passive: true });
-  el.addEventListener('touchend', e => {
-    if (!touchMoved) {
-      e.preventDefault(); // prevent the ghost click
-      handler(e);
-    }
-  }, { passive: false });
-  el.addEventListener('click', handler);
-}
-
-// ─── TOUCH SLIDER ENHANCEMENT ───────────────────────
-let touchIndicatorEl=null;
-function ensureTouchIndicator(){
-  if(touchIndicatorEl) return touchIndicatorEl;
-  touchIndicatorEl=document.createElement('div');
-  touchIndicatorEl.className='touch-indicator';
-  touchIndicatorEl.innerHTML=`<svg viewBox="0 0 24 24" fill="none"><path d="M8 6a3 3 0 016 0v3.5l1-.5a2 2 0 012 2V15a6 6 0 01-6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Slide anywhere on the track</span>`;
-  document.body.appendChild(touchIndicatorEl);
-  return touchIndicatorEl;
-}
-
-function attachTouchSlider(el, displayEl){
-  const indicator=ensureTouchIndicator();
-  let active=false;
-  const min=parseFloat(el.min||0);
-  const max=parseFloat(el.max||100);
-
-  const syncDisplay=(val)=>{
-    if(displayEl.id.includes('ratio')) displayEl.textContent=Math.round(val)+'%';
-    else displayEl.textContent=Math.round(val);
-  };
-
-  const updateValue=(clientX)=>{
-    const rect=el.getBoundingClientRect();
-    const pct=Math.min(Math.max((clientX-rect.left)/rect.width,0),1);
-    const val=min+pct*(max-min);
-    el.value=val;
-    el.dispatchEvent(new Event('input',{bubbles:true}));
-    syncDisplay(val);
-  };
-
-  el.addEventListener('touchstart',e=>{
-    active=true;
-    indicator.style.display='flex';
-    indicator.style.transform=`translate(${e.touches[0].clientX}px, ${e.touches[0].clientY}px)`;
-    updateValue(e.touches[0].clientX);
-    e.preventDefault();
-  },{passive:false});
-
-  el.addEventListener('touchmove',e=>{
-    if(!active) return;
-    const touch=e.touches[0];
-    indicator.style.transform=`translate(${touch.clientX}px, ${touch.clientY}px)`;
-    updateValue(touch.clientX);
-    e.preventDefault();
-  },{passive:false});
-
-  const end=()=>{
-    active=false;
-    indicator.style.display='none';
-  };
-  el.addEventListener('touchend',end);
-  el.addEventListener('touchcancel',end);
 }
 
 // ─── GIF ENCODER (pure JS, LZW + GIF89a) ──────────────
@@ -1108,11 +1081,103 @@ class GifEncoder {
   }
 }
 
-async function exportGif() {
-  if(!originalImageData){
-    canvasStatusPulse('Load art before exporting GIF');
+async function exportWebm() {
+  if (animFrames.length === 0) {
+    if (state.animFrames > 0 && currentImageData) {
+      await generateFrames();
+    } else {
+      setStatus('No frames to export');
+      return;
+    }
+  }
+
+  // Check if MediaRecorder is supported
+  if (!window.MediaRecorder) {
+    setStatus('WebM export not supported in this browser');
     return;
   }
+
+  setStatus('Exporting WebM... 0%');
+  const fps = Math.round(1000 / state.animDelay);
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = mainCanvas.width;
+  tempCanvas.height = mainCanvas.height;
+  const tctx = tempCanvas.getContext('2d');
+  
+  const stream = tempCanvas.captureStream(fps);
+  
+  // Try different codecs if VP9 fails
+  let mimeType = 'video/webm;codecs=vp9';
+  if (!MediaRecorder.isTypeSupported(mimeType)) {
+    mimeType = 'video/webm;codecs=vp8';
+    if (!MediaRecorder.isTypeSupported(mimeType)) {
+      mimeType = 'video/webm';
+    }
+  }
+  
+  const recorder = new MediaRecorder(stream, { mimeType });
+  const chunks = [];
+  
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    if (chunks.length === 0) {
+      setStatus('WebM export failed: no data recorded');
+      return;
+    }
+    
+    try {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `glitch-loom-${Date.now()}.webm`;
+      document.body.appendChild(a); // Required for Firefox
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setStatus('WebM exported ✓ - Download started');
+    } catch (err) {
+      setStatus(`WebM export error: ${err.message}`);
+      console.error('WebM export error:', err);
+    }
+  };
+  
+  recorder.onerror = (e) => {
+    setStatus(`WebM recording error: ${e.error.name}`);
+    console.error('MediaRecorder error:', e.error);
+  };
+  
+  recorder.start();
+  
+  // Create animation playback for recorder
+  let frameIndex = 0;
+  let totalFrames = animFrames.length;
+  if(state.animMode === 'pingpong') totalFrames = animFrames.length * 2 - 2;
+  
+  let seq = 0;
+  const drawFrame = () => {
+    if (seq >= totalFrames) {
+      recorder.stop();
+      return;
+    }
+    
+    let fIdx = seq;
+    if (state.animMode === 'pingpong') {
+      fIdx = seq < animFrames.length ? seq : animFrames.length * 2 - 2 - seq;
+    } else if (state.animMode === 'random') {
+      fIdx = Math.floor(Math.random() * animFrames.length);
+    }
+    
+    tctx.putImageData(animFrames[fIdx], 0, 0);
+    setStatus(`Exporting WebM... ${Math.floor((seq/totalFrames)*100)}%`);
+    seq++;
+    setTimeout(drawFrame, state.animDelay);
+  };
+  
+  drawFrame();
+}
+
+async function exportGif() {
   if (!animFrames.length) {
     setStatus('Generating frames first...');
     await generateAnimation();
@@ -1143,9 +1208,12 @@ async function exportGif() {
   const blob=new Blob([bytes],{type:'image/gif'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download='glitch-loom.gif'; a.click();
+  a.href=url; a.download='glitch-loom.gif';
+  document.body.appendChild(a); // Required for Firefox
+  a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  setStatus('GIF exported ✓');
+  setStatus('GIF exported ✓ - Download started');
   setTimeout(()=>setProgress(0),800);
 }
 
@@ -1177,7 +1245,7 @@ function renderPalette() {
       s.style.cssText=`width:14px;height:14px;background:${c};border:none;border-radius:2px`;
       wrap.appendChild(s);
     });
-    addTouchClick(wrap,()=>{
+    wrap.addEventListener('click',()=>{
       state.palette=pal;
       document.querySelectorAll('#palette-row > div').forEach(e=>e.style.borderColor='transparent');
       wrap.style.borderColor='var(--cyan)';
@@ -1193,7 +1261,7 @@ function renderPresets() {
     const chip=document.createElement('div');
     chip.className='preset-chip';
     chip.textContent=p.name;
-    addTouchClick(chip,()=>{
+    chip.addEventListener('click',()=>{
       Object.assign(state, p.state);
       syncUI();
       drawWeavePreview();
@@ -1209,13 +1277,13 @@ function initToggleGroup(groupId, stateKey) {
   const group=$(groupId);
   if(!group) return;
   group.querySelectorAll('.toggle-btn').forEach(btn=>{
-    const handler=()=>{
+    btn.addEventListener('click',()=>{
       group.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       state[stateKey]=btn.dataset.val;
       if(stateKey==='weavePattern') drawWeavePreview();
-    };
-    addTouchClick(btn, handler);
+      if(stateKey==='sortDirection') {}
+    });
   });
 }
 
@@ -1223,15 +1291,10 @@ function initToggleGroup(groupId, stateKey) {
 function bindSlider(id, stateKey, displayId, transform) {
   const el=$(id), disp=$(displayId);
   el.addEventListener('input',()=>{
-    const raw=parseFloat(el.value);
-    const v=transform?transform(raw):raw;
-    state[stateKey]=v;
-    const formatted=displayId.includes('ratio')?Math.round(raw)+'%':Math.round(raw);
-    disp.textContent=formatted;
+    const v=parseFloat(el.value);
+    state[stateKey]=transform?transform(v):v;
+    disp.textContent=displayId.includes('ratio')?v+'%':v;
     if(stateKey.includes('warp')||stateKey.includes('weft')||stateKey==='weavePattern') drawWeavePreview();
-    if(disp.dataset.label){
-      canvasStatusPulse(`${disp.dataset.label}: ${formatted}`);
-    }
   });
 }
 
@@ -1256,12 +1319,13 @@ function syncUI() {
     const el=$(id), disp=$(dispId);
     if(!el) return;
     const val=state[key];
+    // Reverse-map: if val is 0-1 range, map to slider
     if(key==='warpRatio'){el.value=val*100;disp.textContent=Math.round(val*100)+'%';}
     else if(key==='weaveBlend'){el.value=val*100;disp.textContent=Math.round(val*100);}
     else if(key==='sortIntensity'){el.value=val*100;disp.textContent=Math.round(val*100);}
     else if(key==='moshIntensity'){el.value=val*100;disp.textContent=Math.round(val*100);}
     else if(key==='moshChaos'){el.value=val*100;disp.textContent=Math.round(val*100);}
-    else {el.value=val;disp.textContent=Math.round(val);}
+    else {el.value=val;disp.textContent=val;}
   });
 
   // Toggle groups
@@ -1281,13 +1345,12 @@ function syncUI() {
   }
 
   $('sort-reverse').checked=state.sortReverse;
-  canvasStatusPulse(`Weave: ${state.weavePattern.toUpperCase()} — Warp ${state.warpSize}px / Weft ${state.weftSize}px`);
 }
 
 // ─── TABS ─────────────────────────────────────────────
 function initTabs() {
   document.querySelectorAll('.tab').forEach(tab=>{
-    addTouchClick(tab,()=>{
+    tab.addEventListener('click',()=>{
       document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
       tab.classList.add('active');
@@ -1300,28 +1363,17 @@ function initTabs() {
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 function setStatus(msg){$('status-text').textContent=msg;}
 function setProgress(pct){$('progress-bar').style.width=pct+'%';}
-let statusPulseTimer=null;
-function canvasStatusPulse(msg, duration=2600){
-  const statusEl=$('canvas-status');
-  if(!statusEl) return;
-  statusEl.textContent=msg;
-  statusEl.classList.add('visible');
-  clearTimeout(statusPulseTimer);
-  statusPulseTimer=setTimeout(()=>statusEl.classList.remove('visible'),duration);
-}
 
 function randomize() {
-  const ramps=[['brightness','horizontal'],['hue','vertical'],['saturation','both']];
-  const [metric,dir]=ramps[Math.floor(Math.random()*ramps.length)];
   state.weavePattern=['plain','twill','satin','herringbone','custom'][Math.floor(Math.random()*5)];
   state.warpSize=Math.floor(Math.random()*20)+4;
   state.weftSize=Math.floor(Math.random()*20)+4;
   state.warpRatio=Math.random();
   state.weaveBlend=0.5+Math.random()*0.5;
-  state.sortMetric=metric;
-  state.sortDirection=dir;
+  state.sortMetric=['brightness','hue','saturation','red','green','blue'][Math.floor(Math.random()*6)];
   state.sortIntensity=0.3+Math.random()*0.7;
   state.sortThreshold=Math.floor(Math.random()*150)+10;
+  state.sortDirection=['horizontal','vertical','both'][Math.floor(Math.random()*3)];
   state.sortReverse=Math.random()>0.5;
   state.moshType=['block','channel','repeat','feedback'][Math.floor(Math.random()*4)];
   state.moshIntensity=0.2+Math.random()*0.6;
@@ -1331,21 +1383,17 @@ function randomize() {
   state.moshChaos=Math.random();
   syncUI();
   drawWeavePreview();
-  canvasStatusPulse('Random warp + weft ready — press ✦ Weave Glitch');
 }
 
 // ─── EXPORT PNG ───────────────────────────────────────
 function exportPng() {
-  if(!currentImageData){
-    canvasStatusPulse('Nothing to save yet — weave a glitch first');
-    return;
-  }
-  setStatus('Preparing PNG…');
   const link=document.createElement('a');
   link.download='glitch-loom.png';
   link.href=mainCanvas.toDataURL('image/png');
+  document.body.appendChild(link); // Required for Firefox
   link.click();
-  setStatus('PNG exported ✓');
+  document.body.removeChild(link);
+  setStatus('PNG exported ✓ - Download started');
 }
 
 // ─── EVENT WIRING ─────────────────────────────────────
@@ -1405,7 +1453,7 @@ function init() {
   });
 
   // Procedural generate
-  const doGenerate=()=>{
+  $('btn-procedural').addEventListener('click',()=>{
     const size=512;
     const type=$('proc-type').value;
     const pal=state.palette||PALETTE_COLORS[0];
@@ -1416,24 +1464,25 @@ function init() {
       animFrames=[];
       setStatus(`Generated ${type} image`);
     },10);
-  };
-  addTouchClick($('btn-procedural'), doGenerate);
+  });
 
   // Apply
-  addTouchClick($('btn-apply'), ()=>applyAll());
-  addTouchClick($('btn-apply-m'), ()=>applyAll());
+  $('btn-apply').addEventListener('click',()=>applyAll());
+  $('btn-apply-m').addEventListener('click',()=>applyAll());
 
   // Randomize
-  addTouchClick($('btn-randomize'), randomize);
+  $('btn-randomize').addEventListener('click',randomize);
 
   // Export
-  addTouchClick($('btn-export-png'), exportPng);
-  addTouchClick($('btn-export-png-m'), exportPng);
-  addTouchClick($('btn-export-gif'), ()=>exportGif());
-  addTouchClick($('btn-export-gif2'), ()=>exportGif());
+  $('btn-export-png').addEventListener('click',exportPng);
+  $('btn-export-png-m').addEventListener('click',exportPng);
+  $('btn-export-gif').addEventListener('click',exportGif);
+  $('btn-export-webm').addEventListener('click',exportWebm);
+  $('btn-export-gif2').addEventListener('click',exportGif);
+  $('btn-export-webm2').addEventListener('click',exportWebm);
 
   // Animation
-  addTouchClick($('btn-preview-anim'), previewAnimation);
+  $('btn-preview-anim').addEventListener('click',previewAnimation);
 
   // Presets
   renderPresets();
@@ -1442,32 +1491,10 @@ function init() {
   // Initial weave preview (needs sizing)
   setTimeout(drawWeavePreview,100);
 
-  // Enhance sliders for touch users
-  const sliderPairs=[
-    ['warp-size','warp-size-val'],
-    ['weft-size','weft-size-val'],
-    ['warp-ratio','warp-ratio-val'],
-    ['weave-blend','weave-blend-val'],
-    ['sort-intensity','sort-intensity-val'],
-    ['sort-threshold','sort-threshold-val'],
-    ['mosh-intensity','mosh-intensity-val'],
-    ['mosh-block','mosh-block-val'],
-    ['mosh-shift-x','mosh-shift-x-val'],
-    ['mosh-shift-y','mosh-shift-y-val'],
-    ['mosh-chaos','mosh-chaos-val'],
-    ['anim-frames','anim-frames-val'],
-    ['anim-delay','anim-delay-val'],
-  ];
-  sliderPairs.forEach(([sid,did])=>{
-    const el=$(sid), disp=$(did);
-    if(el&&disp) attachTouchSlider(el,disp);
-  });
-
   // Start with a procedural image so it's not blank
   setTimeout(()=>{
     const data=generateProcedural('plasma',PALETTE_COLORS[0],512,512);
     loadImageData(data);
-    canvasStatusPulse('Plasma base loaded — tune controls then tap ✦ Weave Glitch');
     setStatus('Plasma image generated — click ✦ Weave Glitch to start');
   },150);
 }
@@ -1501,22 +1528,5 @@ wireDisplays();
 document.addEventListener('DOMContentLoaded',init);
 window.addEventListener('load',()=>{resizeCanvas();drawWeavePreview();});
 </script>
-<!--
-Changelog — 2026-03-05
-• Added Quick Loom Guide panel with expanded onboarding hints
-• Introduced animated canvas status pulses + data-label slider readouts
-• Upgraded mobile interaction: global touch slider overlay + gesture helpers
-• Hardened export safeguards and status messaging for PNG/GIF flows
-• Lightweight randomize and sync UI feedback refinements (kept Rexuvia palette)
-
-Bugfix — 2026-03-05 (mobile fix)
-• CRITICAL: Fixed "async async function exportGif()" syntax error that crashed the
-  entire JS engine, making Generate, Weave, and all buttons non-functional on ALL devices
-• Added addTouchClick() helper — all buttons (Generate, Weave, presets, tabs, toggle
-  groups, palette swatches, export, animation) now handle both touchend + click for
-  instant mobile response without the 300ms tap delay
-• Removed pointer:coarse guard from attachTouchSlider — touch events now attach for
-  all users, improving compatibility with hybrid devices
--->
 </body>
 </html>
