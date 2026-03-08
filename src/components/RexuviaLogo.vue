@@ -181,34 +181,6 @@ function handleClick() {
       <path d="M122 122 L121 126" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity="0.6" />
     </svg>
     </div>
-
-    <!-- Title text -->
-    <svg class="title-svg" viewBox="0 0 320 60" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="metalGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#e0f0ff" />
-          <stop offset="35%" stop-color="#b0d4f1" />
-          <stop offset="50%" stop-color="#ffffff" />
-          <stop offset="65%" stop-color="#8bbce0" />
-          <stop offset="100%" stop-color="#5a8aad" />
-        </linearGradient>
-        <linearGradient id="metalStroke" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#7ab8dd" />
-          <stop offset="100%" stop-color="#3a6a8a" />
-        </linearGradient>
-      </defs>
-      <text
-        x="150" y="45"
-        text-anchor="middle"
-        font-family="'Orbitron', sans-serif"
-        font-weight="900"
-        font-size="55"
-        fill="url(#metalGrad)"
-        stroke="url(#metalStroke)"
-        stroke-width="1.2"
-        letter-spacing="6"
-      >Rexuvia</text>
-    </svg>
   </div>
 </template>
 
@@ -219,14 +191,6 @@ function handleClick() {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-}
-
-@media (min-width: 520px) {
-  .logo-banner {
-    flex-direction: row;
-    gap: 12px;
-    justify-content: center;
-  }
 }
 
 .lobster-svg {
@@ -246,18 +210,9 @@ function handleClick() {
   margin-top: 50px; /* Add space for speech bubble on mobile */
 }
 
-.title-svg {
-  width: 300px; /* Smaller on mobile to prevent cutoff */
-  height: auto;
-  flex-shrink: 0;
-}
-
 @media (min-width: 520px) {
   .lobster-svg {
     width: 180px;
-  }
-  .title-svg {
-    width: 440px;
   }
   .mascot-wrapper {
     margin-top: 0; /* Remove top margin on desktop */
