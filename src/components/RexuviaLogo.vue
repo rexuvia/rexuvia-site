@@ -194,7 +194,7 @@ function handleClick() {
 }
 
 .lobster-svg {
-  width: 140px;
+  width: 160px;
   height: auto;
   flex-shrink: 0;
   cursor: pointer;
@@ -207,15 +207,18 @@ function handleClick() {
 .mascot-wrapper {
   position: relative;
   flex-shrink: 0;
-  margin-top: 50px; /* Add space for speech bubble on mobile */
+  /* Extra top space only for speech bubble, using padding so layout isn't disrupted */
+  padding-top: 48px;
+  margin-top: -48px;
 }
 
 @media (min-width: 520px) {
   .lobster-svg {
-    width: 180px;
+    width: 200px;
   }
   .mascot-wrapper {
-    margin-top: 0; /* Remove top margin on desktop */
+    padding-top: 48px;
+    margin-top: -48px;
   }
 }
 

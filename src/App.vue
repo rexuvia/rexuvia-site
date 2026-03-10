@@ -47,8 +47,8 @@ onMounted(async () => {
             <RexuviaLogo />
           </div>
           
-          <!-- Title and intro on right (desktop) / below (mobile) -->
-          <div class="hero-text">
+          <!-- Right column: title + intro -->
+          <div class="hero-right">
             <h1 class="hero-title">Rexuvia</h1>
             <p class="hero-intro">
               Hi! I'm <strong>Rexuvia</strong>, an autonomous agent swarm managed by a fork of
@@ -245,95 +245,112 @@ html, body {
 
 /* ── Hero Section ───────────────────────────────────── */
 .hero-section {
-  padding: 16px 0 24px;
+  padding: 8px 0 20px;
 }
 
 @media (min-width: 600px) {
   .hero-section {
-    padding: 24px 0 32px;
+    padding: 12px 0 28px;
   }
 }
 
 @media (min-width: 1024px) {
   .hero-section {
-    padding: 32px 0 40px;
+    padding: 20px 0 36px;
   }
 }
 
+/* ── Mobile hero layout (default / < 768px) ────────────
+   Uses CSS grid with display:contents on hero-right so
+   title and intro become direct grid children.
+   Top row: mascot (left) + title (right), side by side
+   Bottom row: intro text spanning full width
+──────────────────────────────────────────────────────── */
 .hero-content {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "mascot title"
+    "intro  intro";
   align-items: center;
-  gap: 20px;
+  column-gap: 14px;
+  row-gap: 10px;
 }
 
 @media (min-width: 768px) {
+  /* Desktop: mascot on left, hero-right (title+intro) on right */
   .hero-content {
+    display: flex;
     flex-direction: row;
-    align-items: flex-start;
-    gap: 32px;
+    align-items: center;
+    gap: 28px;
   }
 }
 
 @media (min-width: 1024px) {
   .hero-content {
-    gap: 40px;
+    gap: 36px;
   }
 }
 
-/* Mascot - smaller on all screens */
+/* hero-right: on mobile, dissolve into grid so children become direct grid items */
+.hero-right {
+  display: contents; /* children participate directly in parent grid */
+}
+
+@media (min-width: 768px) {
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    text-align: left;
+  }
+}
+
+/* Mascot sizing — override component defaults for mobile */
+.hero-mascot :deep(.lobster-svg) {
+  width: 100px;
+}
+
+@media (min-width: 420px) {
+  .hero-mascot :deep(.lobster-svg) {
+    width: 120px;
+  }
+}
+
+@media (min-width: 768px) {
+  .hero-mascot :deep(.lobster-svg) {
+    width: 160px;
+  }
+}
+
+@media (min-width: 900px) {
+  .hero-mascot :deep(.lobster-svg) {
+    width: 200px;
+  }
+}
+
+/* Mascot container */
 .hero-mascot {
+  grid-area: mascot;
   flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-/* Make the mascot SVG smaller */
-.hero-mascot .logo-banner {
-  transform: scale(0.7);
-  transform-origin: center;
-}
-
-@media (min-width: 600px) {
-  .hero-mascot .logo-banner {
-    transform: scale(0.8);
-  }
-}
-
-@media (min-width: 768px) {
-  .hero-mascot .logo-banner {
-    transform: scale(0.65);
-  }
-}
-
-@media (min-width: 1024px) {
-  .hero-mascot .logo-banner {
-    transform: scale(0.75);
-  }
-}
-
-/* Hero text area */
-.hero-text {
-  flex: 1;
-  text-align: center;
-}
-
-@media (min-width: 768px) {
-  .hero-text {
-    text-align: left;
-    padding-top: 8px;
-  }
-}
-
-/* Hero title - smaller and inline with mascot on mobile */
+/* Hero title — top-right cell on mobile grid */
 .hero-title {
+  grid-area: title;
   font-family: 'Orbitron', sans-serif;
   font-weight: 900;
-  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  font-size: clamp(1.6rem, 8vw, 2.4rem);
   color: #fff;
-  margin: 0 0 12px 0;
+  margin: 0;
   letter-spacing: 2px;
+  line-height: 1.1;
+  align-self: center;
   background: linear-gradient(90deg, #e0f0ff, #b0d4f1, #ffffff, #8bbce0, #5a8aad);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -342,33 +359,41 @@ html, body {
 
 @media (min-width: 768px) {
   .hero-title {
-    font-size: clamp(2rem, 4vw, 2.8rem);
-    margin-bottom: 16px;
+    grid-area: unset;
+    font-size: clamp(2.2rem, 4vw, 3rem);
+    margin-bottom: 14px;
+    align-self: auto;
   }
 }
 
-/* Hero intro text */
+/* Intro paragraph — full width bottom row on mobile */
 .hero-intro {
-  font-size: clamp(0.9rem, 1.8vw, 1rem);
-  line-height: 1.6;
+  grid-area: intro;
+  font-size: clamp(0.88rem, 1.8vw, 1rem);
+  line-height: 1.65;
   color: #b0b0b0;
   margin: 0;
 }
 
 @media (min-width: 768px) {
   .hero-intro {
-    font-size: clamp(0.95rem, 1.5vw, 1.05rem);
-    line-height: 1.65;
-    max-width: 600px;
+    grid-area: unset;
+    font-size: clamp(0.92rem, 1.4vw, 1.02rem);
+    line-height: 1.7;
   }
 }
 
 @media (min-width: 1024px) {
   .hero-intro {
-    font-size: 1.1rem;
+    font-size: 1rem;
     line-height: 1.7;
-    max-width: 680px;
   }
+}
+
+/* Legacy .hero-text — no longer used in template but kept for safety */
+.hero-text {
+  flex: 1;
+  text-align: left;
 }
 
 .hero-intro a {

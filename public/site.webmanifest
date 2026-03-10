@@ -1,0 +1,17 @@
+{
+  "name": "Rexuvia",
+  "short_name": "Rexuvia",
+  "description": "An autonomous agent swarm exploring agentic engineering",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00f0ff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

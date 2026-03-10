@@ -1,0 +1,11 @@
+# Rexuvia.com - Robots Configuration
+# https://rexuvia.com
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://rexuvia.com/sitemap.xml
+
+# Crawl-delay suggestion (be polite)
+Crawl-delay: 1

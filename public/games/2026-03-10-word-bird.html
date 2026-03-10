@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Word Bird</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0a0a0f; overflow: hidden; font-family: Inter, sans-serif; }
+        canvas { display: block; }
+        #back-link {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            font-family: sans-serif;
+            font-size: 13px;
+            z-index: 10;
+            transition: color 0.2s;
+        }
+        #back-link:hover { color: white; }
+        #hint-overlay {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: white;
+            font-size: 14px;
+            font-family: Inter, sans-serif;
+            z-index: 20;
+            text-align: center;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <a id="back-link" href="https://rexuvia.com">← Rexuvia</a>
+    <canvas id="gameCanvas"></canvas>
+    <div id="hint-overlay"></div>
+    <script>
+    (function() {
+        'use strict';
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const hintOverlay = document.getElementById('hint-overlay');
+
+        // ─── Canvas Sizing ───────────────────────────────────────────────────────────
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            repositionStars();
+        });
+
+        // ─── Constants ───────────────────────────────────────────────────────────────
+        const BOX_WIDTH = 155;
+        const GRAVITY_BASE = 0.10;
+        const GRAVITY_MAX = 0.32;
+        const GRAVITY_INC = 0.0015;
+        const SPEED_BASE = 1.0;
+        const SPEED_MAX = 3.5;
+        const SPEED_INC = 0.028;
+        const SPACING_BASE = 460;
+        const SPACING_MIN = 230;
+        const SPACING_DEC = 3;
+        const BIRD_RADIUS = 18;
+        const FLAP_POWER = -3.0;
+        const NUM_BOXES = 5;
+
+        // ─── Game State ──────────────────────────────────────────────────────────────
+        let state = 'title'; // title | playing | dead | gameover
+        let score = 0;
+        let combo = 0;
+        let bestScore = parseInt(localStorage.getItem('wordBirdBest2')) || 0;
+        let deathTimer = 0;
+        let flashColor = null;
+        let flashAlpha = 0;
+        let comboText = null; // { text, x, y, alpha, scale }
+        let screenShake = 0;
+        let hintVisible = false;
+        let hintTimer = 0;
+        let lastCorrectCat = '';
+        let difficultyLevel = 1;
+
+        // ─── Bird ────────────────────────────────────────────────────────────────────
+        const bird = {
+            x: 110,
+            y: 0,
+            vy: 0,
+            rotation: 0,
+            wingAngle: 0,
+            dead: false,
+            deathVx: 0,
+            deathVy: 0,
+            deathSpin: 0
+        };
+
+        // ─── Physics vars ────────────────────────────────────────────────────────────
+        let gravity = GRAVITY_BASE;
+        let speed = SPEED_BASE;
+        let spacing = SPACING_BASE;
+
+        // ─── Stars ───────────────────────────────────────────────────────────────────
+        const stars = [];
+        function makeStars(count) {
+            stars.length = 0;
+            for (let i = 0; i < count; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: Math.random() * 1.5 + 0.3,
+                    spd: Math.random() * 0.3 + 0.05,
+                    bright: Math.random()
+                });
+            }
+        }
+        function repositionStars() {
+            stars.forEach(s => { s.x = Math.random() * canvas.width; s.y = Math.random() * canvas.height; });
+        }
+        makeStars(130);
+
+        // ─── Categories ──────────────────────────────────────────────────────────────
+        const CATS = {
+            FRUITS:     ['apple','banana','mango','cherry','grape','lemon','peach','plum','kiwi','melon','fig','lime','pear','guava','papaya','apricot','coconut'],
+            ANIMALS:    ['tiger','eagle','whale','shark','snake','horse','mouse','panda','zebra','wolf','deer','fox','bear','lion','hawk','otter','raven','moose'],
+            COLORS:     ['red','blue','green','white','black','pink','gold','grey','teal','coral','ivory','amber','cyan','beige','rust','violet','indigo','scarlet'],
+            INSTRUMENTS:['piano','guitar','drums','violin','flute','harp','cello','trumpet','banjo','organ','sitar','oboe','tuba','lute','zither','ukulele','clarinet'],
+            COUNTRIES:  ['japan','spain','italy','france','brazil','egypt','chile','india','china','kenya','peru','cuba','iran','nepal','greece','turkey','norway','sweden'],
+            SPORTS:     ['tennis','soccer','hockey','boxing','rugby','skiing','golf','karate','judo','fencing','polo','squash','diving','archery','cycling','rowing','wrestling'],
+            PLANETS:    ['mars','venus','earth','saturn','neptune','uranus','mercury','jupiter','pluto','ceres','eris','haumea','makemake'],
+            WEATHER:    ['rain','snow','storm','cloud','thunder','fog','hail','frost','wind','sleet','mist','drought','breeze','blizzard','cyclone','rainbow'],
+            BODY_PARTS: ['heart','brain','liver','spine','skull','elbow','wrist','ankle','thumb','knee','chest','ribs','lungs','pelvis','femur','kidney','cornea'],
+            CLOTHING:   ['shirt','pants','shoes','dress','scarf','jacket','boots','socks','belt','hat','gloves','coat','vest','tie','apron','poncho','blazer','leggings'],
+            FOOD:       ['bread','pasta','rice','steak','salad','soup','pizza','taco','sushi','curry','bacon','toast','chips','pie','waffle','burrito','dumpling'],
+            OCEAN:      ['coral','squid','crab','shrimp','kelp','seal','otter','clam','reef','tide','wave','urchin','lobster','jellyfish','anemone','nautilus'],
+            SPACE:      ['star','comet','orbit','galaxy','nebula','quasar','pulsar','nova','void','cosmos','asteroid','meteor','blackhole','wormhole','supernova'],
+            MUSIC:      ['tempo','chord','lyric','melody','rhythm','beat','pitch','tune','vocal','solo','duet','riff','verse','chorus','bridge','refrain'],
+            TOOLS:      ['hammer','wrench','drill','pliers','clamp','chisel','lathe','anvil','vise','saw','file','bolt','nail','screw','crowbar','mallet','gouge'],
+            TREES:      ['oak','pine','maple','birch','cedar','elm','willow','spruce','palm','teak','beech','ash','poplar','yew','sequoia','baobab','mangrove'],
+            GEMS:       ['ruby','pearl','opal','topaz','jade','onyx','amber','garnet','quartz','agate','diamond','sapphire','emerald','amethyst','citrine','peridot'],
+            EMOTIONS:   ['joy','anger','fear','love','pride','shame','grief','hope','envy','awe','peace','bliss','rage','dread','guilt','wonder','sorrow','longing'],
+            VEHICLES:   ['car','truck','bus','train','plane','boat','bike','taxi','van','jeep','yacht','ferry','tram','canoe','rocket','glider','scooter','submarine'],
+            JOBS:       ['doctor','pilot','chef','nurse','judge','clerk','baker','miner','tutor','guard','mason','smith','diver','welder','florist','broker','surgeon'],
+            INSECTS:    ['ant','bee','moth','wasp','flea','tick','gnat','mite','louse','aphid','cricket','beetle','firefly','dragonfly','butterfly','mosquito'],
+            ELEMENTS:   ['iron','gold','lead','zinc','tin','copper','silver','carbon','oxygen','hydrogen','helium','neon','argon','silicon','sulfur','calcium'],
+            BUILDINGS:  ['barn','castle','temple','mosque','church','palace','bunker','hangar','stadium','library','museum','theatre','cottage','mansion','igloo'],
+            DANCES:     ['waltz','tango','salsa','ballet','foxtrot','rumba','samba','jive','polka','twist','floss','limbo','quickstep','cha-cha','breakdance'],
+            NUMBERS:    ['one','two','three','four','five','six','seven','eight','nine','ten','zero','dozen','hundred','thousand','million','billion'],
+            SHAPES:     ['circle','square','triangle','pentagon','hexagon','octagon','oval','rhombus','sphere','cube','cone','cylinder','torus','prism','pyramid']
+        };
+
+        const CAT_NAMES = Object.keys(CATS);
+
+        // Similar categories (easily confused) — used for harder obstacles
+        const SIMILAR = {
+            OCEAN:      ['ANIMALS','WEATHER'],
+            ANIMALS:    ['OCEAN','INSECTS'],
+            TOOLS:      ['INSTRUMENTS','JOBS'],
+            INSTRUMENTS:['TOOLS','MUSIC'],
+            SPACE:      ['PLANETS','WEATHER'],
+            PLANETS:    ['SPACE'],
+            FOOD:       ['FRUITS'],
+            FRUITS:     ['FOOD'],
+            MUSIC:      ['INSTRUMENTS','EMOTIONS'],
+            GEMS:       ['COLORS','ELEMENTS'],
+            COLORS:     ['GEMS'],
+            EMOTIONS:   ['JOBS','MUSIC'],
+            WEATHER:    ['OCEAN','SPACE'],
+            BUILDINGS:  ['JOBS'],
+            INSECTS:    ['ANIMALS'],
+            ELEMENTS:   ['GEMS','COLORS']
+        };
+
+        // ─── Neon Palette ────────────────────────────────────────────────────────────
+        const NEONS = [
+            '#00f0ff','#ff00aa','#ff8800','#aa44ff',
+            '#44ffaa','#ff4466','#ffdd00','#00aaff',
+            '#ff66cc','#88ff44','#ff6644','#44aaff'
+        ];
+
+        // ─── Walls ───────────────────────────────────────────────────────────────────
+        let walls = [];
+
+        function generateWall(x) {
+            const majCat = CAT_NAMES[Math.floor(Math.random() * CAT_NAMES.length)];
+
+            // At higher scores use similar categories for the odd-one-out
+            const trickyProb = Math.min(0.6, score / 15);
+            let oddCat;
+            if (Math.random() < trickyProb && SIMILAR[majCat]) {
+                const opts = SIMILAR[majCat];
+                oddCat = opts[Math.floor(Math.random() * opts.length)];
+            } else {
+                do {
+                    oddCat = CAT_NAMES[Math.floor(Math.random() * CAT_NAMES.length)];
+                } while (oddCat === majCat);
+            }
+
+            // Pick 4 majority words
+            const majPool = shuffle([...CATS[majCat]]);
+            const majWords = majPool.slice(0, NUM_BOXES - 1);
+
+            // Pick 1 odd word that doesn't appear in majority category
+            let oddWord;
+            const oddPool = shuffle([...CATS[oddCat]]);
+            for (const w of oddPool) {
+                if (!CATS[majCat].includes(w)) { oddWord = w; break; }
+            }
+            if (!oddWord) {
+                // Fallback — pick any different category
+                let fb;
+                do { fb = CAT_NAMES[Math.floor(Math.random() * CAT_NAMES.length)]; }
+                while (fb === majCat);
+                oddWord = CATS[fb][0];
+                oddCat = fb;
+            }
+
+            const allWords = shuffle([...majWords, oddWord]);
+
+            // Assign distinct colours
+            const colPool = shuffle([...NEONS]).slice(0, NUM_BOXES);
+            const boxH = canvas.height / NUM_BOXES;
+
+            const boxes = allWords.map((word, i) => ({
+                word: word.toUpperCase(),
+                color: colPool[i],
+                y: i * boxH,
+                height: boxH,
+                isOdd: word === oddWord,
+                opacity: 1,
+                scored: false,
+                // reveal animation
+                revealOffset: BOX_WIDTH * 0.3 * (i % 2 === 0 ? 1 : -1)
+            }));
+
+            walls.push({ x, majCat, oddCat, boxes, passed: false });
+        }
+
+        // ─── Particles ───────────────────────────────────────────────────────────────
+        let trailParts = [];
+        let explodeParts = [];
+        let scorePops = []; // floating "+1", "+combo" texts
+
+        function spawnTrail() {
+            trailParts.push({ x: bird.x, y: bird.y, r: BIRD_RADIUS * 0.4, alpha: 0.7 });
+        }
+
+        function spawnExplode(wallX, box, good) {
+            const cx = wallX + BOX_WIDTH / 2;
+            const cy = box.y + box.height / 2;
+            const count = good ? 35 : 20;
+            for (let i = 0; i < count; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = Math.random() * (good ? 5 : 3) + 1;
+                explodeParts.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd,
+                    r: Math.random() * 5 + 2,
+                    alpha: 1,
+                    color: good ? box.color : '#ff3333',
+                    fade: good ? 0.018 : 0.025
+                });
+            }
+        }
+
+        function spawnScorePop(text, x, y, color) {
+            scorePops.push({ text, x, y: y - 10, vy: -1.2, alpha: 1.0, color, scale: 1.4 });
+        }
+
+        // ─── Helpers ─────────────────────────────────────────────────────────────────
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function hexRgb(hex) {
+            const h = hex.replace('#','');
+            return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+        }
+
+        function lerp(a, b, t) { return a + (b - a) * t; }
+
+        function friendlyName(cat) {
+            return cat.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        // ─── Controls ────────────────────────────────────────────────────────────────
+        let justTapped = false;
+
+        function handleInput() {
+            if (state === 'title') {
+                state = 'playing';
+                return;
+            }
+            if (state === 'gameover') {
+                resetGame();
+                return;
+            }
+            if (state === 'dead') return;
+            // Flap
+            bird.vy = FLAP_POWER;
+            bird.wingAngle = -0.8; // snap wing down
+        }
+
+        canvas.addEventListener('mousedown', handleInput);
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(); }, { passive: false });
+        window.addEventListener('keydown', e => {
+            if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') handleInput();
+        });
+
+        // ─── Reset ───────────────────────────────────────────────────────────────────
+        function resetGame() {
+            bird.x = 110;
+            bird.y = canvas.height / 2;
+            bird.vy = 0;
+            bird.rotation = 0;
+            bird.wingAngle = 0;
+            bird.dead = false;
+
+            gravity = GRAVITY_BASE;
+            speed = SPEED_BASE;
+            spacing = SPACING_BASE;
+            score = 0;
+            combo = 0;
+            difficultyLevel = 1;
+            deathTimer = 0;
+            flashAlpha = 0;
+            flashColor = null;
+            comboText = null;
+            screenShake = 0;
+            lastCorrectCat = '';
+
+            walls = [];
+            trailParts = [];
+            explodeParts = [];
+            scorePops = [];
+
+            for (let i = 0; i < 4; i++) {
+                generateWall(canvas.width + 100 + i * spacing);
+            }
+
+            hideHint();
+            state = 'playing';
+        }
+
+        // ─── Hint System ─────────────────────────────────────────────────────────────
+        function showHint(text) {
+            hintOverlay.style.display = 'block';
+            hintOverlay.textContent = text;
+            hintVisible = true;
+            hintTimer = 2.5;
+        }
+        function hideHint() {
+            hintOverlay.style.display = 'none';
+            hintVisible = false;
+        }
+
+        // ─── Physics / Update ────────────────────────────────────────────────────────
+        function updateBird(dt) {
+            if (bird.dead) return;
+
+            bird.vy += gravity * dt * 60;
+            bird.vy = Math.max(-4, Math.min(bird.vy, 5));
+            bird.y += bird.vy * dt * 60;
+            bird.rotation = Math.atan2(bird.vy, 4);
+
+            // Wing flap animation
+            bird.wingAngle = lerp(bird.wingAngle, Math.sin(Date.now() / 120) * 0.5, 0.15);
+
+            // Boundaries → die
+            if (bird.y + BIRD_RADIUS > canvas.height || bird.y - BIRD_RADIUS < 0) {
+                triggerDeath();
+            }
+
+            // Trail
+            if (Math.random() < 0.25) spawnTrail();
+        }
+
+        function updateWalls(dt) {
+            walls.forEach(w => { w.x -= speed * dt * 60; });
+
+            // Remove old walls
+            while (walls.length && walls[0].x + BOX_WIDTH < -20) walls.shift();
+
+            // Add new walls
+            while (walls.length < 5) {
+                const lastX = walls.length ? walls[walls.length - 1].x : canvas.width;
+                generateWall(lastX + spacing);
+            }
+        }
+
+        function checkCollision() {
+            const wall = walls[0];
+            if (!wall) return;
+
+            const bLeft  = bird.x - BIRD_RADIUS + 4;
+            const bRight = bird.x + BIRD_RADIUS - 4;
+            const bTop   = bird.y - BIRD_RADIUS + 4;
+            const bBottom= bird.y + BIRD_RADIUS - 4;
+
+            if (bRight < wall.x || bLeft > wall.x + BOX_WIDTH) return;
+
+            for (const box of wall.boxes) {
+                if (box.opacity <= 0) continue;
+                if (bBottom < box.y || bTop > box.y + box.height) continue;
+
+                // Overlap!
+                if (box.isOdd) {
+                    // Correct — dissolve it
+                    if (!box.scored) {
+                        box.scored = true;
+                        box.opacity = 0;
+                        score++;
+                        combo++;
+                        if (score > bestScore) {
+                            bestScore = score;
+                            localStorage.setItem('wordBirdBest2', bestScore);
+                        }
+
+                        spawnExplode(wall.x, box, true);
+
+                        const pts = combo >= 5 ? `+${combo}🔥` : combo >= 3 ? `+${combo}✨` : `+1`;
+                        spawnScorePop(pts, wall.x + BOX_WIDTH / 2, box.y + box.height / 2, box.color);
+
+                        // Green flash
+                        flashColor = [50, 255, 100];
+                        flashAlpha = combo >= 3 ? 0.35 : 0.2;
+
+                        // Show what the category was
+                        lastCorrectCat = wall.majCat;
+                        showHint(`✓  Odd one out! "${box.word}" is ${friendlyName(wall.oddCat)}, not ${friendlyName(wall.majCat)}`);
+
+                        // Difficulty ramp
+                        speed   = Math.min(SPEED_MAX,   speed   + SPEED_INC);
+                        gravity = Math.min(GRAVITY_MAX, gravity + GRAVITY_INC);
+                        spacing = Math.max(SPACING_MIN, spacing - SPACING_DEC);
+                        difficultyLevel = Math.floor(score / 5) + 1;
+                    }
+                } else {
+                    // Wrong — die
+                    triggerDeath(wall, box);
+                }
+                return;
+            }
+        }
+
+        function triggerDeath(wall, wrongBox) {
+            if (bird.dead) return;
+            bird.dead = true;
+            combo = 0;
+
+            // Red flash + shake
+            flashColor = [255, 50, 50];
+            flashAlpha = 0.5;
+            screenShake = 12;
+
+            if (wrongBox) {
+                spawnExplode(wall.x, wrongBox, false);
+                showHint(`✗  "${wrongBox.word}" is ${friendlyName(wall.majCat)} — wrong box!`);
+            }
+
+            // Bird death physics
+            bird.deathVx = speed;
+            bird.deathVy = bird.vy * 0.5;
+            bird.deathSpin = (Math.random() - 0.5) * 0.3;
+
+            state = 'dead';
+            deathTimer = 1.5;
+        }
+
+        function updateDeath(dt) {
+            // Bird flies off screen
+            bird.x += bird.deathVx * dt * 60;
+            bird.y += bird.deathVy * dt * 60;
+            bird.deathVy += 0.15 * dt * 60;
+            bird.rotation += bird.deathSpin;
+
+            deathTimer -= dt;
+            if (deathTimer <= 0) {
+                state = 'gameover';
+            }
+        }
+
+        // ─── Draw ─────────────────────────────────────────────────────────────────
+        function drawBg(dt) {
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Stars
+            const starAlpha = 0.6 + 0.4 * Math.sin(Date.now() / 3000);
+            stars.forEach(s => {
+                const twinkle = 0.4 + 0.6 * Math.sin(Date.now() / 1000 + s.bright * 10);
+                ctx.globalAlpha = twinkle * 0.8;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fill();
+                if (state === 'playing' || state === 'dead') {
+                    s.x -= s.spd * speed * dt * 60;
+                    if (s.x < 0) { s.x = canvas.width; s.y = Math.random() * canvas.height; }
+                }
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function drawWalls() {
+            walls.forEach(wall => {
+                wall.boxes.forEach((box, i) => {
+                    if (box.opacity <= 0) return;
+                    const [r,g,b] = hexRgb(box.color);
+                    const pad = 3;
+                    const bx = wall.x;
+                    const by = box.y + pad;
+                    const bw = BOX_WIDTH;
+                    const bh = box.height - pad * 2;
+
+                    ctx.save();
+                    ctx.globalAlpha = box.opacity;
+
+                    // Glow
+                    ctx.shadowColor = box.color;
+                    ctx.shadowBlur = 10;
+
+                    // Fill
+                    ctx.fillStyle = `rgba(${r},${g},${b},0.55)`;
+                    ctx.fillRect(bx, by, bw, bh);
+
+                    // Border
+                    ctx.strokeStyle = `rgba(${r},${g},${b},0.9)`;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(bx, by, bw, bh);
+
+                    ctx.shadowBlur = 0;
+
+                    // Word
+                    ctx.fillStyle = `rgba(255,255,255,${box.opacity})`;
+                    const fontSize = bh > 70 ? 20 : 16;
+                    ctx.font = `bold ${fontSize}px Inter`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(box.word, bx + bw / 2, by + bh / 2);
+
+                    ctx.restore();
+                });
+            });
+        }
+
+        function drawBird(dt) {
+            ctx.save();
+            ctx.translate(bird.x, bird.y);
+            ctx.rotate(bird.rotation);
+
+            // Glow
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00f0ff';
+
+            // Body
+            ctx.fillStyle = '#00d8ff';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, BIRD_RADIUS, BIRD_RADIUS * 0.78, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Wing
+            ctx.shadowBlur = 0;
+            const wa = bird.wingAngle;
+            ctx.fillStyle = '#00ff99';
+            ctx.beginPath();
+            ctx.moveTo(-BIRD_RADIUS * 0.4, 0);
+            ctx.lineTo(-BIRD_RADIUS * 1.3, BIRD_RADIUS * 0.3 + wa * BIRD_RADIUS);
+            ctx.lineTo(-BIRD_RADIUS * 0.7, BIRD_RADIUS * 0.5);
+            ctx.closePath();
+            ctx.fill();
+
+            // Eye white
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(BIRD_RADIUS * 0.45, -BIRD_RADIUS * 0.28, BIRD_RADIUS * 0.22, 0, Math.PI * 2);
+            ctx.fill();
+            // Pupil
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(BIRD_RADIUS * 0.5, -BIRD_RADIUS * 0.26, BIRD_RADIUS * 0.11, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Beak
+            ctx.fillStyle = '#ff8c00';
+            ctx.beginPath();
+            ctx.moveTo(BIRD_RADIUS * 0.9, -4);
+            ctx.lineTo(BIRD_RADIUS + 10, -2);
+            ctx.lineTo(BIRD_RADIUS + 10, 5);
+            ctx.lineTo(BIRD_RADIUS * 0.9, 4);
+            ctx.closePath();
+            ctx.fill();
+
+            // Tail
+            ctx.strokeStyle = '#00d8ff';
+            ctx.lineWidth = 2;
+            for (let i = -1; i <= 1; i++) {
+                ctx.beginPath();
+                ctx.moveTo(-BIRD_RADIUS, i * 4);
+                ctx.lineTo(-BIRD_RADIUS - 10, i * 6);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        function drawParticles(dt) {
+            // Trail
+            trailParts = trailParts.filter(p => {
+                p.alpha -= 0.025 * dt * 60;
+                p.r -= 0.08 * dt * 60;
+                if (p.alpha <= 0 || p.r <= 0) return false;
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = '#00f0ff';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+                return true;
+            });
+            ctx.globalAlpha = 1;
+
+            // Explosions
+            explodeParts = explodeParts.filter(p => {
+                p.x += p.vx * dt * 60;
+                p.y += p.vy * dt * 60;
+                p.vy += 0.08 * dt * 60;
+                p.alpha -= p.fade * dt * 60;
+                p.r -= 0.06 * dt * 60;
+                if (p.alpha <= 0 || p.r <= 0) return false;
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+                return true;
+            });
+            ctx.globalAlpha = 1;
+
+            // Score pops
+            scorePops = scorePops.filter(p => {
+                p.y += p.vy * dt * 60;
+                p.alpha -= 0.018 * dt * 60;
+                p.scale = lerp(p.scale, 1.0, 0.12);
+                if (p.alpha <= 0) return false;
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.font = `bold ${Math.round(22 * p.scale)}px Orbitron`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 8;
+                ctx.fillText(p.text, p.x, p.y);
+                ctx.restore();
+                return true;
+            });
+        }
+
+        function drawFlash() {
+            if (flashAlpha <= 0) return;
+            const [r,g,b] = flashColor;
+            ctx.fillStyle = `rgba(${r},${g},${b},${flashAlpha})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            flashAlpha -= 0.03;
+            if (flashAlpha < 0) flashAlpha = 0;
+        }
+
+        function drawHUD() {
+            if (state !== 'playing' && state !== 'dead') return;
+
+            const cx = canvas.width / 2;
+
+            // Score
+            ctx.save();
+            ctx.font = '34px Orbitron';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 12;
+            ctx.fillText(`${score}`, cx, 18);
+            ctx.restore();
+
+            // Combo
+            if (combo >= 3) {
+                ctx.save();
+                ctx.font = `bold ${16 + Math.min(combo, 10)}px Inter`;
+                ctx.fillStyle = combo >= 5 ? '#ff8800' : '#ffdd00';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 10;
+                ctx.fillText(`${combo}x COMBO!`, cx, 62);
+                ctx.restore();
+            }
+
+            // Difficulty level (subtle)
+            ctx.save();
+            ctx.font = '12px Inter';
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`LVL ${difficultyLevel}`, 14, canvas.height - 30);
+            ctx.restore();
+
+            // Best
+            if (bestScore > 0) {
+                ctx.save();
+                ctx.font = '13px Inter';
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'top';
+                ctx.fillText(`BEST ${bestScore}`, canvas.width - 14, 18);
+                ctx.restore();
+            }
+        }
+
+        function drawTitle() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // Panel
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            roundRect(cx - 230, cy - 160, 460, 310, 20, true, false);
+
+            // Title
+            ctx.save();
+            ctx.font = 'bold 52px Orbitron';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#00f0ff';
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 25;
+            ctx.fillText('WORD BIRD', cx, cy - 100);
+            ctx.restore();
+
+            ctx.save();
+            ctx.font = '18px Inter';
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Fly through the word that DOESN\'T belong!', cx, cy - 45);
+            ctx.fillStyle = 'rgba(255,255,255,0.65)';
+            ctx.font = '14px Inter';
+            ctx.fillText('4 words belong to one category — find the odd one out', cx, cy - 15);
+            ctx.fillText('Hit a wrong box and it\'s over!', cx, cy + 15);
+            ctx.restore();
+
+            // Tap prompt (pulsing)
+            const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 500);
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.font = 'bold 22px Orbitron';
+            ctx.fillStyle = '#ffdd00';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#ffdd00';
+            ctx.shadowBlur = 15;
+            ctx.fillText('TAP TO START', cx, cy + 65);
+            ctx.restore();
+
+            if (bestScore > 0) {
+                ctx.save();
+                ctx.font = '15px Inter';
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`Personal Best: ${bestScore}`, cx, cy + 110);
+                ctx.restore();
+            }
+        }
+
+        function drawGameOver() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.75)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.font = 'bold 48px Orbitron';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ff4466';
+            ctx.shadowColor = '#ff4466';
+            ctx.shadowBlur = 20;
+            ctx.fillText('GAME OVER', cx, cy - 90);
+            ctx.restore();
+
+            ctx.save();
+            ctx.font = '28px Orbitron';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'white';
+            ctx.fillText(`Score: ${score}`, cx, cy - 20);
+            ctx.restore();
+
+            ctx.save();
+            ctx.font = '18px Inter';
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`Personal Best: ${bestScore}`, cx, cy + 22);
+            ctx.restore();
+
+            if (score >= bestScore && score > 0) {
+                ctx.save();
+                ctx.font = 'bold 16px Inter';
+                ctx.fillStyle = '#ffdd00';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#ffdd00';
+                ctx.shadowBlur = 10;
+                ctx.fillText('🏆 NEW BEST!', cx, cy + 55);
+                ctx.restore();
+            }
+
+            const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 500);
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.font = 'bold 20px Orbitron';
+            ctx.fillStyle = '#00f0ff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 12;
+            ctx.fillText('TAP TO PLAY AGAIN', cx, cy + 100);
+            ctx.restore();
+        }
+
+        // ─── RoundRect helper ─────────────────────────────────────────────────────
+        function roundRect(x, y, w, h, r, fill, stroke) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            if (fill) ctx.fill();
+            if (stroke) ctx.stroke();
+        }
+
+        // ─── Hint timer ───────────────────────────────────────────────────────────
+        function updateHint(dt) {
+            if (!hintVisible) return;
+            hintTimer -= dt;
+            if (hintTimer <= 0) hideHint();
+        }
+
+        // ─── Main Loop ───────────────────────────────────────────────────────────
+        let lastTime = 0;
+
+        function loop(ts) {
+            const dt = Math.min((ts - lastTime) / 1000, 0.05); // cap at 50ms to avoid spiral
+            lastTime = ts;
+
+            // Screen shake
+            let sx = 0, sy = 0;
+            if (screenShake > 0) {
+                sx = (Math.random() - 0.5) * screenShake;
+                sy = (Math.random() - 0.5) * screenShake;
+                screenShake = Math.max(0, screenShake - 1.5);
+            }
+            ctx.save();
+            ctx.translate(sx, sy);
+
+            // Draw background
+            drawBg(dt);
+
+            if (state === 'playing' || state === 'dead') {
+                drawWalls();
+                drawParticles(dt);
+                drawBird(dt);
+                drawFlash();
+                drawHUD();
+            }
+
+            if (state === 'title') {
+                drawTitle();
+            }
+
+            if (state === 'gameover') {
+                drawWalls();
+                drawParticles(dt);
+                drawGameOver();
+            }
+
+            ctx.restore();
+
+            // Update
+            if (state === 'playing') {
+                updateBird(dt);
+                updateWalls(dt);
+                checkCollision();
+                updateHint(dt);
+            } else if (state === 'dead') {
+                updateDeath(dt);
+                updateWalls(dt);
+                updateHint(dt);
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        // ─── Boot ─────────────────────────────────────────────────────────────────
+        bird.y = canvas.height / 2;
+        for (let i = 0; i < 4; i++) generateWall(canvas.width + 100 + i * spacing);
+        requestAnimationFrame(loop);
+
+    })();
+    </script>
+</body>
+</html>

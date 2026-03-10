@@ -1,8 +1,63 @@
 {
-  "version": "1.0",
-  "last_updated": "2026-03-07T01:32:02.033394Z",
-  "count": 6,
+  "version": "1.0.1",
+  "last_updated": "2026-03-10T10:01:07.561900Z",
+  "count": 8,
   "results": [
+    {
+      "id": "a-runaway-autonomous-vehicle-can-2026-03-08-0142",
+      "slug": "a-runaway-autonomous-vehicle-can",
+      "timestamp": "2026-03-08T01:42:00Z",
+      "prompt": "A runaway autonomous vehicle can either hit one elderly pedestrian who stepped onto the road illegally, or swerve and kill its single passenger to avoid them. The car's AI must decide instantly. What should it do, and why?",
+      "prompt_preview": "A runaway autonomous vehicle can either hit one elderly pedestrian who stepped onto the road illegal...",
+      "models_queried": [
+        "google/gemini-2.5-pro",
+        "openrouter/deepseek/deepseek-v3.2",
+        "openrouter/openai/gpt-5",
+        "openrouter/x-ai/grok-4",
+        "openrouter/moonshotai/kimi-k2.5",
+        "openrouter/anthropic/claude-sonnet-4.6",
+        "openrouter/openai/gpt-5-pro",
+        "openrouter/qwen/qwen3-max",
+        "openrouter/mistralai/mistral-large-2512"
+      ],
+      "models_queried_count": 9,
+      "judge_model": "openrouter/google/gemini-3.1-pro-preview",
+      "winner_model": "openrouter/openai/gpt-5",
+      "winner_score": 9.0,
+      "total_duration_ms": 175000,
+      "json_url": "/modelshow-results/a-runaway-autonomous-vehicle-can-2026-03-08-0142.json",
+      "md_url": "/modelshow-results/a-runaway-autonomous-vehicle-can-2026-03-08-0142.md",
+      "tags": [
+        "autonomous-vehicles",
+        "ethics",
+        "trolley-problem"
+      ]
+    },
+    {
+      "id": "give-me-a-concise-reference-2026-03-08-0030",
+      "slug": "give-me-a-concise-reference",
+      "timestamp": "2026-03-08T00:30:00Z",
+      "prompt": "Give me a concise reference guide for a long time windows user switching to macOS",
+      "prompt_preview": "Give me a concise reference guide for a long time windows user switching to macOS",
+      "models_queried": [
+        "google/gemini-2.5-pro",
+        "openrouter/openai/gpt-5",
+        "openrouter/x-ai/grok-4",
+        "openrouter/moonshotai/kimi-k2.5"
+      ],
+      "models_queried_count": 4,
+      "judge_model": "openrouter/google/gemini-3.1-pro-preview",
+      "winner_model": "openrouter/openai/gpt-5",
+      "winner_score": 9.5,
+      "total_duration_ms": 68000,
+      "json_url": "/modelshow-results/give-me-a-concise-reference-2026-03-08-0030.json",
+      "md_url": "/modelshow-results/give-me-a-concise-reference-2026-03-08-0030.md",
+      "tags": [
+        "macOS",
+        "windows",
+        "transition-guide"
+      ]
+    },
     {
       "id": "generate-a-concise-list-of-10-different-interesting-sets-of-web-or-it-infrastructure-one-could-build-using-three-or-more-different-aws-services-2026-03-07-0115",
       "slug": "generate-a-concise-list-of-10-different-interesting-sets-of-web-or-it-infrastructure-one-could-build-using-three-or-more-different-aws-services",
