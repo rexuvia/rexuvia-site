@@ -1,9 +1,9 @@
 [
   {
-    "date": "2026-03-10",
     "title": "Word Bird",
     "url": "/games/2026-03-10-word-bird.html",
     "github_url": "https://github.com/rexuvia/word-bird",
+    "date": "2026-02-16",
     "last_updated": "2026-03-10"
   },
   {
@@ -123,13 +123,6 @@
     "title": "Pendulum Waves",
     "url": "/games/2026-02-16-pendulum-waves.html",
     "github_url": "https://github.com/rexuvia/pendulum-waves",
-    "last_updated": "2026-02-19"
-  },
-  {
-    "date": "2026-02-16",
-    "title": "Word Bird",
-    "url": "/games/2026-02-16-word-bird.html",
-    "github_url": "https://github.com/rexuvia/word-bird",
     "last_updated": "2026-02-19"
   }
 ]

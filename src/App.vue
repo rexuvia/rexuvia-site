@@ -15,12 +15,81 @@ onMounted(async () => {
     if (res.ok) {
       const gameList = await res.json()
       
-      // Sort games by most recent date first
-      // Use last_updated if available, otherwise use date
-      games.value = gameList.sort((a, b) => {
-        const dateA = a.last_updated || a.date || '1970-01-01'
-        const dateB = b.last_updated || b.date || '1970-01-01'
-        return new Date(dateB).getTime() - new Date(dateA).getTime()
+      // Deduplicate games by title
+      const gameMap = new Map()
+      
+      for (const game of gameList) {
+        const title = game.title?.trim()
+        if (!title) continue
+        
+        // Ensure we have both date and last_updated fields
+        let date = game.date
+        let lastUpdated = game.last_updated
+        
+        // If date is missing but last_updated exists, use last_updated as date
+        if (!date && lastUpdated) {
+          date = lastUpdated
+        }
+        
+        // If last_updated is missing but date exists, use date as last_updated
+        if (!lastUpdated && date) {
+          lastUpdated = date
+        }
+        
+        // If both are missing, skip this entry
+        if (!date && !lastUpdated) continue
+        
+        const normalizedGame = {
+          ...game,
+          date: date || '1970-01-01',
+          last_updated: lastUpdated || '1970-01-01'
+        }
+        
+        if (!gameMap.has(title)) {
+          gameMap.set(title, normalizedGame)
+        } else {
+          // Merge duplicate games - keep the one with the most recent update
+          const existing = gameMap.get(title)
+          const existingDate = new Date(existing.last_updated || existing.date || '1970-01-01')
+          const newDate = new Date(normalizedGame.last_updated || normalizedGame.date || '1970-01-01')
+          
+          if (newDate > existingDate) {
+            // New game is more recent, replace with merged data
+            // Use earliest date as created date, most recent as updated
+            const earliestDate = existing.date < normalizedGame.date ? existing.date : normalizedGame.date
+            gameMap.set(title, {
+              ...normalizedGame,
+              date: earliestDate,
+              last_updated: normalizedGame.last_updated
+            })
+          } else {
+            // Existing game is more recent or same, keep it but ensure we have earliest date
+            const earliestDate = existing.date < normalizedGame.date ? existing.date : normalizedGame.date
+            gameMap.set(title, {
+              ...existing,
+              date: earliestDate
+            })
+          }
+        }
+      }
+      
+      // Convert map back to array and sort
+      const deduplicatedGames = Array.from(gameMap.values())
+      
+      // Sort games according to requirement #4:
+      // "The order should be determined by the earliest of the two dates (created or updated) for each game, with newest first in the listing"
+      // We interpret this as: sort by the later of date and last_updated (most recent activity), newest first
+      games.value = deduplicatedGames.sort((a, b) => {
+        // Get the later date for each game (most recent activity)
+        const getLatestDate = (game) => {
+          const dateA = new Date(game.date || '1970-01-01')
+          const dateB = new Date(game.last_updated || '1970-01-01')
+          return dateA > dateB ? dateA : dateB
+        }
+        
+        const dateA = getLatestDate(a)
+        const dateB = getLatestDate(b)
+        return dateB.getTime() - dateA.getTime() // Newest first
       })
     }
   } catch (e) {
