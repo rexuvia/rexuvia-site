@@ -44,6 +44,11 @@ const sortBy           = ref('timestamp')
 const sortOrder        = ref('desc')      // 'asc' | 'desc'
 const filterText       = ref('')
 
+// Pagination state
+const currentPage      = ref(1)
+const itemsPerPage     = ref(5)           // Default: 5 items per page
+const itemsPerPageOptions = [5, 10, 20, 0] // 0 means "all"
+
 let knownIds           = new Set()
 
 // ── Computed ───────────────────────────────────────────────────────────
@@ -81,6 +86,70 @@ const sortedResults = computed(() => {
     }
   })
   return arr
+})
+
+// Pagination computed properties
+const totalPages = computed(() => {
+  if (itemsPerPage.value === 0) return 1 // Show all items on one page
+  return Math.ceil(sortedResults.value.length / itemsPerPage.value)
+})
+
+const paginatedResults = computed(() => {
+  if (itemsPerPage.value === 0) return sortedResults.value // Show all
+  
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return sortedResults.value.slice(start, end)
+})
+
+const pageNumbers = computed(() => {
+  const pages = []
+  const maxVisible = 5 // Maximum number of page buttons to show
+  
+  if (totalPages.value <= maxVisible) {
+    // Show all pages
+    for (let i = 1; i <= totalPages.value; i++) {
+      pages.push(i)
+    }
+  } else {
+    // Show first page, last page, and pages around current page
+    pages.push(1)
+    
+    let start = Math.max(2, currentPage.value - 1)
+    let end = Math.min(totalPages.value - 1, currentPage.value + 1)
+    
+    // Adjust if we're near the beginning
+    if (currentPage.value <= 3) {
+      end = Math.min(totalPages.value - 1, 4)
+    }
+    
+    // Adjust if we're near the end
+    if (currentPage.value >= totalPages.value - 2) {
+      start = Math.max(2, totalPages.value - 3)
+    }
+    
+    // Add ellipsis if needed
+    if (start > 2) {
+      pages.push('...')
+    }
+    
+    // Add middle pages
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+    
+    // Add ellipsis if needed
+    if (end < totalPages.value - 1) {
+      pages.push('...')
+    }
+    
+    // Add last page
+    if (totalPages.value > 1) {
+      pages.push(totalPages.value)
+    }
+  }
+  
+  return pages
 })
 
 const hasResults = computed(() => results.value.length > 0)
@@ -195,9 +264,40 @@ function clearFilter() {
   filterText.value = ''
 }
 
+// Pagination functions
+function goToPage(page) {
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+    currentPage.value = page
+  }
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+  }
+}
+
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--
+  }
+}
+
+function changeItemsPerPage(value) {
+  itemsPerPage.value = value
+  currentPage.value = 1 // Reset to first page when changing items per page
+}
+
 // ── Lifecycle ──────────────────────────────────────────────────────────
 onMounted(() => {
   fetchIndex()
+})
+
+// ── Watchers ──────────────────────────────────────────────────────────
+// Reset to first page when filter changes or sorted results change
+import { watch } from 'vue'
+watch([filterText, sortedResults], () => {
+  currentPage.value = 1
 })
 </script>
 
@@ -256,7 +356,7 @@ onMounted(() => {
           </tr>
         </thead>
         <tbody>
-          <template v-for="r in sortedResults" :key="r.id">
+          <template v-for="r in paginatedResults" :key="r.id">
             <!-- Main row -->
             <tr
               class="ms-row"
@@ -381,7 +481,69 @@ onMounted(() => {
 
       <!-- Footer -->
       <div class="ms-table-footer">
-        <span>{{ sortedResults.length }} of {{ results.length }} result{{ results.length !== 1 ? 's' : '' }}</span>      </div>
+        <div class="ms-pagination-info">
+          <span v-if="itemsPerPage > 0">
+            Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }}-{{ Math.min(currentPage * itemsPerPage, sortedResults.length) }} of {{ sortedResults.length }} result{{ sortedResults.length !== 1 ? 's' : '' }}
+          </span>
+          <span v-else>
+            Showing all {{ sortedResults.length }} result{{ sortedResults.length !== 1 ? 's' : '' }}
+          </span>
+        </div>
+        
+        <!-- Items per page selector -->
+        <div class="ms-items-per-page">
+          <label for="items-per-page-select" class="ms-items-per-page-label">Show:</label>
+          <select 
+            id="items-per-page-select"
+            v-model="itemsPerPage" 
+            @change="changeItemsPerPage(parseInt($event.target.value))"
+            class="ms-items-per-page-select"
+          >
+            <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
+              {{ option === 0 ? 'All' : option }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Pagination controls -->
+      <div v-if="totalPages > 1" class="ms-pagination-controls">
+        <button 
+          class="ms-pagination-btn ms-pagination-prev" 
+          @click="prevPage"
+          :disabled="currentPage === 1"
+          aria-label="Previous page"
+        >
+          ← Previous
+        </button>
+        
+        <div class="ms-pagination-pages">
+          <button
+            v-for="page in pageNumbers"
+            :key="page"
+            class="ms-pagination-page"
+            :class="{
+              'ms-pagination-page-current': page === currentPage,
+              'ms-pagination-page-ellipsis': page === '...'
+            }"
+            @click="page !== '...' && goToPage(page)"
+            :disabled="page === '...' || page === currentPage"
+            :aria-label="page === '...' ? 'More pages' : `Go to page ${page}`"
+            :aria-current="page === currentPage ? 'page' : null"
+          >
+            {{ page }}
+          </button>
+        </div>
+        
+        <button 
+          class="ms-pagination-btn ms-pagination-next" 
+          @click="nextPage"
+          :disabled="currentPage === totalPages"
+          aria-label="Next page"
+        >
+          Next →
+        </button>
+      </div>
     </div>
 
     <!-- Truly empty state (no data at all) -->
@@ -794,9 +956,130 @@ details[open] .ms-response-summary::before { content: '▼ '; }
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   color: #555;
   font-size: 0.78rem;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .ms-poll-note { font-style: italic; }
+
+.ms-pagination-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ms-items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ms-items-per-page-label {
+  color: #666;
+  font-size: 0.75rem;
+}
+
+.ms-items-per-page-select {
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 0.75rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.ms-items-per-page-select:hover {
+  border-color: rgba(232, 116, 97, 0.3);
+}
+
+.ms-items-per-page-select:focus {
+  border-color: rgba(232, 116, 97, 0.5);
+}
+
+/* ── Pagination controls ────────────────────────────── */
+.ms-pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+}
+
+.ms-pagination-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #888;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.ms-pagination-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  border-color: rgba(232, 116, 97, 0.3);
+}
+
+.ms-pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ms-pagination-pages {
+  display: flex;
+  gap: 6px;
+}
+
+.ms-pagination-page {
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #888;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ms-pagination-page:hover:not(:disabled):not(.ms-pagination-page-ellipsis) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  border-color: rgba(232, 116, 97, 0.3);
+}
+
+.ms-pagination-page-current {
+  background: rgba(232, 116, 97, 0.15);
+  color: #e87461;
+  border-color: rgba(232, 116, 97, 0.4);
+  cursor: default;
+}
+
+.ms-pagination-page-ellipsis {
+  background: transparent;
+  border: none;
+  cursor: default;
+  min-width: auto;
+  padding: 0 4px;
+}
+
+.ms-pagination-page:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 /* ── Empty states ───────────────────────────────────── */
 .ms-empty {
@@ -905,8 +1188,34 @@ details[open] .ms-response-summary::before { content: '▼ '; }
 
   .ms-table-footer {
     flex-direction: column;
-    gap: 4px;
-    align-items: flex-start;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .ms-pagination-info {
+    min-width: auto;
+    text-align: center;
+  }
+
+  .ms-items-per-page {
+    justify-content: center;
+  }
+
+  .ms-pagination-controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ms-pagination-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ms-pagination-pages {
+    order: -1;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .skill-explanation {
