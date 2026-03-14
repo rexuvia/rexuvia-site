@@ -1,8 +1,40 @@
 {
   "version": "1.0.1",
-  "last_updated": "2026-03-12T02:14:01.464864Z",
-  "count": 8,
+  "last_updated": "2026-03-14T01:06:19.469492Z",
+  "count": 9,
   "results": [
+    {
+      "id": "analyze-this-ethical-dilemma-comprehensively:-2026-03-13-1141",
+      "slug": "analyze-this-ethical-dilemma-comprehensively:",
+      "timestamp": "2026-03-13T11:41:51Z",
+      "prompt": "Analyze this ethical dilemma comprehensively: A trolley maintenance report shows that in exactly one year, a trolley will derail and kill five people unless a safety upgrade is installed now. The upgrade costs $1 million, which would otherwise fund a medical treatment saving one person's life this month. How should we weigh immediate certain harm to one person against future probabilistic harm to five people? Provide a comprehensive ethical analysis considering: 1. Temporal discounting (present vs future harm) 2. Certainty vs probability 3. Resource allocation ethics 4. Utilitarian vs deontological perspectives 5. Practical implementation considerations",
+      "prompt_preview": "Analyze this ethical dilemma comprehensively: A trolley maintenance report shows that in exactly one...",
+      "models_queried": [
+        "openrouter/anthropic/claude-opus-4-0",
+        "google/gemini-2.5-pro",
+        "openrouter/deepseek/deepseek-v3.2",
+        "openrouter/openai/gpt-5",
+        "openrouter/x-ai/grok-4",
+        "openrouter/moonshotai/kimi-k2.5",
+        "openrouter/anthropic/claude-sonnet-4.6",
+        "openrouter/openai/gpt-5-pro",
+        "openrouter/qwen/qwen3-max",
+        "openrouter/mistralai/mistral-large-2512"
+      ],
+      "models_queried_count": 10,
+      "judge_model": "openrouter/google/gemini-3.1-pro-preview",
+      "winner_model": "openrouter/anthropic/claude-sonnet-4.6",
+      "winner_score": 9.5,
+      "total_duration_ms": 293600,
+      "json_url": "/modelshow-results/analyze-this-ethical-dilemma-comprehensively:-2026-03-13-1141.json",
+      "md_url": "/modelshow-results/analyze-this-ethical-dilemma-comprehensively:-2026-03-13-1141.md",
+      "tags": [
+        "trolley problem",
+        "temporal ethics",
+        "resource allocation",
+        "AI model comparison"
+      ]
+    },
     {
       "id": "a-runaway-autonomous-vehicle-can-2026-03-08-0142",
       "slug": "a-runaway-autonomous-vehicle-can",

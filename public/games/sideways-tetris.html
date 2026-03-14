@@ -56,12 +56,17 @@
             background: #0a192f;
             max-width: 90vw;
             max-height: 70vh;
+            display: block;
+            margin: 0 auto;
         }
         .controls {
             margin-top: 15px;
-            font-size: clamp(0.7rem, 2vw, 0.9rem);
+            font-size: clamp(0.65rem, 1.8vw, 0.85rem);
             color: #00ff88;
-            line-height: 1.6;
+            line-height: 1.8;
+        }
+        .controls strong {
+            color: #64ffda;
         }
         button {
             font-family: 'Orbitron', sans-serif;
@@ -111,6 +116,16 @@
             color: #00ff88;
             margin-bottom: 30px;
         }
+
+        /* Ghost piece indicator flash */
+        @keyframes dropFlash {
+            0%   { box-shadow: 0 0 20px rgba(0, 240, 255, 0.5), inset 0 0 20px rgba(0, 240, 255, 0.1); }
+            50%  { box-shadow: 0 0 40px rgba(255, 0, 170, 0.9), inset 0 0 30px rgba(255, 0, 170, 0.2); }
+            100% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.5), inset 0 0 20px rgba(0, 240, 255, 0.1); }
+        }
+        #canvas.drop-flash {
+            animation: dropFlash 0.2s ease;
+        }
     </style>
 </head>
 <body>
@@ -120,8 +135,8 @@
         <div id="score-display">SCORE: 0</div>
         <canvas id="canvas"></canvas>
         <div class="controls">
-            <div><strong>Desktop:</strong> ↑↓ Move | SPACE Rotate | → Hard Drop | P Pause</div>
-            <div><strong>Mobile:</strong> Swipe Up/Down | Tap Rotate | Swipe Right Drop</div>
+            <div><strong>Desktop:</strong> ↑ / ↓ Move &nbsp;|&nbsp; SPACE Rotate &nbsp;|&nbsp; → Soft Drop &nbsp;|&nbsp; SHIFT+→ or D Hard Drop</div>
+            <div><strong>Mobile:</strong> Swipe ↑↓ Move &nbsp;|&nbsp; Tap Rotate &nbsp;|&nbsp; Short swipe → Soft Drop &nbsp;|&nbsp; Long swipe → Hard Drop</div>
         </div>
         <button id="pause-btn">PAUSE</button>
     </div>
@@ -161,6 +176,11 @@
         let dropInterval = 1000;
         let lastTime = 0;
 
+        // Key held state for soft-drop hold detection
+        let rightKeyHeld = false;
+        let rightKeyHoldTimer = null;
+        const HOLD_THRESHOLD_MS = 300; // hold → after this many ms = hard drop
+
         // Tetromino shapes (standard, will rotate 90° for sideways)
         const SHAPES = [
             [[1,1,1,1]], // I
@@ -189,6 +209,9 @@
             }
 
             draw() {
+                // Draw ghost piece first (semi-transparent, shows where hard drop lands)
+                this.drawGhost();
+
                 ctx.fillStyle = this.color;
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = this.color;
@@ -206,6 +229,39 @@
                     }
                 }
                 ctx.shadowBlur = 0;
+            }
+
+            drawGhost() {
+                // Project where the piece would land on a hard drop
+                const ghostX = this.getHardDropX();
+                if (ghostX === this.x) return; // No space to drop
+
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = 0.18;
+                for (let row = 0; row < this.shape.length; row++) {
+                    for (let col = 0; col < this.shape[row].length; col++) {
+                        if (this.shape[row][col]) {
+                            ctx.fillRect(
+                                (ghostX + col) * BLOCK_SIZE + 1,
+                                (this.y + row) * BLOCK_SIZE + 1,
+                                BLOCK_SIZE - 2,
+                                BLOCK_SIZE - 2
+                            );
+                        }
+                    }
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Calculate where the piece would land on a hard drop (without actually moving it)
+            getHardDropX() {
+                let testX = this.x;
+                while (true) {
+                    testX++;
+                    if (this.collisionAt(testX, this.y)) {
+                        return testX - 1;
+                    }
+                }
             }
 
             moveRight() {
@@ -247,23 +303,26 @@
                 }
             }
 
-            collision() {
+            collisionAt(x, y) {
                 for (let row = 0; row < this.shape.length; row++) {
                     for (let col = 0; col < this.shape[row].length; col++) {
                         if (this.shape[row][col]) {
-                            const newX = this.x + col;
-                            const newY = this.y + row;
-                            
-                            if (newX < 0 || newX >= COLS || newY < 0 || newY >= ROWS) {
+                            const nx = x + col;
+                            const ny = y + row;
+                            if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
                                 return true;
                             }
-                            if (grid[newY] && grid[newY][newX]) {
+                            if (grid[ny] && grid[ny][nx]) {
                                 return true;
                             }
                         }
                     }
                 }
                 return false;
+            }
+
+            collision() {
+                return this.collisionAt(this.x, this.y);
             }
 
             lock() {
@@ -284,11 +343,37 @@
                 }
                 clearColumns();
                 currentPiece = new Piece();
+                // Reset drop counter so new piece gets full interval before auto-advancing
+                dropCounter = 0;
             }
 
-            hardDrop() {
-                while (this.moveRight()) {}
+            // Soft drop: move the piece right by `steps` cells (or until blocked/wall)
+            softDrop(steps = 3) {
+                let moved = 0;
+                for (let i = 0; i < steps; i++) {
+                    if (!this.moveRight()) break;
+                    moved++;
+                }
+                if (moved > 0) {
+                    // Reset drop counter so we don't double-advance
+                    dropCounter = 0;
+                    triggerDropFlash();
+                }
             }
+
+            // Hard drop: snap piece all the way to the right wall
+            hardDrop() {
+                let moved = 0;
+                while (this.moveRight()) { moved++; }
+                if (moved > 0) {
+                    triggerDropFlash();
+                }
+            }
+        }
+
+        function triggerDropFlash() {
+            canvas.classList.add('drop-flash');
+            setTimeout(() => canvas.classList.remove('drop-flash'), 220);
         }
 
         function clearColumns() {
@@ -320,6 +405,22 @@
         function drawGrid() {
             ctx.fillStyle = '#0a192f';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw subtle grid lines
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+            ctx.lineWidth = 0.5;
+            for (let r = 0; r <= ROWS; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, r * BLOCK_SIZE);
+                ctx.lineTo(canvas.width, r * BLOCK_SIZE);
+                ctx.stroke();
+            }
+            for (let c = 0; c <= COLS; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * BLOCK_SIZE, 0);
+                ctx.lineTo(c * BLOCK_SIZE, canvas.height);
+                ctx.stroke();
+            }
 
             for (let row = 0; row < ROWS; row++) {
                 for (let col = 0; col < COLS; col++) {
@@ -364,6 +465,8 @@
             isPaused = false;
             dropCounter = 0;
             dropInterval = 1000;
+            rightKeyHeld = false;
+            if (rightKeyHoldTimer) { clearTimeout(rightKeyHoldTimer); rightKeyHoldTimer = null; }
             scoreDisplay.textContent = 'SCORE: 0';
             overlay.classList.add('hidden');
             currentPiece = new Piece();
@@ -389,42 +492,112 @@
             }
         }
 
-        // Controls
+        // ─────────────────────────────────────────────────────────────────
+        // Keyboard Controls
+        //   ↑ / ↓       — move piece up/down (vertical positioning)
+        //   SPACE       — rotate
+        //   →  (tap)    — soft drop (move right 3 steps)
+        //   → (hold)    — after HOLD_THRESHOLD_MS, becomes hard drop
+        //   SHIFT + →   — hard drop (immediate)
+        //   D           — hard drop (alternative)
+        //   P           — pause
+        // ─────────────────────────────────────────────────────────────────
         document.addEventListener('keydown', e => {
-            if (gameOver || isPaused) return;
-            
+            if (gameOver) return;
+
+            switch(e.key) {
+                case 'p':
+                case 'P':
+                    togglePause();
+                    return;
+            }
+
+            if (isPaused) return;
+
             switch(e.key) {
                 case 'ArrowUp':
                     e.preventDefault();
                     currentPiece.moveUp();
                     break;
+
                 case 'ArrowDown':
                     e.preventDefault();
                     currentPiece.moveDown();
                     break;
+
                 case 'ArrowRight':
                     e.preventDefault();
-                    currentPiece.hardDrop();
+                    if (!rightKeyHeld) {
+                        rightKeyHeld = true;
+                        // Start a timer: if key is still held after threshold → hard drop
+                        rightKeyHoldTimer = setTimeout(() => {
+                            if (rightKeyHeld && !gameOver && !isPaused) {
+                                currentPiece.hardDrop();
+                            }
+                        }, HOLD_THRESHOLD_MS);
+                    }
                     break;
+
                 case ' ':
                     e.preventDefault();
                     currentPiece.rotate();
                     break;
-                case 'p':
-                case 'P':
-                    togglePause();
+
+                // D or SHIFT+→ = immediate hard drop
+                case 'd':
+                case 'D':
+                    e.preventDefault();
+                    currentPiece.hardDrop();
                     break;
+            }
+
+            // SHIFT+Right = hard drop
+            if (e.key === 'ArrowRight' && e.shiftKey) {
+                e.preventDefault();
+                if (rightKeyHoldTimer) { clearTimeout(rightKeyHoldTimer); rightKeyHoldTimer = null; }
+                rightKeyHeld = false;
+                currentPiece.hardDrop();
             }
         });
 
-        // Touch controls
+        document.addEventListener('keyup', e => {
+            if (e.key === 'ArrowRight') {
+                if (rightKeyHeld) {
+                    // Key released before hold threshold → it was a tap → soft drop
+                    clearTimeout(rightKeyHoldTimer);
+                    rightKeyHoldTimer = null;
+                    rightKeyHeld = false;
+                    if (!gameOver && !isPaused) {
+                        currentPiece.softDrop(3);
+                    }
+                }
+            }
+        });
+
+        // ─────────────────────────────────────────────────────────────────
+        // Touch / Swipe Controls
+        //   Swipe up/down    — move piece up/down
+        //   Tap              — rotate
+        //   Short swipe →    — soft drop (move right ~3 steps)
+        //   Long swipe →     — hard drop (snap to wall)
+        //   Swipe ←          — (no-op or future use)
+        //
+        //   Thresholds:
+        //     Short swipe right: 30–120 px
+        //     Long swipe right:  >120 px
+        //     Vertical swipe:    |diffY| > 30 px and > |diffX|
+        //     Tap:               movement < 15 px
+        // ─────────────────────────────────────────────────────────────────
         let touchStartY = 0;
         let touchStartX = 0;
+        let touchStartTime = 0;
+
         canvas.addEventListener('touchstart', e => {
             e.preventDefault();
             touchStartY = e.touches[0].clientY;
             touchStartX = e.touches[0].clientX;
-        });
+            touchStartTime = Date.now();
+        }, { passive: false });
 
         canvas.addEventListener('touchend', e => {
             if (gameOver || isPaused) return;
@@ -432,18 +605,51 @@
             
             const touchEndY = e.changedTouches[0].clientY;
             const touchEndX = e.changedTouches[0].clientX;
-            const diffY = touchStartY - touchEndY;
-            const diffX = touchEndX - touchStartX;
+            const diffY = touchStartY - touchEndY;   // positive = swiped up
+            const diffX = touchEndX - touchStartX;   // positive = swiped right
+            const absDiffX = Math.abs(diffX);
+            const absDiffY = Math.abs(diffY);
+            const elapsed = Date.now() - touchStartTime;
 
-            if (Math.abs(diffX) > Math.abs(diffY)) {
-                if (diffX > 30) currentPiece.hardDrop();
-            } else if (Math.abs(diffY) > 30) {
-                if (diffY > 0) currentPiece.moveUp();
-                else currentPiece.moveDown();
-            } else {
+            const TAP_THRESHOLD = 15;
+            const SHORT_SWIPE_MIN = 30;
+            const LONG_SWIPE_THRESHOLD = 120;
+
+            if (absDiffX < TAP_THRESHOLD && absDiffY < TAP_THRESHOLD) {
+                // Tap → rotate
                 currentPiece.rotate();
+            } else if (absDiffX > absDiffY) {
+                // Horizontal swipe
+                if (diffX > 0) {
+                    // Swiped right
+                    if (absDiffX >= LONG_SWIPE_THRESHOLD) {
+                        // Long swipe right → hard drop
+                        currentPiece.hardDrop();
+                    } else if (absDiffX >= SHORT_SWIPE_MIN) {
+                        // Short swipe right → soft drop (3 steps)
+                        currentPiece.softDrop(3);
+                    }
+                }
+                // Left swipe → ignore (could add undo later)
+            } else if (absDiffY > SHORT_SWIPE_MIN) {
+                // Vertical swipe
+                if (diffY > 0) {
+                    currentPiece.moveUp();
+                } else {
+                    currentPiece.moveDown();
+                }
             }
-        });
+        }, { passive: false });
+
+        // Also listen on document body to ensure mobile swipes are captured
+        // when finger starts slightly outside canvas
+        document.body.addEventListener('touchstart', e => {
+            if (e.target !== canvas) {
+                touchStartY = e.touches[0].clientY;
+                touchStartX = e.touches[0].clientX;
+                touchStartTime = Date.now();
+            }
+        }, { passive: true });
 
         startBtn.addEventListener('click', startGame);
         pauseBtn.addEventListener('click', togglePause);
