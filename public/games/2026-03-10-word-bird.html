@@ -56,8 +56,10 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            updateResponsiveValues();
         }
         resizeCanvas();
+        updateResponsiveValues(); // Initialize responsive values
         window.addEventListener('resize', () => {
             resizeCanvas();
             repositionStars();
@@ -71,12 +73,16 @@
         const SPEED_BASE = 1.0;
         const SPEED_MAX = 3.5;
         const SPEED_INC = 0.028;
-        const SPACING_BASE = 460;
-        const SPACING_MIN = 230;
+        // Responsive spacing: scales with screen width but has reasonable limits
+        let SPACING_BASE = 460;
+        let SPACING_MIN = 230;
         const SPACING_DEC = 3;
         const BIRD_RADIUS = 18;
         const FLAP_POWER = -3.0;
         const NUM_BOXES = 5;
+        // Responsive box height limits
+        const MIN_BOX_HEIGHT = 120;
+        const MAX_BOX_HEIGHT = 200;
 
         // ─── Game State ──────────────────────────────────────────────────────────────
         let state = 'title'; // title | playing | dead | gameover
@@ -92,6 +98,13 @@
         let hintTimer = 0;
         let lastCorrectCat = '';
         let difficultyLevel = 1;
+        
+        // Responsive spacing values (calculated after canvas is sized)
+        function updateResponsiveValues() {
+            // Base spacing scales with screen width but caps at reasonable values
+            SPACING_BASE = Math.min(460, Math.max(300, canvas.width * 0.25));
+            SPACING_MIN = Math.min(230, Math.max(150, canvas.width * 0.125));
+        }
 
         // ─── Bird ────────────────────────────────────────────────────────────────────
         const bird = {
@@ -230,12 +243,16 @@
 
             // Assign distinct colours
             const colPool = shuffle([...NEONS]).slice(0, NUM_BOXES);
-            const boxH = canvas.height / NUM_BOXES;
+            // Responsive box height with limits
+            const boxH = Math.min(MAX_BOX_HEIGHT, Math.max(MIN_BOX_HEIGHT, canvas.height / NUM_BOXES));
+            // Center boxes vertically if they don't fill entire screen
+            const totalBoxHeight = boxH * NUM_BOXES;
+            const verticalOffset = (canvas.height - totalBoxHeight) / 2;
 
             const boxes = allWords.map((word, i) => ({
                 word: word.toUpperCase(),
                 color: colPool[i],
-                y: i * boxH,
+                y: verticalOffset + i * boxH,
                 height: boxH,
                 isOdd: word === oddWord,
                 opacity: 1,
@@ -350,8 +367,10 @@
             explodeParts = [];
             scorePops = [];
 
+            // Responsive initial wall placement: first wall appears sooner on wider screens
+            const firstWallX = Math.min(canvas.width * 0.7, 800);
             for (let i = 0; i < 4; i++) {
-                generateWall(canvas.width + 100 + i * spacing);
+                generateWall(firstWallX + i * spacing);
             }
 
             hideHint();
@@ -925,7 +944,9 @@
 
         // ─── Boot ─────────────────────────────────────────────────────────────────
         bird.y = canvas.height / 2;
-        for (let i = 0; i < 4; i++) generateWall(canvas.width + 100 + i * spacing);
+        // Responsive initial wall placement for title screen
+        const initialFirstWallX = Math.min(canvas.width * 0.7, 800);
+        for (let i = 0; i < 4; i++) generateWall(initialFirstWallX + i * spacing);
         requestAnimationFrame(loop);
 
     })();
