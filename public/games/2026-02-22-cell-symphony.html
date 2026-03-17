@@ -344,9 +344,9 @@
                 <span class="speed-label">Speed</span>
                 <input 
                     type="range" 
-                    v-model.number="tickRate" 
-                    min="50" 
-                    max="500"
+                    v-model.number="speedSlider" 
+                    :min="MIN_TICK_RATE" 
+                    :max="MAX_TICK_RATE"
                     step="10"
                 >
             </div>
@@ -376,6 +376,9 @@
                 const COLS = 40;
                 const ROWS = 30;
                 const CELL_SIZE = 16;
+                const MIN_TICK_RATE = 50;
+                const MAX_TICK_RATE = 500;
+                const DEFAULT_TICK_RATE = 150;
                 
                 const canvasWidth = COLS * CELL_SIZE;
                 const canvasHeight = ROWS * CELL_SIZE;
@@ -384,7 +387,18 @@
                 const grid = ref(createEmptyGrid());
                 const isRunning = ref(false);
                 const generation = ref(0);
-                const tickRate = ref(150);
+                const tickRate = ref(DEFAULT_TICK_RATE);
+                const speedSlider = computed({
+                    get() {
+                        const normalized = (tickRate.value - MIN_TICK_RATE) / (MAX_TICK_RATE - MIN_TICK_RATE);
+                        return MIN_TICK_RATE + (1 - normalized) * (MAX_TICK_RATE - MIN_TICK_RATE);
+                    },
+                    set(value) {
+                        const clamped = Math.min(Math.max(value, MIN_TICK_RATE), MAX_TICK_RATE);
+                        const normalized = (clamped - MIN_TICK_RATE) / (MAX_TICK_RATE - MIN_TICK_RATE);
+                        tickRate.value = MIN_TICK_RATE + (1 - normalized) * (MAX_TICK_RATE - MIN_TICK_RATE);
+                    }
+                });
                 const isDrawing = ref(false);
                 const audioEnabled = ref(false);
                 
@@ -746,6 +760,9 @@
                     isRunning,
                     generation,
                     tickRate,
+                    speedSlider,
+                    MIN_TICK_RATE,
+                    MAX_TICK_RATE,
                     liveCells,
                     cellDensity,
                     audioEnabled,
