@@ -50,6 +50,16 @@
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            document.body.style.background = '#000';
+            document.body.style.color = '#fff';
+            document.body.style.display = 'flex';
+            document.body.style.alignItems = 'center';
+            document.body.style.justifyContent = 'center';
+            document.body.style.fontFamily = 'Inter, sans-serif';
+            document.body.innerHTML = '<p>Word Bird requires a modern browser with Canvas support.</p>';
+            return;
+        }
         const hintOverlay = document.getElementById('hint-overlay');
 
         // ─── Canvas Sizing ───────────────────────────────────────────────────────────
@@ -58,9 +68,12 @@
             canvas.height = window.innerHeight;
             updateResponsiveValues();
         }
-        resizeCanvas();
-        updateResponsiveValues(); // Initialize responsive values
+
         window.addEventListener('resize', () => {
+            resizeCanvas();
+            repositionStars();
+        });
+        window.addEventListener('orientationchange', () => {
             resizeCanvas();
             repositionStars();
         });
@@ -85,10 +98,17 @@
         const MAX_BOX_HEIGHT = 200;
 
         // ─── Game State ──────────────────────────────────────────────────────────────
+        const STORAGE_KEY = 'wordBirdBest2';
         let state = 'title'; // title | playing | dead | gameover
         let score = 0;
         let combo = 0;
-        let bestScore = parseInt(localStorage.getItem('wordBirdBest2')) || 0;
+        let bestScore = 0;
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            bestScore = stored ? Math.max(0, parseInt(stored, 10) || 0) : 0;
+        } catch (err) {
+            bestScore = 0;
+        }
         let deathTimer = 0;
         let flashColor = null;
         let flashAlpha = 0;
@@ -141,6 +161,7 @@
         function repositionStars() {
             stars.forEach(s => { s.x = Math.random() * canvas.width; s.y = Math.random() * canvas.height; });
         }
+        resizeCanvas();
         makeStars(130);
 
         // ─── Categories ──────────────────────────────────────────────────────────────
@@ -448,7 +469,11 @@
                         combo++;
                         if (score > bestScore) {
                             bestScore = score;
-                            localStorage.setItem('wordBirdBest2', bestScore);
+                            try {
+                                localStorage.setItem(STORAGE_KEY, String(bestScore));
+                            } catch (err) {
+                                /* ignore */
+                            }
                         }
 
                         spawnExplode(wall.x, box, true);
@@ -948,6 +973,8 @@
         const initialFirstWallX = Math.min(canvas.width * 0.7, 800);
         for (let i = 0; i < 4; i++) generateWall(initialFirstWallX + i * spacing);
         requestAnimationFrame(loop);
+
+        window.addEventListener('load', resizeCanvas, { once: true });
 
     })();
     </script>
