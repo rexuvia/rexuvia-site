@@ -173,7 +173,7 @@ onMounted(async () => {
                   <span class="game-card-name">{{ game.title }}</span>
                   <div class="game-card-meta">
                     <span class="game-card-date">Created: {{ game.date }}</span>
-                    <span v-if="game.last_updated && game.last_updated !== game.date" class="game-card-updated">
+                    <span v-if="game.last_updated" class="game-card-updated">
                       Updated: {{ game.last_updated }}
                     </span>
                   </div>
