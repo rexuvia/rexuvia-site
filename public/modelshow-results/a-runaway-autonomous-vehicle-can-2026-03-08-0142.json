@@ -14,7 +14,14 @@
       "openrouter/mistralai/mistral-large-2512"
     ],
     "judge_model": "openrouter/google/gemini-3.1-pro-preview",
-    "judging_mode": "blind"
+    "judging_mode": "blind",
+    "keywords": [
+      "autonomous vehicles",
+      "ethical dilemma",
+      "trolley problem",
+      "AI ethics",
+      "self-driving cars"
+    ]
   },
   "results": [
     {
@@ -30,7 +37,7 @@
       "model": "openrouter/anthropic/claude-sonnet-4.6",
       "model_alias": "sonnet46",
       "score": 8.75,
-      "response": "Stay course. Certainty asymmetry: Swerving guarantees the passenger death to potentially save the pedestrian. Duty of care to the passenger. Moral agency and causation: The pedestrian illegal entry created the hazard. Systemic effects: If AVs are programmed to sacrifice passengers, no rational person would ride one. The real ethical work must happen before the crash\u2014in policy, law, and design.",
+      "response": "Stay course. Certainty asymmetry: Swerving guarantees the passenger death to potentially save the pedestrian. Duty of care to the passenger. Moral agency and causation: The pedestrian illegal entry created the hazard. Systemic effects: If AVs are programmed to sacrifice passengers, no rational person would ride one. The real ethical work must happen before the crash—in policy, law, and design.",
       "assessment": "Deep engagement with certainty asymmetry and active vs passive harm. Excellent harder truth section on pre-crash policy."
     },
     {
@@ -38,7 +45,7 @@
       "model": "openrouter/moonshotai/kimi-k2.5",
       "model_alias": "kimi",
       "score": 8.0,
-      "response": "The car should prioritize the passenger. Contractual relationship. Moral agency. Systemic consequences. Practicality. Reality check: Most engineers agree the real goal is avoidance\u2014better sensors, faster reaction times, and road design.",
+      "response": "The car should prioritize the passenger. Contractual relationship. Moral agency. Systemic consequences. Practicality. Reality check: Most engineers agree the real goal is avoidance—better sensors, faster reaction times, and road design.",
       "assessment": "Brings up counterpoints and reality checks. Reality check on avoidance is a great addition."
     },
     {
