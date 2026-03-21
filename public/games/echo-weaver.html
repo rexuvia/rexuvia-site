@@ -2,603 +2,1159 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Echo Weaver</title>
   <style>
-    /* 1. Root reset & Fullscreen setup */
-    * { 
-      -webkit-tap-highlight-color: transparent; 
-      box-sizing: border-box; 
-      touch-action: none; /* Disables browser handling of gestures */
+    * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; background: #0a0a1e; overflow: hidden; font-family: 'Courier New', monospace; color: #fff; }
+    #canvas { display: block; position: absolute; top: 0; left: 0; }
+    #overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10,10,30,0.92); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 10; backdrop-filter: blur(8px);
     }
-    
-    html, body { 
-      margin: 0; 
-      padding: 0; 
-      width: 100%; 
-      height: 100%; 
-      background: #0a0a1e; 
-      color: #fff; 
-      font-family: 'Courier New', monospace; 
-      overflow: hidden; /* Prevent scrolling */
-      position: fixed; /* Lock body in place */
+    #overlay h1 { font-size: 2.5rem; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 10px; }
+    #overlay p { color: #aaa; margin-bottom: 30px; font-size: 1rem; text-align: center; max-width: 300px; line-height: 1.6; }
+    .start-btn {
+      padding: 14px 48px; font-size: 1.2rem; background: transparent;
+      border: 2px solid #00ffff; color: #00ffff; border-radius: 40px; cursor: pointer;
+      font-family: inherit; letter-spacing: 2px; text-transform: uppercase;
+      transition: all 0.2s; box-shadow: 0 0 20px rgba(0,255,255,0.3);
     }
-
-    /* 2. Main Game Container - uses Play canvas */
-    #app { 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100vw; 
-      height: 100vh; /* Fallback */
-      height: 100dvh; /* Mobile viewport fix */
-      z-index: 1;
+    .start-btn:hover { background: rgba(0,255,255,0.1); box-shadow: 0 0 30px rgba(0,255,255,0.5); }
+    #ui {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(transparent, rgba(10,10,30,0.8));
+      z-index: 5; pointer-events: none;
     }
-
-    /* SVG fills the container completely */
-    svg { 
-      display: block;
-      width: 100%; 
-      height: 100%; 
-      background: radial-gradient(circle at center, #1a1a3a, #0a0a1e);
+    .ui-btn {
+      pointer-events: auto; padding: 8px 16px; font-size: 0.8rem; background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2); color: #ccc; border-radius: 20px; cursor: pointer;
+      font-family: inherit; letter-spacing: 1px; text-transform: uppercase; transition: all 0.15s;
     }
-
-    /* 3. Node & Visual Styles */
-    .node { 
-      cursor: pointer; 
-      transition: transform 0.2s; 
-      filter: drop-shadow(0 0 10px currentColor);
+    .ui-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .ui-btn.active { border-color: #00ffff; color: #00ffff; background: rgba(0,255,255,0.1); }
+    #bpm-display { color: #888; font-size: 0.85rem; margin-left: auto; }
+    #status { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); 
+      font-size: 0.75rem; color: rgba(255,255,255,0.4); pointer-events: none; z-index: 5; letter-spacing: 1px; }
+    #node-type-bar {
+      position: absolute; top: 14px; left: 14px; display: flex; gap: 8px; z-index: 5; pointer-events: none;
     }
-    /* Hover effects only for pointer devices to avoid sticky hover on touch */
-    @media (hover: hover) {
-        .node:hover { transform: scale(1.15); }
+    .type-badge {
+      width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; border: 2px solid rgba(255,255,255,0.3); opacity: 0.8;
+      pointer-events: auto; cursor: pointer; transition: all 0.2s;
     }
-    
-    .node.tone { fill: #ff00ff; --glow: #ff00ff; }
-    .node.delay { fill: #00ffff; --glow: #00ffff; }
-    .node.filter { fill: #ffff00; --glow: #ffff00; }
-    .node.trigger { fill: #00ff00; --glow: #00ff00; }
-    
-    .connection { 
-      stroke: rgba(255,255,255,0.4); 
-      stroke-width: 2; 
-      stroke-dasharray: 8 4; 
-      pointer-events: none; /* let clicks pass through lines */
-      animation: dash 3s linear infinite; 
-    }
-    @keyframes dash { to { stroke-dashoffset: -24; } }
-    
-    .pulse { 
-      r: 6; 
-      fill: #ffffff; 
-      filter: blur(3px) drop-shadow(0 0 8px #fff);
-      pointer-events: none;
-    }
-    
-    .glow { animation: glow-pulse 0.5s ease-in-out; }
-    @keyframes glow-pulse { 
-      0%, 100% { filter: drop-shadow(0 0 10px var(--glow)); }
-      50% { filter: drop-shadow(0 0 25px var(--glow)); }
-    }
-    
-    .trail { 
-      stroke: #ffffff; 
-      stroke-width: 3; 
-      opacity: 0.6; 
-      stroke-linecap: round;
-      pointer-events: none;
-    }
-
-    /* 4. Minimal UI - Menu Button */
-    #menu-btn {
-      position: absolute;
-      top: max(15px, env(safe-area-inset-top)); /* Respect notch */
-      right: max(15px, env(safe-area-inset-right));
-      z-index: 100; /* Above everything */
-      background: rgba(10, 10, 30, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #fff;
-      width: 44px; /* Accessible touch target */
-      height: 44px;
-      border-radius: 50%;
-      font-size: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      transition: transform 0.2s;
-      cursor: pointer;
-    }
-    #menu-btn:active { transform: scale(0.9); }
-
-    /* 5. Audio Start Overlay */
-    #audio-prompt {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(10, 10, 30, 0.9);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 200;
-      backdrop-filter: blur(10px);
-    }
-    #audio-prompt h2 { color: #00ffff; margin-bottom: 20px; font-size: 2rem; }
-    #audio-prompt button {
-      padding: 15px 40px;
-      font-size: 1.2rem;
-      background: #00ffff;
-      border: none;
-      color: #000;
-      font-weight: bold;
-      border-radius: 30px;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
-    }
-
-    /* 6. Settings Panel (Slide-in) */
-    .panel-backdrop {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 150;
-      backdrop-filter: blur(2px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s;
-    }
-    .panel-backdrop.open { opacity: 1; pointer-events: auto; }
-
-    .control-panel {
-      position: absolute;
-      top: 0; 
-      right: 0;
-      width: 300px;
-      max-width: 85%;
-      height: 100%;
-      background: rgba(16, 16, 32, 0.95);
-      border-left: 1px solid rgba(255,255,255,0.1);
-      padding: 20px;
-      padding-top: max(60px, env(safe-area-inset-top)); /* Space for close btn */
-      transform: translateX(100%);
-      transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-      overflow-y: auto;
-      box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-    }
-    .panel-backdrop.open .control-panel { transform: translateX(0); }
-
-    /* Panel Contents */
-    .panel-section { margin-bottom: 25px; }
-    .panel-header { 
-      font-size: 0.8rem; 
-      text-transform: uppercase; 
-      color: #888; 
-      margin-bottom: 10px; 
-      letter-spacing: 1px;
-    }
-    
-    /* Preset grid buttons */
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    
-    .btn { 
-      background: #2a2a4a; 
-      border: 1px solid rgba(255,255,255,0.1); 
-      color: #eee;
-      padding: 12px;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    .btn:active { background: #3a3a5a; }
-    .btn.active { border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.1); }
-
-    /* BPM Input */
-    .bpm-row { display: flex; align-items: center; justify-content: space-between; background: #222; padding: 10px; border-radius: 8px; }
-    .bpm-btn { width: 40px; height: 40px; background: #333; border: none; color: #fff; border-radius: 50%; font-size: 1.2rem; }
-    .bpm-val { font-size: 1.2rem; font-weight: bold; }
-
-    /* Close button inside panel */
-    .close-panel {
-      position: absolute;
-      top: max(15px, env(safe-area-inset-top));
-      right: 15px;
-      width: 40px; height: 40px;
-      background: transparent;
-      border: none;
-      color: #fff;
-      font-size: 28px;
-    }
-    
-    /* Tutorial text */
-    .tutorial {
-      font-size: 0.85rem;
-      line-height: 1.6;
-      color: #aaa;
-      background: rgba(255,255,255,0.05);
-      padding: 15px;
-      border-radius: 8px;
+    .type-badge:hover { transform: scale(1.15); opacity: 1; }
+    .type-badge.selected { border-color: white; opacity: 1; box-shadow: 0 0 12px currentColor; }
+    .type-badge[data-type="0"] { background: rgba(255,0,255,0.3); color: #ff00ff; border-color: #ff00ff; }
+    .type-badge[data-type="1"] { background: rgba(0,255,255,0.3); color: #00ffff; border-color: #00ffff; }
+    .type-badge[data-type="2"] { background: rgba(255,255,0,0.3); color: #ffff00; border-color: #ffff00; }
+    .type-badge[data-type="3"] { background: rgba(0,255,0,0.3); color: #00ff00; border-color: #00ff00; }
+    #help-tip {
+      position: absolute; top: 60px; left: 14px; font-size: 0.7rem; color: rgba(255,255,255,0.35);
+      pointer-events: none; line-height: 1.7;
     }
   </style>
 </head>
 <body>
 
-<div id="app">
-  <!-- START SCREEN -->
-  <div v-if="!audioReady" id="audio-prompt">
-    <h2>Echo Weaver</h2>
-    <p style="opacity: 0.7; margin-bottom: 30px;">Tap to immerse</p>
-    <button @click="enableAudio">Start</button>
-  </div>
+<canvas id="canvas"></canvas>
 
-  <!-- MAIN UI (Only visible after start) -->
-  <template v-else>
-    <!-- Menu Button -->
-    <div id="menu-btn" @click.stop="menuOpen = true">⚙️</div>
-
-    <!-- SETTINGS PANEL -->
-    <div class="panel-backdrop" :class="{open: menuOpen}" @click.self="menuOpen = false">
-      <div class="control-panel">
-        <button class="close-panel" @click="menuOpen = false">×</button>
-        
-        <div class="panel-section">
-          <div class="panel-header">Soundscapes</div>
-          <div class="grid-2">
-            <button class="btn" @click="loadPreset(0)" :class="{active: currentPreset === 0}">Loop</button>
-            <button class="btn" @click="loadPreset(1)" :class="{active: currentPreset === 1}">Cascade</button>
-            <button class="btn" @click="loadPreset(2)" :class="{active: currentPreset === 2}">Swarm</button>
-            <button class="btn" @click="loadPreset(3)" :class="{active: currentPreset === 3}">Pulse</button>
-          </div>
-        </div>
-
-        <div class="panel-section">
-          <div class="panel-header">Nodal Tempo</div>
-          <div class="bpm-row">
-            <button class="bpm-btn" @click="changeBpm(-10)">-</button>
-            <span class="bpm-val">{{ bpm }}</span>
-            <button class="bpm-btn" @click="changeBpm(10)">+</button>
-          </div>
-        </div>
-
-        <div class="panel-section">
-          <div class="panel-header">How to Play</div>
-          <div class="tutorial">
-            • <strong>Tap empty space</strong> to create a node.<br>
-            • <strong>Drag</strong> to move nodes.<br>
-            • <strong>Drag onto another</strong> to connect.<br>
-            • <strong>Long press</strong> a node to delete.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- GAME CANVAS (SVG) -->
-    <svg 
-      ref="svgBoard"
-      @mousedown="handleStart" 
-      @touchstart.passive="handleStart"
-      @mousemove="handleMove"
-      @touchmove.prevent="handleMove"
-      @mouseup="handleEnd"
-      @touchend="handleEnd"
-    >
-      <!-- Connections -->
-      <line v-for="c in connections" :key="c.id" 
-        :x1="getNode(c.from).x" :y1="getNode(c.from).y" 
-        :x2="getNode(c.to).x" :y2="getNode(c.to).y" 
-        class="connection" />
-
-      <!-- Trails -->
-      <line v-for="(t,i) in trails" :key="'t'+i"
-        :x1="t.x1" :y1="t.y1" :x2="t.x2" :y2="t.y2"
-        class="trail" />
-        
-      <!-- Pulses -->
-      <circle v-for="p in pulses" :key="p.id"
-        :cx="p.x" :cy="p.y" r="6" class="pulse" />
-
-      <!-- Nodes -->
-      <circle v-for="n in nodes" :key="n.id"
-        :cx="n.x" :cy="n.y" r="24"
-        :class="['node', n.type, {glow: n.glowing}]"
-        @mousedown.stop="startDrag(n, $event)"
-        @touchstart.stop.prevent="startDrag(n, $event)"
-      />
-    </svg>
-  </template>
+<!-- Start screen -->
+<div id="overlay">
+  <h1>Echo Weaver</h1>
+  <p>Build rhythmic networks by placing and connecting sound nodes. Pulses travel between them to create music.</p>
+  <button class="start-btn" id="startBtn">Begin</button>
 </div>
 
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<!-- HUD -->
+<div id="node-type-bar">
+  <div class="type-badge selected" data-type="0" title="Tone">♪</div>
+  <div class="type-badge" data-type="1" title="Delay">~</div>
+  <div class="type-badge" data-type="2" title="Filter">⌿</div>
+  <div class="type-badge" data-type="3" title="Trigger (beats)">●</div>
+</div>
+<div id="help-tip">Tap: add node<br>Drag: move<br>Drop on node: connect<br>Hold: delete</div>
+<div id="status">ECHO WEAVER v2 · WASM</div>
+<div id="ui">
+  <button class="ui-btn active" id="btn-preset-0">Loop</button>
+  <button class="ui-btn" id="btn-preset-1">Fan</button>
+  <button class="ui-btn" id="btn-preset-2">Ring</button>
+  <button class="ui-btn" id="btn-preset-3">Dual</button>
+  <button class="ui-btn" id="btn-clear">Clear</button>
+  <div id="bpm-display">
+    <button class="ui-btn" id="btn-bpm-down">−</button>
+    <span id="bpm-val">120</span> BPM
+    <button class="ui-btn" id="btn-bpm-up">+</button>
+  </div>
+</div>
+
 <script>
-const { createApp, ref, reactive, onMounted, onUnmounted, computed, watch, nextTick } = Vue;
+// ============================================================
+// WASM INIT - inline base64 encoded wasm binary
+// ============================================================
 
-createApp({
-  setup() {
-    // STATE
-    const audioReady = ref(false);
-    const menuOpen = ref(false);
-    const nodes = reactive([]);
-    const connections = reactive([]);
-    const pulses = reactive([]);
-    const trails = reactive([]);
-    const bpm = ref(120);
-    const currentPreset = ref(0);
-    
-    // SYSTEMS
-    let audioCtx = null;
-    let mainTimer = null;
-    let dragTarget = null;
-    let dragOffset = {x:0, y:0};
-    let longPressTimer = null;
-    const svgBoard = ref(null);
-
-    // --- GEOMETRY & UTILS ---
-    const getPos = (e) => {
-      // Unified pointer position that handles mouse & touch
-      if (e.changedTouches) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-      return { x: e.clientX, y: e.clientY };
-    };
-
-    const getNode = (id) => nodes.find(n => n.id === id) || {x:0,y:0};
-
-    // --- CORE LOGIC ---
-    const addNode = (x, y) => {
-        const types = ['tone', 'delay', 'filter', 'trigger'];
-        const type = types[Math.floor(Math.random() * types.length)];
-        const id = Date.now() + Math.random();
-        // Constrain to screen
-        x = Math.max(24, Math.min(window.innerWidth - 24, x));
-        y = Math.max(24, Math.min(window.innerHeight - 24, y));
-        
-        nodes.push({ 
-            id, type, x, y, 
-            freq: 200 + Math.random()*600, 
-            glowing: false 
-        });
-    };
-
-    const connect = (aId, bId) => {
-        if (aId === bId) return;
-        const exists = connections.find(c => (c.from === aId && c.to === bId));
-        if (!exists) connections.push({ id: Date.now()+Math.random(), from: aId, to: bId });
-    };
-
-    // --- INTERACTION ---
-    const handleStart = (e) => {
-        if (menuOpen.value) return; 
-        if (e.target.tagName !== 'svg') return; // Only BG clicks
-        const {x, y} = getPos(e);
-        addNode(x, y);
-    };
-
-    const startDrag = (node, e) => {
-        if (menuOpen.value) return;
-        const {x, y} = getPos(e);
-        dragTarget = node;
-        dragOffset = { x: node.x - x, y: node.y - y };
-        
-        // Long press to delete
-        longPressTimer = setTimeout(() => {
-            if (dragTarget === node) {
-                 // Remove node & connections
-                 const idx = nodes.findIndex(n => n.id === node.id);
-                 if (idx > -1) nodes.splice(idx, 1);
-                 // remove connections
-                 for (let i = connections.length-1; i>=0; i--) {
-                     if (connections[i].from === node.id || connections[i].to === node.id) {
-                         connections.splice(i, 1);
-                     }
-                 }
-                 dragTarget = null;
-                 navigator.vibrate?.(50); // Haptic feedback
-            }
-        }, 600);
-    };
-
-    const handleMove = (e) => {
-        if (!dragTarget) return;
-        clearTimeout(longPressTimer); // Moved -> cancel delete
-        
-        const {x, y} = getPos(e);
-        // Constrain
-        dragTarget.x = Math.max(24, Math.min(window.innerWidth - 24, x + dragOffset.x));
-        dragTarget.y = Math.max(24, Math.min(window.innerHeight - 24, y + dragOffset.y));
-    };
-
-    const handleEnd = (e) => {
-        if (!dragTarget) return;
-        clearTimeout(longPressTimer);
-        
-        // Check for snap-to-connect
-        const {x, y} = getPos(e);
-        const dropTarget = nodes.find(n => n !== dragTarget && Math.hypot(n.x - dragTarget.x, n.y - dragTarget.y) < 50);
-        
-        if (dropTarget) {
-            connect(dragTarget.id, dropTarget.id);
-            // Optional: Spring back? Or just leave it?
-            // Let's leave it where dropped, but maybe snap slightly away if too close?
-        }
-        
-        dragTarget = null;
-    };
-
-    // --- AUDIO SYSTEM ---
-    const playSound = (node) => {
-        if (!audioCtx) return;
-        
-        const t = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        if (node.type === 'tone') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(node.freq, t);
-            gain.gain.setValueAtTime(0.3, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-            osc.start(t);
-            osc.stop(t + 0.5);
-        }
-        else if (node.type === 'delay') {
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(node.freq * 0.5, t);
-            gain.gain.setValueAtTime(0.2, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-            osc.start(t);
-            osc.stop(t + 0.2);
-        }
-        else if (node.type === 'filter') {
-            osc.type = 'sawtooth';
-            // Sweep filter effect simulated with freq drop
-            osc.frequency.setValueAtTime(800, t);
-            osc.frequency.exponentialRampToValueAtTime(100, t + 0.3);
-            gain.gain.setValueAtTime(0.1, t);
-            gain.gain.linearRampToValueAtTime(0, t + 0.3);
-            osc.start(t);
-            osc.stop(t + 0.3);
-        }
-    };
-
-    const triggerNode = (node) => {
-        node.glowing = true;
-        setTimeout(() => node.glowing = false, 150);
-        playSound(node); // Audio
-        
-        // Fire pulses to connected nodes
-        const outgoing = connections.filter(c => c.from === node.id);
-        outgoing.forEach(c => {
-            pulses.push({
-                id: Date.now() + Math.random(),
-                from: c.from,
-                to: c.to,
-                start: Date.now(),
-                dur: (60000 / bpm.value) * 0.5, // Duration based on BPM
-                x: node.x, y: node.y
-            });
-        });
-    };
-
-    // --- LOOP & ANIMATION ---
-    const tick = () => {
-        const now = Date.now();
-        // Update pulses
-        for (let i = pulses.length - 1; i >= 0; i--) {
-            const p = pulses[i];
-            const elapsed = now - p.start;
-            const progress = elapsed / p.dur;
-            
-            if (progress >= 1) {
-                // Arrived!
-                const targetNode = getNode(p.to);
-                if (targetNode.id) triggerNode(targetNode);
-                
-                // Add trail
-                trails.push({ x1: p.x, y1: p.y, x2: targetNode.x, y2: targetNode.y, age: 0 });
-                pulses.splice(i, 1);
-            } else {
-                // Move
-                const from = getNode(p.from);
-                const to = getNode(p.to);
-                if (!from.id || !to.id) { pulses.splice(i, 1); continue; }
-                
-                const prevX = p.x; const prevY = p.y;
-                p.x = from.x + (to.x - from.x) * progress;
-                p.y = from.y + (to.y - from.y) * progress;
-                
-                // Small trail segments for smoothness
-                if (Math.random()>0.7)
-                   trails.push({ x1: prevX, y1: prevY, x2: p.x, y2: p.y, age: 0 });
-            }
-        }
-        
-        // Update trails fading
-        for (let i = trails.length - 1; i >= 0; i--) {
-            trails[i].age++;
-            if (trails[i].age > 20) trails.splice(i, 1);
-        }
-        
-        requestAnimationFrame(tick);
-    };
-
-    const runSequencer = () => {
-        // Main metronome trigger
-        nodes.filter(n => n.type === 'trigger').forEach(n => triggerNode(n));
-    };
-
-    const enableAudio = () => {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        audioCtx.resume();
-        audioReady.value = true;
-        
-        requestAnimationFrame(tick);
-        
-        if (mainTimer) clearInterval(mainTimer);
-        mainTimer = setInterval(runSequencer, 60000 / bpm.value);
-    };
-
-    const changeBpm = (delta) => {
-        bpm.value = Math.max(40, Math.min(300, bpm.value + delta));
-        if (audioReady.value) {
-            clearInterval(mainTimer);
-            mainTimer = setInterval(runSequencer, 60000 / bpm.value);
-        }
-    };
-
-    // --- PRESETS ---
-    const loadPreset = (idx) => {
-        currentPreset.value = idx;
-        nodes.length = 0;
-        connections.length = 0;
-        pulses.length = 0;
-        trails.length = 0;
-        
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        const cx = w/2, cy = h/2;
-        
-        if (idx === 0) { // Loop
-            nodes.push({id:1, type:'trigger', x:cx-80, y:cy, freq:440, glowing:false});
-            nodes.push({id:2, type:'tone', x:cx+80, y:cy, freq:550, glowing:false});
-            connect(1,2); connect(2,1);
-        }
-        else if (idx === 1) { // Cascade
-            nodes.push({id:1, type:'trigger', x:cx, y:cy-100, freq:440, glowing:false});
-            nodes.push({id:2, type:'delay', x:cx-100, y:cy, freq:330, glowing:false});
-            nodes.push({id:3, type:'delay', x:cx+100, y:cy, freq:330, glowing:false});
-            nodes.push({id:4, type:'filter', x:cx, y:cy+100, freq:220, glowing:false});
-            connect(1,2); connect(1,3); connect(2,4); connect(3,4); connect(4,1);
-        }
-        else if (idx === 2) { // Swarm
-            nodes.push({id:1, type:'trigger', x:cx, y:cy, freq:110, glowing:false});
-            for(let i=0; i<5; i++) {
-                const angle = (i/5)*Math.PI*2;
-                nodes.push({id:10+i, type:'tone', x:cx+Math.cos(angle)*120, y:cy+Math.sin(angle)*120, freq:200+i*50, glowing:false});
-                connect(1, 10+i);
-                connect(10+i, 1);
-            }
-        }
-        else { // Pulse
-             nodes.push({id:1, type:'trigger', x:cx-120, y:cy-50, freq:110, glowing:false});
-             nodes.push({id:2, type:'trigger', x:cx+120, y:cy+50, freq:110, glowing:false});
-             nodes.push({id:3, type:'filter', x:cx, y:cy, freq:880, glowing:false});
-             connect(1,3); connect(2,3); connect(3,1); connect(3,2);
-        }
-        
-        // Close menu on mobile
-        if (w < 600) menuOpen.value = false;
-    };
-
-    return { 
-        audioReady, enableAudio, 
-        nodes, connections, pulses, trails, 
-        handleStart, handleMove, handleEnd, startDrag,
-        getPos, getNode, svgBoard,
-        menuOpen, bpm, changeBpm, loadPreset, currentPreset
-    };
+// ============================================================
+// INLINE WASM ENGINE (compiled from Rust via wasm-pack)
+// ============================================================
+(function() {
+  // Base64-encoded WASM binary
+  const WASM_B64 = "AGFzbQEAAAABWxBgAn9/AGABfwF/YAJ/fQBgAAJ/f2ABfwF9YAN/f38Bf2AAAGABfwBgA39/fwBgAX8Cf39gAn9/AX9gBH9/fX0AYAR/fX1/AX9gBH9/f38AYAJ/fQF/YAF9AX8CgwECGi4vZWNob193ZWF2ZXJfZW5naW5lX2JnLmpzJ19fd2JnX19fd2JpbmRnZW5fdGhyb3dfNmRkZDYwOWI2Mjk0MGQ1NQAAGi4vZWNob193ZWF2ZXJfZW5naW5lX2JnLmpzH19fd2JpbmRnZW5faW5pdF9leHRlcm5yZWZfdGFibGUABgNNTAEOCgUAAAcLAAAAAA8MBQsNAAAABwgCAAcNCAwFAAABBwAIAAAAAQEBBAQEAQEEBAEEBAEAAAICAgACAgICAAkJCQkACAAGBgAGAAAECQJwAQQEbwCACAUDAQARBgkBfwFBgIDAAAsHmQs8Bm1lbW9yeQIAFV9fd2JnX2Nvbm5lY3Rpb25fZnJlZQATFV9fd2JnX2dhbWVlbmdpbmVfZnJlZQANG19fd2JnX2dldF9jb25uZWN0aW9uX2FjdGl2ZQAoHF9fd2JnX2dldF9jb25uZWN0aW9uX2Zyb21faWQAKRpfX3diZ19nZXRfY29ubmVjdGlvbl90b19pZAAqHF9fd2JnX2dldF9nYW1lZW5naW5lX3RpbWVfbXMAKxNfX3diZ19nZXRfbm9kZV9mcmVxACwZX193YmdfZ2V0X25vZGVfZ2xvd190aW1lcgAtFl9fd2JnX2dldF9ub2RlX2dsb3dpbmcALhhfX3diZ19nZXRfbm9kZV9ub2RlX3R5cGUALxBfX3diZ19nZXRfbm9kZV94ADAQX193YmdfZ2V0X25vZGVfeQAxFl9fd2JnX2dldF9wdWxzZV9hY3RpdmUAMhhfX3diZ19nZXRfcHVsc2VfcHJvZ3Jlc3MAMxVfX3diZ19nZXRfcHVsc2Vfc3BlZWQANBVfX3diZ19nZXRfcHVsc2VfdG9faWQANQ9fX3diZ19ub2RlX2ZyZWUAFBBfX3diZ19wdWxzZV9mcmVlABUbX193Ymdfc2V0X2Nvbm5lY3Rpb25fYWN0aXZlACUcX193Ymdfc2V0X2Nvbm5lY3Rpb25fZnJvbV9pZAA2Gl9fd2JnX3NldF9jb25uZWN0aW9uX3RvX2lkADccX193Ymdfc2V0X2dhbWVlbmdpbmVfdGltZV9tcwA4E19fd2JnX3NldF9ub2RlX2ZyZXEAORlfX3diZ19zZXRfbm9kZV9nbG93X3RpbWVyADoWX193Ymdfc2V0X25vZGVfZ2xvd2luZwAmGF9fd2JnX3NldF9ub2RlX25vZGVfdHlwZQA7EF9fd2JnX3NldF9ub2RlX3gAPBBfX3diZ19zZXRfbm9kZV95AD0WX193Ymdfc2V0X3B1bHNlX2FjdGl2ZQAnGF9fd2JnX3NldF9wdWxzZV9wcm9ncmVzcwA+FV9fd2JnX3NldF9wdWxzZV9zcGVlZAA/FV9fd2JnX3NldF9wdWxzZV90b19pZABAE2dhbWVlbmdpbmVfYWRkX25vZGUAHRBnYW1lZW5naW5lX2NsZWFyABoSZ2FtZWVuZ2luZV9jb25uZWN0AB4hZ2FtZWVuZ2luZV9nZXRfY29ubmVjdGlvbnNfYnVmZmVyAEQaZ2FtZWVuZ2luZV9nZXRfZmlyZWRfbm9kZXMAQRtnYW1lZW5naW5lX2dldF9ub2Rlc19idWZmZXIAQhxnYW1lZW5naW5lX2dldF9wdWxzZXNfYnVmZmVyAEMWZ2FtZWVuZ2luZV9sb2FkX3ByZXNldAAJFGdhbWVlbmdpbmVfbW92ZV9ub2RlABEOZ2FtZWVuZ2luZV9uZXcADhVnYW1lZW5naW5lX25vZGVfY291bnQAIRZnYW1lZW5naW5lX3JlbW92ZV9ub2RlAAcSZ2FtZWVuZ2luZV9zZXRfYnBtABgPZ2FtZWVuZ2luZV90aWNrAAMRX193Ymdfc2V0X25vZGVfaWQANhdfX3diZ19zZXRfcHVsc2VfZnJvbV9pZAA3El9fd2JnX3NldF9wdWxzZV9pZAA2EV9fd2JnX3NldF9wdWxzZV94ADkRX193Ymdfc2V0X3B1bHNlX3kAOhFfX3diZ19nZXRfbm9kZV9pZAApF19fd2JnX2dldF9wdWxzZV9mcm9tX2lkACoSX193YmdfZ2V0X3B1bHNlX2lkACkRX193YmdfZ2V0X3B1bHNlX3gALBFfX3diZ19nZXRfcHVsc2VfeQAtFV9fd2JpbmRnZW5fZXh0ZXJucmVmcwEBD19fd2JpbmRnZW5fZnJlZQBGEF9fd2JpbmRnZW5fc3RhcnQAAQkJAQBBAQsDBExNDAECCtWNAUyNJAII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AygCDCIARQ0AIAMoAggiAkUNACABIAIQHwsgA0EQaiQAC1oBAn8jAEEQayIEJAAgBEEEaiAAECAgBCgCBCABIAIgAxAPIAQoAggiACAAKAIAQQFqNgIAIAQoAgwiACAAKAIAQQFrIgU2AgAgBUUEQCAAEBYLIARBEGokAAtYAQF/IwBBEGsiAyQAIANBBGogABAgIAMoAgQgASACEBAgAygCCCIAIAAoAgBBAWo2AgAgAygCDCIAIAAoAgBBAWsiAjYCACACRQRAIAAQFgsgA0EQaiQAC1cBAn8CQCAAQQRrKAIAIgJBeHEiA0EEQQggAkEDcSICGyABak8EQCACQQAgAyABQSdqSxsNASAAEAgPC0HggsAAQZCDwAAQRwALQaCDwABB0IPAABBHAAtVAQJ/AkACQCABBEAgAUEIayICIAIoAgBBAWoiAzYCACADRQ0BIAEoAgANAiAAIAI2AgggACABNgIEIAFBfzYCACAAIAFBBGo2AgAPCxBICwALEEkAC04BA38CQAJAIAAEQCAAQQhrIgEgASgCACICQQFqIgM2AgAgA0UNASAAKAIAQf////8HTw0CIABBDGooAgAgASACNgIADwsQSAsACxBJAAs/AQF/IwBBEGsiASQAIAFBCGogACAAKAIAQQQQEiABKAIIIgBBgYCAgHhHBEAgACABKAIMEEUACyABQRBqJAALPAEBfyMAQRBrIgIkACACQQhqIAAgAUEEEBIgAigCCCIAQYGAgIB4RwRAIAAgAigCDBBFAAsgAkEQaiQAC84BAgF/AX4jAEEgayIDJAAgAyABNgIQIAMgADYCDCADQQE7ARwgAyACNgIYIAMgA0EMajYCFCMAQRBrIgEkACADQRRqIgApAgAhBCABIAA2AgwgASAENwIEIwBBEGsiACQAIAFBBGoiASgCACICKAIEIgNBAXEEQCACKAIAIQIgACADQQF2NgIEIAAgAjYCACAAQQIgASgCCCIALQAIIAAtAAkQGwALIABBgICAgHg2AgAgACABNgIMIABBAyABKAIIIgAtAAggAC0ACRAbAAsiAAJAIAAEQCAAKAIADQEgACABQQBHOgAMDwsQSAALEEkACyIAAkAgAARAIAAoAgANASAAIAFBAEc6ABkPCxBIAAsQSQALIgACQCAABEAgACgCAA0BIAAgAUEARzoAIA8LEEgACxBJAAskAAJAIAAEQCAAKAIAQf////8HTw0BIAAtAAwPCxBIAAsQSQALJAACQCAABEAgACgCAEH/////B08NASAAKAIEDwsQSAALEEkACyQAAkAgAARAIAAoAgBB/////wdPDQEgACgCCA8LEEgACxBJAAskAAJAIAAEQCAAKAIAQf////8HTw0BIAAqAlAPCxBIAAsQSQALJAACQCAABEAgACgCAEH/////B08NASAAKgIQDwsQSAALEEkACyQAAkAgAARAIAAoAgBB/////wdPDQEgACoCFA8LEEgACxBJAAskAAJAIAAEQCAAKAIAQf////8HTw0BIAAtABkPCxBIAAsQSQALJAACQCAABEAgACgCAEH/////B08NASAALQAYDwsQSAALEEkACyQAAkAgAARAIAAoAgBB/////wdPDQEgACoCCA8LEEgACxBJAAskAAJAIAAEQCAAKAIAQf////8HTw0BIAAqAgwPCxBIAAsQSQALJAACQCAABEAgACgCAEH/////B08NASAALQAgDwsQSAALEEkACyQAAkAgAARAIAAoAgBB/////wdPDQEgACoCGA8LEEgACxBJAAskAAJAIAAEQCAAKAIAQf////8HTw0BIAAqAhwPCxBIAAsQSQALJAACQCAABEAgACgCAEH/////B08NASAAKAIMDwsQSAALEEkACx8AAkAgAARAIAAoAgANASAAIAE2AgQPCxBIAAsQSQALHwACQCAABEAgACgCAA0BIAAgATYCCA8LEEgACxBJAAsfAAJAIAAEQCAAKAIADQEgACABOAJQDwsQSAALEEkACx8AAkAgAARAIAAoAgANASAAIAE4AhAPCxBIAAsQSQALHwACQCAABEAgACgCAA0BIAAgATgCFA8LEEgACxBJAAsfAAJAIAAEQCAAKAIADQEgACABOgAYDwsQSAALEEkACx8AAkAgAARAIAAoAgANASAAIAE4AggPCxBIAAsQSQALHwACQCAABEAgACgCAA0BIAAgATgCDA8LEEgACxBJAAsfAAJAIAAEQCAAKAIADQEgACABOAIYDwsQSAALEEkACx8AAkAgAARAIAAoAgANASAAIAE4AhwPCxBIAAsQSQALHwACQCAABEAgACgCAA0BIAAgATYCDA8LEEgACxBJAAugAwIJfwF9IwBBEGsiByQAIwBBIGsiBCQAIARBFGogABAgIAQoAhQiAkEANgIsIAIoAjgiAQRAIAJBJGohBiACKAI0IgAgAUECdGohCQNAIAAiAUEEaiEAIAIoAghBGGwhAyACKAIEQRhrIQggASgCACEBAkADQCADRQ0BIANBGGshAyAIQRhqIggoAgAgAUcNAAsgBigCACIDIAVGBEAgBhAiIAYoAgAhAwsgAigCKCAFQQJ0aiABszgCACACIAVBAWoiATYCLCAIKgIMIQogASADRgRAIAYQIiAGKAIAIQMLIAIoAiggAUECdGogCjgCACACIAVBAmoiATYCLCAILQAUsyEKIAEgA0YEQCAGECILIAIgBUEDaiIFNgIsIAIoAiggAUECdGogCjgCAAsgACAJRw0ACwsgBEEIaiACKAIoIAUQFyAEKAIYIgAgACgCAEEBajYCACAEKAIcIgAgACgCAEEBayIBNgIAIAFFBEAgABAWCyAEIARBCGoQGSAHIAQpAwA3AgAgBEEgaiQAIAcoAgAgBygCBCAHQRBqJAALxAQCCn8BfSMAQRBrIgckACMAQSBrIgUkACAFQRRqIAAQICAFKAIUIgJBADYCLAJ/IAIoAggiAARAIAJBJGohAyACKAIEIgkgAEEYbGohCkEAIQADQCAEIAlqIgYoAgCzIQsgACIIIAMoAgAiAEYEQCADECIgAygCACEACyACKAIoIARqIAs4AgAgAiAIQQFqIgE2AiwgBkEEaioCACELIAAgAUYEQCADECIgAygCACEACyACKAIoIARqQQRqIAs4AgAgAiABQQFqIgE2AiwgBkEIaioCACELIAAgAUYEQCADECIgAygCACEACyACKAIoIARqQQhqIAs4AgAgAiABQQFqIgE2AiwgBkEUai0AALMhCyAAIAFGBEAgAxAiIAMoAgAhAAsgAigCKCAEakEMaiALOAIAIAIgAUEBaiIBNgIsIAZBDGoqAgAhCyAAIAFGBEAgAxAiIAMoAgAhAAsgAigCKCAEakEQaiALOAIAIAIgAUEBaiIBNgIsQwAAgD9DAAAAACAGQRVqLQAAGyELIAAgAUYEQCADECILIAIgAUEBaiIANgIsIAIoAigiASAEakEUaiALOAIAIARBGGohBCAGQRhqIApHDQALIAhBBmoMAQsgAigCKCEBQQALIQAgBUEIaiABIAAQFyAFKAIYIgAgACgCAEEBajYCACAFKAIcIgAgACgCAEEBayIINgIAIAhFBEAgABAWCyAFIAVBCGoQGSAHIAUpAwA3AgAgBUEgaiQAIAcoAgAgBygCBCAHQRBqJAAL4AMCCX8BfSMAQRBrIgckACMAQSBrIgYkACAGQRRqIAAQICAGKAIUIgFBADYCLCABQSRqIQQgASgCECIIIAEoAhRBBXRqIQkDQCAJIAgiAEcEQCAAQSBqIQggAEEcai0AAEEBRw0BIAAoAgSzIQogBCgCACICIAVGBEAgBBAiIAQoAgAhAgsgASgCKCAFQQJ0aiAKOAIAIAEgBUEBaiIDNgIsIAAoAgizIQogAiADRgRAIAQQIiAEKAIAIQILIAEoAiggA0ECdGogCjgCACABIAVBAmoiAzYCLCAAKgIMIQogAiADRgRAIAQQIiAEKAIAIQILIAEoAiggA0ECdGogCjgCACABIAVBA2oiAzYCLCAAKgIQIQogAiADRgRAIAQQIiAEKAIAIQILIAEoAiggA0ECdGogCjgCACABIAVBBGoiAzYCLCAAKgIUIQogAiADRgRAIAQQIgsgASAFQQVqIgU2AiwgASgCKCADQQJ0aiAKOAIADAELCyAGQQhqIAEoAiggBRAXIAYoAhgiACAAKAIAQQFqNgIAIAYoAhwiACAAKAIAQQFrIgg2AgAgCEUEQCAAEBYLIAYgBkEIahAZIAcgBikDADcCACAGQSBqJAAgBygCACAHKAIEIAdBEGokAAvWAgIJfwF9IwBBEGsiBSQAIwBBIGsiASQAIAFBFGogABAgQQAhACABKAIUIgJBADYCLAJ/IAIoAiAiAwRAIAJBJGohBiACKAIcIgcgA0EMbGohCUEEIQgDQCAHKAIAsyEKIAAiAyAGKAIAIgRGBEAgBhAiIAYoAgAhBAsgAigCKCAIakEEayAKOAIAIAIgA0EBaiIANgIsIAdBBGooAgCzIQogACAERgRAIAYQIgsgAiAAQQFqIgA2AiwgAigCKCIEIAhqIAo4AgAgCEEIaiEIIAdBDGoiByAJRw0ACyADQQJqDAELIAIoAighBEEACyEAIAFBCGogBCAAEBcgASgCGCIAIAAoAgBBAWo2AgAgASgCHCIAIAAoAgBBAWsiAzYCACADRQRAIAAQFgsgASABQQhqEBkgBSABKQMANwIAIAFBIGokACAFKAIAIAUoAgQgBUEQaiQACxkAIAAEQBBLAAtBv4DAAEEjQbiCwAAQJAALDQAgAQRAIAAgARAfCwsMACAAQd0AIAEQJAALDABBgITAAEEbEEoACw0AQZuEwABBzwAQSgALCQAgACABEAAACw0AQbSIwABBAToAAAALDAAgACABKQIANwMACwkAIABBADYCAAsL/QQCAEGAgMAAC+oEYXR0ZW1wdGVkIHRvIHRha2Ugb3duZXJzaGlwIG9mIFJ1c3QgdmFsdWUgd2hpbGUgaXQgd2FzIGJvcnJvd2VkY2FwYWNpdHkgb3ZlcmZsb3fAAC9ob21lL3VidW50dS8uY2FyZ28vcmVnaXN0cnkvc3JjL2luZGV4LmNyYXRlcy5pby0xOTQ5Y2Y4YzZiNWI1NTdmL3dhc20tYmluZGdlbi0wLjIuMTE0L3NyYy9leHRlcm5yZWYucnMAL3J1c3RjLzRhNGVmNDkzZTNhMTQ4OGM2ZTMyMTU3MDIzODA4NGIzODk0OGY2ZGIvbGlicmFyeS9hbGxvYy9zcmMvcmF3X3ZlYy9tb2QucnMAL3J1c3QvZGVwcy9kbG1hbGxvYy0wLjIuMTEvc3JjL2RsbWFsbG9jLnJzAAAAugAQAFAAAAAcAAAABQAAAFJlZkNlbGwgYWxyZWFkeSBib3Jyb3dlZGFzc2VydGlvbiBmYWlsZWQ6IHBzaXplID49IHNpemUgKyBtaW5fb3ZlcmhlYWQAAAsBEAAqAAAAsQQAAAkAAABhc3NlcnRpb24gZmFpbGVkOiBwc2l6ZSA8PSBzaXplICsgbWF4X292ZXJoZWFkAAALARAAKgAAALcEAAANAAAAUgAQAGcAAAB/AAAAEQAAAFIAEABnAAAAjAAAABEAAABudWxsIHBvaW50ZXIgcGFzc2VkIHRvIHJ1c3RyZWN1cnNpdmUgdXNlIG9mIGFuIG9iamVjdCBkZXRlY3RlZCB3aGljaCB3b3VsZCBsZWFkIHRvIHVuc2FmZSBhbGlhc2luZyBpbiBydXN0AEHshMAACwEEAHwJcHJvZHVjZXJzAghsYW5ndWFnZQEEUnVzdAAMcHJvY2Vzc2VkLWJ5AwVydXN0Yx0xLjk0LjAgKDRhNGVmNDkzZSAyMDI2LTAzLTAyKQZ3YWxydXMGMC4yNS4yDHdhc20tYmluZGdlbhMwLjIuMTE0ICgyMmNmZDU1NjgpAGsPdGFyZ2V0X2ZlYXR1cmVzBisPbXV0YWJsZS1nbG9iYWxzKxNub250cmFwcGluZy1mcHRvaW50KwtidWxrLW1lbW9yeSsIc2lnbi1leHQrD3JlZmVyZW5jZS10eXBlcysKbXVsdGl2YWx1ZQ==";
+  
+  function base64ToBytes(b64) {
+    const binStr = atob(b64);
+    const bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+    return bytes;
   }
-}).mount('#app');
+
+/* @ts-self-types="./echo_weaver_engine.d.ts" */
+
+class Connection {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        ConnectionFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_connection_free(ptr, 0);
+    }
+    /**
+     * @returns {boolean}
+     */
+    get active() {
+        const ret = wasm.__wbg_get_connection_active(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get from_id() {
+        const ret = wasm.__wbg_get_connection_from_id(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get to_id() {
+        const ret = wasm.__wbg_get_connection_to_id(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @param {boolean} arg0
+     */
+    set active(arg0) {
+        wasm.__wbg_set_connection_active(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set from_id(arg0) {
+        wasm.__wbg_set_connection_from_id(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set to_id(arg0) {
+        wasm.__wbg_set_connection_to_id(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) Connection.prototype[Symbol.dispose] = Connection.prototype.free;
+
+/**
+ * The main game engine state, managed in WASM for performance.
+ */
+class GameEngine {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        GameEngineFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_gameengine_free(ptr, 0);
+    }
+    /**
+     * Add a node at position (x,y). Returns node id or 0 if at limit.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} node_type
+     * @returns {number}
+     */
+    add_node(x, y, node_type) {
+        const ret = wasm.gameengine_add_node(this.__wbg_ptr, x, y, node_type);
+        return ret >>> 0;
+    }
+    /**
+     * Clear all state
+     */
+    clear() {
+        wasm.gameengine_clear(this.__wbg_ptr);
+    }
+    /**
+     * Connect two nodes. Returns false if already connected or at limit.
+     * @param {number} from_id
+     * @param {number} to_id
+     * @returns {boolean}
+     */
+    connect(from_id, to_id) {
+        const ret = wasm.gameengine_connect(this.__wbg_ptr, from_id, to_id);
+        return ret !== 0;
+    }
+    /**
+     * Get connections buffer: [from_id, to_id, ...]
+     * @returns {Float32Array}
+     */
+    get_connections_buffer() {
+        const ret = wasm.gameengine_get_connections_buffer(this.__wbg_ptr);
+        var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Get fired node IDs this tick for audio scheduling
+     * @returns {Float32Array}
+     */
+    get_fired_nodes() {
+        const ret = wasm.gameengine_get_fired_nodes(this.__wbg_ptr);
+        var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Get node data as flat f32 array: [id, x, y, type, freq, glowing, ...]
+     * Format per node: 6 floats
+     * @returns {Float32Array}
+     */
+    get_nodes_buffer() {
+        const ret = wasm.gameengine_get_nodes_buffer(this.__wbg_ptr);
+        var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Get pulse data as flat f32 array: [from_id, to_id, x, y, progress, ...]
+     * 5 floats per pulse, only active pulses
+     * @returns {Float32Array}
+     */
+    get_pulses_buffer() {
+        const ret = wasm.gameengine_get_pulses_buffer(this.__wbg_ptr);
+        var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Load a preset by index
+     * @param {number} preset
+     * @param {number} width
+     * @param {number} height
+     */
+    load_preset(preset, width, height) {
+        wasm.gameengine_load_preset(this.__wbg_ptr, preset, width, height);
+    }
+    /**
+     * Move a node
+     * @param {number} id
+     * @param {number} x
+     * @param {number} y
+     */
+    move_node(id, x, y) {
+        wasm.gameengine_move_node(this.__wbg_ptr, id, x, y);
+    }
+    /**
+     * @param {number} bpm
+     */
+    constructor(bpm) {
+        const ret = wasm.gameengine_new(bpm);
+        this.__wbg_ptr = ret >>> 0;
+        GameEngineFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * Get node count
+     * @returns {number}
+     */
+    node_count() {
+        const ret = wasm.gameengine_node_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Remove a node and all its connections/pulses
+     * @param {number} id
+     */
+    remove_node(id) {
+        wasm.gameengine_remove_node(this.__wbg_ptr, id);
+    }
+    /**
+     * Set BPM
+     * @param {number} bpm
+     */
+    set_bpm(bpm) {
+        wasm.gameengine_set_bpm(this.__wbg_ptr, bpm);
+    }
+    /**
+     * Main update tick. delta_ms = milliseconds since last frame.
+     * Returns number of nodes that fired this tick (for audio).
+     * @param {number} delta_ms
+     * @returns {number}
+     */
+    tick(delta_ms) {
+        const ret = wasm.gameengine_tick(this.__wbg_ptr, delta_ms);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get time_ms() {
+        const ret = wasm.__wbg_get_gameengine_time_ms(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {number} arg0
+     */
+    set time_ms(arg0) {
+        wasm.__wbg_set_gameengine_time_ms(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) GameEngine.prototype[Symbol.dispose] = GameEngine.prototype.free;
+
+class Node {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        NodeFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_node_free(ptr, 0);
+    }
+    /**
+     * @returns {number}
+     */
+    get freq() {
+        const ret = wasm.__wbg_get_node_freq(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get glow_timer() {
+        const ret = wasm.__wbg_get_node_glow_timer(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {boolean}
+     */
+    get glowing() {
+        const ret = wasm.__wbg_get_node_glowing(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get id() {
+        const ret = wasm.__wbg_get_node_id(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get node_type() {
+        const ret = wasm.__wbg_get_node_node_type(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get x() {
+        const ret = wasm.__wbg_get_node_x(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get y() {
+        const ret = wasm.__wbg_get_node_y(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {number} arg0
+     */
+    set freq(arg0) {
+        wasm.__wbg_set_node_freq(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set glow_timer(arg0) {
+        wasm.__wbg_set_node_glow_timer(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {boolean} arg0
+     */
+    set glowing(arg0) {
+        wasm.__wbg_set_node_glowing(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set id(arg0) {
+        wasm.__wbg_set_node_id(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set node_type(arg0) {
+        wasm.__wbg_set_node_node_type(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set x(arg0) {
+        wasm.__wbg_set_node_x(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set y(arg0) {
+        wasm.__wbg_set_node_y(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) Node.prototype[Symbol.dispose] = Node.prototype.free;
+
+class Pulse {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PulseFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_pulse_free(ptr, 0);
+    }
+    /**
+     * @returns {boolean}
+     */
+    get active() {
+        const ret = wasm.__wbg_get_pulse_active(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get from_id() {
+        const ret = wasm.__wbg_get_pulse_from_id(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get id() {
+        const ret = wasm.__wbg_get_pulse_id(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get progress() {
+        const ret = wasm.__wbg_get_pulse_progress(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get speed() {
+        const ret = wasm.__wbg_get_pulse_speed(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get to_id() {
+        const ret = wasm.__wbg_get_pulse_to_id(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get x() {
+        const ret = wasm.__wbg_get_pulse_x(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get y() {
+        const ret = wasm.__wbg_get_pulse_y(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {boolean} arg0
+     */
+    set active(arg0) {
+        wasm.__wbg_set_pulse_active(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set from_id(arg0) {
+        wasm.__wbg_set_pulse_from_id(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set id(arg0) {
+        wasm.__wbg_set_pulse_id(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set progress(arg0) {
+        wasm.__wbg_set_pulse_progress(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set speed(arg0) {
+        wasm.__wbg_set_pulse_speed(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set to_id(arg0) {
+        wasm.__wbg_set_pulse_to_id(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set x(arg0) {
+        wasm.__wbg_set_pulse_x(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set y(arg0) {
+        wasm.__wbg_set_pulse_y(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) Pulse.prototype[Symbol.dispose] = Pulse.prototype.free;
+
+function __wbg_get_imports() {
+    const import0 = {
+        __proto__: null,
+        __wbg___wbindgen_throw_6ddd609b62940d55: function(arg0, arg1) {
+            throw new Error(getStringFromWasm0(arg0, arg1));
+        },
+        __wbindgen_init_externref_table: function() {
+            const table = wasm.__wbindgen_externrefs;
+            const offset = table.grow(4);
+            table.set(0, undefined);
+            table.set(offset + 0, undefined);
+            table.set(offset + 1, null);
+            table.set(offset + 2, true);
+            table.set(offset + 3, false);
+        },
+    };
+    return {
+        __proto__: null,
+        "./echo_weaver_engine_bg.js": import0,
+    };
+}
+
+const ConnectionFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_connection_free(ptr >>> 0, 1));
+const GameEngineFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_gameengine_free(ptr >>> 0, 1));
+const NodeFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_node_free(ptr >>> 0, 1));
+const PulseFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_pulse_free(ptr >>> 0, 1));
+
+function getArrayF32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+let cachedFloat32ArrayMemory0 = null;
+function getFloat32ArrayMemory0() {
+    if (cachedFloat32ArrayMemory0 === null || cachedFloat32ArrayMemory0.byteLength === 0) {
+        cachedFloat32ArrayMemory0 = new Float32Array(wasm.memory.buffer);
+    }
+    return cachedFloat32ArrayMemory0;
+}
+
+function getStringFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return decodeText(ptr, len);
+}
+
+let cachedUint8ArrayMemory0 = null;
+function getUint8ArrayMemory0() {
+    if (cachedUint8ArrayMemory0 === null || cachedUint8ArrayMemory0.byteLength === 0) {
+        cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
+    }
+    return cachedUint8ArrayMemory0;
+}
+
+let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+cachedTextDecoder.decode();
+const MAX_SAFARI_DECODE_BYTES = 2146435072;
+let numBytesDecoded = 0;
+function decodeText(ptr, len) {
+    numBytesDecoded += len;
+    if (numBytesDecoded >= MAX_SAFARI_DECODE_BYTES) {
+        cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+        cachedTextDecoder.decode();
+        numBytesDecoded = len;
+    }
+    return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+}
+
+let wasmModule, wasm;
+function __wbg_finalize_init(instance, module) {
+    wasm = instance.exports;
+    wasmModule = module;
+    cachedFloat32ArrayMemory0 = null;
+    cachedUint8ArrayMemory0 = null;
+    wasm.__wbindgen_start();
+    return wasm;
+}
+
+async function __wbg_load(module, imports) {
+    if (typeof Response === 'function' && module instanceof Response) {
+        if (typeof WebAssembly.instantiateStreaming === 'function') {
+            try {
+                return await WebAssembly.instantiateStreaming(module, imports);
+            } catch (e) {
+                const validResponse = module.ok && expectedResponseType(module.type);
+
+                if (validResponse && module.headers.get('Content-Type') !== 'application/wasm') {
+                    console.warn("`WebAssembly.instantiateStreaming` failed because your server does not serve Wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n", e);
+
+                } else { throw e; }
+            }
+        }
+
+        const bytes = await module.arrayBuffer();
+        return await WebAssembly.instantiate(bytes, imports);
+    } else {
+        const instance = await WebAssembly.instantiate(module, imports);
+
+        if (instance instanceof WebAssembly.Instance) {
+            return { instance, module };
+        } else {
+            return instance;
+        }
+    }
+
+    function expectedResponseType(type) {
+        switch (type) {
+            case 'basic': case 'cors': case 'default': return true;
+        }
+        return false;
+    }
+}
+
+function initSync(module) {
+    if (wasm !== undefined) return wasm;
+
+
+    if (module !== undefined) {
+        if (Object.getPrototypeOf(module) === Object.prototype) {
+            ({module} = module)
+        } else {
+            console.warn('using deprecated parameters for `initSync()`; pass a single object instead')
+        }
+    }
+
+    const imports = __wbg_get_imports();
+    if (!(module instanceof WebAssembly.Module)) {
+        module = new WebAssembly.Module(module);
+    }
+    const instance = new WebAssembly.Instance(module, imports);
+    return __wbg_finalize_init(instance, module);
+}
+
+async function __wbg_init(module_or_path) {
+    if (wasm !== undefined) return wasm;
+
+
+    if (module_or_path !== undefined) {
+        if (Object.getPrototypeOf(module_or_path) === Object.prototype) {
+            ({module_or_path} = module_or_path)
+        } else {
+            console.warn('using deprecated parameters for the initialization function; pass a single object instead')
+        }
+    }
+
+    if (module_or_path === undefined) { throw new Error('module_or_path required'); }
+    const imports = __wbg_get_imports();
+
+    if (typeof module_or_path === 'string' || (typeof Request === 'function' && module_or_path instanceof Request) || (typeof URL === 'function' && module_or_path instanceof URL)) {
+        module_or_path = fetch(module_or_path);
+    }
+
+    const { instance, module } = await __wbg_load(await module_or_path, imports);
+
+    return __wbg_finalize_init(instance, module);
+}
+
+
+
+
+  // Initialize WASM synchronously from base64
+  const wasmBytes = base64ToBytes(WASM_B64);
+  initSync({ module: wasmBytes });
+
+  // Expose GameEngine to global scope
+  window.GameEngine = GameEngine;
+})();
+
+
+// ============================================================
+// NODE COLORS & LABELS
+// ============================================================
+const NODE_COLORS = ['#ff00ff', '#00ffff', '#ffff00', '#00ff00'];
+const NODE_NAMES  = ['Tone', 'Delay', 'Filter', 'Trigger'];
+const NODE_RADIUS = 22;
+const TRAIL_MAX   = 40;
+
+// ============================================================
+// CANVAS RENDERER
+// ============================================================
+const canvas  = document.getElementById('canvas');
+const ctx     = canvas.getContext('2d');
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ============================================================
+// AUDIO
+// ============================================================
+let audioCtx = null;
+
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx.resume();
+}
+
+function playNote(type, freq) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  switch (type) {
+    case 0: // tone - sine
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.25, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+      osc.start(t); osc.stop(t + 0.6);
+      break;
+    case 1: // delay - triangle with echoes
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq * 0.5, t);
+      gain.gain.setValueAtTime(0.18, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.start(t); osc.stop(t + 0.4);
+      // second echo
+      setTimeout(() => playEcho(freq * 0.5, 0.1, 0.2), 150);
+      break;
+    case 2: // filter - sweep sawtooth
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.25, t + 0.35);
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.linearRampToValueAtTime(0, t + 0.35);
+      osc.start(t); osc.stop(t + 0.35);
+      break;
+    case 3: // trigger - short click/kick
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(80, t);
+      osc.frequency.exponentialRampToValueAtTime(20, t + 0.15);
+      gain.gain.setValueAtTime(0.3, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      osc.start(t); osc.stop(t + 0.15);
+      break;
+  }
+}
+
+function playEcho(freq, vol, dur) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.start(t); o.stop(t + dur);
+}
+
+// ============================================================
+// TRAIL SYSTEM (JS side - purely visual)
+// ============================================================
+const trails = [];
+function addTrail(x1, y1, x2, y2) {
+  if (trails.length >= TRAIL_MAX) trails.shift();
+  trails.push({ x1, y1, x2, y2, age: 0, maxAge: 25 });
+}
+
+// ============================================================
+// INTERACTION STATE
+// ============================================================
+let engine = null;
+let bpm = 120;
+let selectedType = 0;
+let dragNodeId = null;
+let dragStartX = 0, dragStartY = 0;
+let hasMoved = false;
+let longPressTimer = null;
+let currentPreset = 0;
+
+// Cache node positions for rendering connections/pulses
+let nodeCache = {}; // id -> {x,y,type,freq,glowing}
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+let lastTime = 0;
+function frame(ts) {
+  const delta = Math.min(ts - lastTime, 100); // cap at 100ms
+  lastTime = ts;
+
+  if (engine) {
+    // Tick WASM engine
+    engine.tick(delta);
+
+    // Get fired nodes for audio
+    const fired = engine.get_fired_nodes();
+    for (let i = 0; i < fired.length; i += 3) {
+      const id   = fired[i];
+      const freq = fired[i+1];
+      const type = fired[i+2];
+      playNote(type, freq);
+    }
+
+    // Rebuild node cache
+    const nodeBuf = engine.get_nodes_buffer();
+    nodeCache = {};
+    for (let i = 0; i < nodeBuf.length; i += 6) {
+      const id = nodeBuf[i];
+      nodeCache[id] = {
+        id, x: nodeBuf[i+1], y: nodeBuf[i+2],
+        type: nodeBuf[i+3], freq: nodeBuf[i+4],
+        glowing: nodeBuf[i+5] > 0.5
+      };
+    }
+
+    // Get pulses
+    const pulseBuf = engine.get_pulses_buffer();
+
+    // Get connections
+    const connBuf = engine.get_connections_buffer();
+
+    // Add trails from arriving pulses (approximate: trail when pulse progress > 0.85)
+    for (let i = 0; i < pulseBuf.length; i += 5) {
+      const prog = pulseBuf[i+4];
+      if (prog > 0.8 && Math.random() > 0.5) {
+        addTrail(pulseBuf[i+2], pulseBuf[i+3], pulseBuf[i+2], pulseBuf[i+3]);
+      }
+    }
+
+    // Age trails
+    for (let i = trails.length - 1; i >= 0; i--) {
+      trails[i].age++;
+      if (trails[i].age > trails[i].maxAge) trails.splice(i, 1);
+    }
+
+    draw(connBuf, pulseBuf);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+function draw(connBuf, pulseBuf) {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background gradient
+  const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*0.7);
+  bg.addColorStop(0, '#1a1a3a');
+  bg.addColorStop(1, '#0a0a1e');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Trails
+  for (const t of trails) {
+    const alpha = (1 - t.age / t.maxAge) * 0.5;
+    ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(t.x1, t.y1);
+    ctx.lineTo(t.x2, t.y2);
+    ctx.stroke();
+  }
+
+  // Connections
+  if (connBuf) {
+    ctx.setLineDash([8, 5]);
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < connBuf.length; i += 2) {
+      const from = nodeCache[connBuf[i]];
+      const to   = nodeCache[connBuf[i+1]];
+      if (!from || !to) continue;
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // Nodes
+  for (const n of Object.values(nodeCache)) {
+    const color = NODE_COLORS[n.type];
+    const r = NODE_RADIUS;
+    const glow = n.glowing ? 20 : 8;
+
+    // Glow
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur  = glow;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = color + (n.glowing ? 'cc' : '44');
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(NODE_NAMES[n.type][0], n.x, n.y);
+  }
+
+  // Pulses
+  if (pulseBuf) {
+    for (let i = 0; i < pulseBuf.length; i += 5) {
+      const px = pulseBuf[i+2];
+      const py = pulseBuf[i+3];
+      const prog = pulseBuf[i+4];
+      const alpha = 0.6 + 0.4 * Math.sin(prog * Math.PI);
+
+      ctx.save();
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Drag indicator: connecting mode line
+  if (dragNodeId && hasMoved) {
+    const n = nodeCache[dragNodeId];
+    if (n) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(n.x, n.y);
+      ctx.lineTo(lastPointerX, lastPointerY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+}
+
+// ============================================================
+// POINTER HANDLING
+// ============================================================
+let lastPointerX = 0, lastPointerY = 0;
+let connectMode = false; // dragging FROM a node to connect
+
+function getPointer(e) {
+  if (e.touches && e.touches.length) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  if (e.changedTouches && e.changedTouches.length) {
+    return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+  }
+  return { x: e.clientX, y: e.clientY };
+}
+
+function findNodeAt(x, y) {
+  // Check against nodeCache
+  for (const n of Object.values(nodeCache)) {
+    const dx = n.x - x, dy = n.y - y;
+    if (dx*dx + dy*dy <= (NODE_RADIUS + 8) * (NODE_RADIUS + 8)) return n.id;
+  }
+  return null;
+}
+
+function onPointerDown(e) {
+  if (!engine) return;
+  e.preventDefault();
+  const {x, y} = getPointer(e);
+  lastPointerX = x; lastPointerY = y;
+  hasMoved = false;
+  dragStartX = x; dragStartY = y;
+
+  const hit = findNodeAt(x, y);
+  if (hit !== null) {
+    dragNodeId = hit;
+    connectMode = true; // Initially assume connect mode; if they just release w/o move -> no connect
+    // Long press = delete
+    longPressTimer = setTimeout(() => {
+      if (dragNodeId === hit && !hasMoved) {
+        engine.remove_node(hit);
+        dragNodeId = null;
+        navigator.vibrate?.(60);
+      }
+    }, 600);
+  }
+  // else: tapping empty space will addNode on pointerup if no move
+}
+
+function onPointerMove(e) {
+  if (!engine) return;
+  e.preventDefault();
+  const {x, y} = getPointer(e);
+  lastPointerX = x; lastPointerY = y;
+
+  const dx = x - dragStartX, dy = y - dragStartY;
+  if (!hasMoved && dx*dx + dy*dy > 64) {
+    hasMoved = true;
+    clearTimeout(longPressTimer);
+  }
+
+  if (hasMoved && dragNodeId !== null) {
+    // Move the node
+    engine.move_node(dragNodeId, x, y);
+  }
+}
+
+function onPointerUp(e) {
+  if (!engine) return;
+  e.preventDefault();
+  clearTimeout(longPressTimer);
+
+  const {x, y} = getPointer(e);
+
+  if (dragNodeId !== null) {
+    if (hasMoved) {
+      // Drop: check if over another node -> connect
+      const overNode = findNodeAt(x, y);
+      if (overNode !== null && overNode !== dragNodeId) {
+        engine.connect(dragNodeId, overNode);
+      }
+    }
+    // (no tap action on a node - that's just selection)
+    dragNodeId = null;
+  } else if (!hasMoved) {
+    // Tap on empty space: add node
+    if (engine.node_count() < 16) {
+      engine.add_node(x, y, selectedType);
+    }
+  }
+
+  hasMoved = false;
+}
+
+canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+canvas.addEventListener('pointermove', onPointerMove, { passive: false });
+canvas.addEventListener('pointerup',   onPointerUp,   { passive: false });
+canvas.addEventListener('pointercancel', () => { dragNodeId = null; clearTimeout(longPressTimer); });
+
+// ============================================================
+// TYPE SELECTOR
+// ============================================================
+document.querySelectorAll('.type-badge').forEach(el => {
+  el.addEventListener('click', () => {
+    selectedType = parseInt(el.dataset.type);
+    document.querySelectorAll('.type-badge').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+  });
+});
+
+// ============================================================
+// UI BUTTONS
+// ============================================================
+function updatePresetButtons() {
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById(`btn-preset-${i}`);
+    if (btn) btn.classList.toggle('active', i === currentPreset);
+  }
+}
+
+[0,1,2,3].forEach(i => {
+  const btn = document.getElementById(`btn-preset-${i}`);
+  if (btn) btn.addEventListener('click', () => {
+    if (!engine) return;
+    currentPreset = i;
+    engine.load_preset(i, canvas.width, canvas.height);
+    updatePresetButtons();
+  });
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (engine) engine.clear();
+  currentPreset = -1;
+  updatePresetButtons();
+});
+
+document.getElementById('btn-bpm-down').addEventListener('click', () => {
+  bpm = Math.max(40, bpm - 10);
+  document.getElementById('bpm-val').textContent = bpm;
+  if (engine) engine.set_bpm(bpm);
+});
+document.getElementById('btn-bpm-up').addEventListener('click', () => {
+  bpm = Math.min(300, bpm + 10);
+  document.getElementById('bpm-val').textContent = bpm;
+  if (engine) engine.set_bpm(bpm);
+});
+
+// ============================================================
+// START
+// ============================================================
+document.getElementById('startBtn').addEventListener('click', async () => {
+  initAudio();
+
+  // Init WASM engine
+  engine = new GameEngine(bpm);
+  engine.load_preset(0, canvas.width, canvas.height);
+  updatePresetButtons();
+
+  document.getElementById('overlay').style.display = 'none';
+  lastTime = performance.now();
+  requestAnimationFrame(frame);
+});
 </script>
 </body>
 </html>

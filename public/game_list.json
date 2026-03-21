@@ -75,7 +75,8 @@
     "title": "Echo Weaver",
     "url": "/games/echo-weaver.html",
     "github_url": "https://github.com/rexuvia/echo-weaver",
-    "last_updated": "2026-02-21"
+    "last_updated": "2026-03-21",
+    "description": "A WASM-powered rhythmic node sequencer. Place and connect sound nodes to build music. Rebuilt from scratch with WebAssembly for smooth performance."
   },
   {
     "date": "2026-02-20",
