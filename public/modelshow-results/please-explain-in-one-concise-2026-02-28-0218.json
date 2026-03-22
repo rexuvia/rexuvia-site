@@ -9,15 +9,7 @@
       "openrouter/x-ai/grok-4"
     ],
     "judge_model": "openrouter/google/gemini-3.1-pro-preview",
-    "judging_mode": "blind",
-    "keywords": [
-      "artificial-intelligence",
-      "llm",
-      "explanation",
-      "education",
-      "technology",
-      "ai-models"
-    ]
+    "judging_mode": "blind"
   },
   "results": [
     {
@@ -25,7 +17,7 @@
       "model": "anthropic/claude-opus-4-6",
       "model_alias": "anthropic/claude-opus-4-6",
       "score": 9.5,
-      "response": "Large Language Models (LLMs) are neural networks\u2014typically based on the Transformer architecture\u2014trained on massive corpora of text to predict the next token (word or subword) in a sequence. During training, the model adjusts billions of parameters to minimize prediction error, learning statistical patterns of language including grammar, facts, reasoning strategies, and style. At inference time, the model generates text autoregressively: given a prompt, it produces a probability distribution over possible next tokens, samples one, appends it to the context, and repeats until it reaches a stopping condition. Key mechanisms like self-attention allow each token to weigh the relevance of every other token in the context, enabling the model to capture long-range dependencies and nuanced meaning. The result is a system that doesn't \"understand\" language in a human sense but can produce remarkably coherent, contextually appropriate text by leveraging the deep statistical structure it absorbed during training.",
+      "response": "Large Language Models (LLMs) are neural networks—typically based on the Transformer architecture—trained on massive corpora of text to predict the next token (word or subword) in a sequence. During training, the model adjusts billions of parameters to minimize prediction error, learning statistical patterns of language including grammar, facts, reasoning strategies, and style. At inference time, the model generates text autoregressively: given a prompt, it produces a probability distribution over possible next tokens, samples one, appends it to the context, and repeats until it reaches a stopping condition. Key mechanisms like self-attention allow each token to weigh the relevance of every other token in the context, enabling the model to capture long-range dependencies and nuanced meaning. The result is a system that doesn't \"understand\" language in a human sense but can produce remarkably coherent, contextually appropriate text by leveraging the deep statistical structure it absorbed during training.",
       "assessment": "This response offers the most comprehensive and technically precise explanation while remaining accessible. It clearly distinguishes between training and inference phases, accurately describes the autoregressive nature of generation, and highlights key mechanisms like self-attention."
     },
     {
@@ -53,7 +45,7 @@
       "assessment": "This explanation is the most accessible for a layperson, effectively conveying the core concept of predicting the next likely word. However, it trades some technical accuracy by referring to \"words\" instead of \"tokens\" and lacks the depth on underlying mechanisms found in the others."
     }
   ],
-  "judge_analysis": "1st: **anthropic/claude-opus-4-6** \u2014 Score: 9.5/10\nThis response offers the most comprehensive and technically precise explanation while remaining accessible.\n\n2nd: **openrouter/x-ai/grok-4** \u2014 Score: 9/10\nHighly accurate breakdown of tokenization and self-attention.\n\n3rd: **openrouter/deepseek/deepseek-v3.2** \u2014 Score: 8.5/10\nSolid summary covering all necessary components.\n\n4th: **google/gemini-2.5-pro** \u2014 Score: 8/10\nMost accessible but lacks some technical depth.",
+  "judge_analysis": "1st: **anthropic/claude-opus-4-6** — Score: 9.5/10\nThis response offers the most comprehensive and technically precise explanation while remaining accessible.\n\n2nd: **openrouter/x-ai/grok-4** — Score: 9/10\nHighly accurate breakdown of tokenization and self-attention.\n\n3rd: **openrouter/deepseek/deepseek-v3.2** — Score: 8.5/10\nSolid summary covering all necessary components.\n\n4th: **google/gemini-2.5-pro** — Score: 8/10\nMost accessible but lacks some technical depth.",
   "anonymization_map": {
     "Response A": "google/gemini-2.5-pro",
     "Response B": "openrouter/deepseek/deepseek-v3.2",
