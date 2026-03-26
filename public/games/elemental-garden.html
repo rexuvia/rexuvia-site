@@ -120,6 +120,7 @@
             height: 70px;
             cursor: grab;
             user-select: none;
+            
             transform: translate(-50%, -50%);
             transition: filter 0.2s, opacity 0.3s, transform 0.05s linear;
             z-index: 10;
@@ -350,28 +351,26 @@
             return item;
         }
 
+        
         function startDragging(item, e) {
             item.style.zIndex = ++highestZ;
             item.classList.add('dragging');
             
             const rect = item.getBoundingClientRect();
-            // Calculate offset of pointer relative to item center
-            const offsetX = e.clientX - (rect.left + rect.width / 2);
-            const offsetY = e.clientY - (rect.top + rect.height / 2);
+            // Calculate offset. If it's a new item, rect might be centered at clientX/Y.
+            // But if we just assume no offset when spawning:
+            const offsetX = e.offsetX ? e.offsetX - 35 : 0; // 35 is half the 70px width
+            const offsetY = e.offsetY ? e.offsetY - 35 : 0;
             
-            activeDrag = { item, offsetX, offsetY };
+            activeDrag = { item, offsetX: 0, offsetY: 0 }; 
+            // Setting offsets to 0 ensures it snaps exactly to your finger!
             
-            // Attach move/up listeners to document to catch fast swiping outside bounds
             document.addEventListener('pointermove', onPointerMove);
             document.addEventListener('pointerup', onPointerUp);
             document.addEventListener('pointercancel', onPointerUp);
             
-            // Ensure visual position updates immediately if spawned from sidebar
-            item.style.left = (e.clientX - offsetX) + 'px';
-            item.style.top = (e.clientY - offsetY) + 'px';
-            
-            // Explicitly set pointer capture so it tracks outside the window slightly
-            item.setPointerCapture(e.pointerId);
+            item.style.left = e.clientX + 'px';
+            item.style.top = e.clientY + 'px';
         }
 
         function onPointerMove(e) {
@@ -387,7 +386,7 @@
             if (!activeDrag) return;
             const item = activeDrag.item;
             item.classList.remove('dragging');
-            item.releasePointerCapture(e.pointerId);
+            // item.releasePointerCapture(e.pointerId);
             
             document.removeEventListener('pointermove', onPointerMove);
             document.removeEventListener('pointerup', onPointerUp);
@@ -411,10 +410,7 @@
 
             // If dragged outside the workspace, maybe destroy it?
             // (Optional: let's keep it if dropped in sidebar we destroy)
-            if (cxA < workspaceRect.left) {
-                draggedItem.remove();
-                return;
-            }
+            // Removing destroy logic when dragging off-screen. It's safer to just let it drop.
 
             const items = Array.from(document.querySelectorAll('.canvas-item')).filter(el => el !== draggedItem);
             
