@@ -1,8 +1,32 @@
 {
   "version": "1.0.1",
-  "last_updated": "2026-03-26T11:30:51.303555Z",
-  "count": 12,
+  "last_updated": "2026-03-27T02:44:03.440722Z",
+  "count": 13,
   "results": [
+    {
+      "id": "you-have-access-to-a-2026-03-27-0243",
+      "slug": "you-have-access-to-a",
+      "timestamp": "2026-03-27T02:43:19Z",
+      "prompt": "You have access to a pool of AI agents that can run prompts, score outputs, and modify text. Design a closed-loop system where these agents collaborate to make a set of prompts progressively better at a task — without any human in the loop after startup. Specify what each agent does, what it passes to the next, how the system knows a prompt is better or worse, and what prevents it from getting stuck. Then stress-test your own design: identify the most likely way it fails silently — where it looks like it's improving but isn't — and add the component that catches it.",
+      "prompt_preview": "You have access to a pool of AI agents that can run prompts, score outputs, and modify text. Design ...",
+      "models_queried": [
+        "google/gemini-2.5-pro",
+        "openrouter/deepseek/deepseek-v3.2",
+        "openrouter/x-ai/grok-4",
+        "openrouter/moonshotai/kimi-k2.5",
+        "openrouter/anthropic/claude-sonnet-4.6",
+        "openrouter/qwen/qwen3-max",
+        "openrouter/mistralai/mistral-large-2512"
+      ],
+      "models_queried_count": 7,
+      "judge_model": "openrouter/moonshotai/kimi-k2.5",
+      "winner_model": "openrouter/moonshotai/kimi-k2.5",
+      "winner_score": 9.5,
+      "total_duration_ms": 139045,
+      "json_url": "/modelshow-results/you-have-access-to-a-2026-03-27-0243.json",
+      "md_url": "/modelshow-results/you-have-access-to-a-2026-03-27-0243.md",
+      "tags": []
+    },
     {
       "id": "list-all-15-of-shakespeares-2026-03-21-0154",
       "slug": "list-all-15-of-shakespeares",
