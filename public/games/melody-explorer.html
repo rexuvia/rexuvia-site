@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Melody Explorer — Rexuvia</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0010;
+      --bg2:       #110020;
+      --card:      #180030;
+      --border:    #3a0060;
+      --accent1:   #c000ff;
+      --accent2:   #00ffe7;
+      --accent3:   #ff2eee;
+      --text:      #e8d8ff;
+      --muted:     #8866aa;
+      --glow1:     0 0 12px #c000ff88;
+      --glow2:     0 0 12px #00ffe788;
+      --glow3:     0 0 12px #ff2eee88;
+      --radius:    10px;
+      --font:      'Segoe UI', system-ui, sans-serif;
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 4rem;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: clamp(1.8rem, 6vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      filter: drop-shadow(0 0 18px #c000ff55);
+    }
+
+    header p {
+      margin-top: 0.4rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    /* ── Card ───────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 640px;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 0 30px #c000ff18;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 1rem;
+      text-shadow: var(--glow2);
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.65rem 1.4rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
+      letter-spacing: 0.03em;
+    }
+
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent1), #7700cc);
+      color: #fff;
+      box-shadow: var(--glow1);
+    }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.2); }
+
+    .btn-save {
+      background: linear-gradient(135deg, var(--accent2), #009977);
+      color: #000;
+      box-shadow: var(--glow2);
+    }
+    .btn-save:hover:not(:disabled) { filter: brightness(1.15); }
+
+    .btn-export {
+      background: linear-gradient(135deg, var(--accent3), #aa0088);
+      color: #fff;
+      box-shadow: var(--glow3);
+    }
+    .btn-export:hover:not(:disabled) { filter: brightness(1.15); }
+
+    /* ── Visualiser (waveform bar strip) ────────────────────────────── */
+    #visualiser {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 5px;
+      height: 60px;
+      margin-bottom: 1rem;
+    }
+
+    .v-bar {
+      width: 12px;
+      border-radius: 4px 4px 0 0;
+      background: linear-gradient(to top, var(--accent1), var(--accent2));
+      transition: height 0.08s ease;
+      height: 4px;
+      box-shadow: 0 0 6px var(--accent1);
+    }
+
+    /* ── Note pills ─────────────────────────────────────────────────── */
+    #note-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      min-height: 2rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .pill {
+      padding: 0.2rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+
+    .pill.active {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      box-shadow: var(--glow2);
+    }
+
+    .pill.done {
+      border-color: var(--accent1);
+      color: var(--accent1);
+    }
+
+    /* ── Status text ────────────────────────────────────────────────── */
+    #status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      min-height: 1.2em;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Play button row ────────────────────────────────────────────── */
+    .play-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Rating section ─────────────────────────────────────────────── */
+    #rating-section {
+      display: none;
+    }
+
+    .rating-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    #rating-value-display {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--accent1);
+      text-align: center;
+      margin-bottom: 0.75rem;
+      text-shadow: var(--glow1);
+      letter-spacing: 0.05em;
+    }
+
+    /* Slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(to right, var(--accent1) var(--pct, 50%), var(--bg2) var(--pct, 50%));
+      outline: none;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent2);
+      box-shadow: var(--glow2);
+      border: 2px solid #fff4;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent2);
+      box-shadow: var(--glow2);
+      border: 2px solid #fff4;
+      cursor: pointer;
+    }
+
+    .save-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    /* ── Table ───────────────────────────────────────────────────────── */
+    #history-section {
+      width: 100%;
+      max-width: 640px;
+    }
+
+    #history-section h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent3);
+      text-shadow: var(--glow3);
+      margin-bottom: 0.8rem;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    thead tr {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      font-weight: 700;
+      color: var(--accent2);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #1e003a;
+      color: var(--text);
+      vertical-align: top;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    tbody tr:hover td { background: #200040; }
+
+    .rating-badge {
+      display: inline-block;
+      padding: 0.15rem 0.55rem;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+
+    .hz-list {
+      color: var(--accent2);
+      font-family: monospace;
+    }
+
+    .delay-list {
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    .btn-play-row {
+      background: transparent;
+      border: 1px solid var(--accent1);
+      color: var(--accent1);
+      border-radius: 4px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-play-row:hover { background: var(--accent1); color: #000; }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    #empty-state {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* ── Export row ─────────────────────────────────────────────────── */
+    .export-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────────── */
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--accent1); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Animations ──────────────────────────────────────────────────── */
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 10px var(--accent1); }
+      50%       { box-shadow: 0 0 28px var(--accent1), 0 0 50px var(--accent2); }
+    }
+
+    .playing .btn-primary {
+      animation: pulse-glow 0.6s ease-in-out infinite;
+    }
+
+    @keyframes bar-dance {
+      0%, 100% { height: 4px; }
+      50%       { height: 50px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎵 Melody Explorer</h1>
+  <p>Generate · Listen · Rate · Export</p>
+</header>
+
+<!-- Play Card -->
+<div class="card" id="play-card">
+  <h2>Generate Melody</h2>
+
+  <div id="visualiser">
+    <div class="v-bar"></div>
+    <div class="v-bar"></div>
+    <div class="v-bar"></div>
+    <div class="v-bar"></div>
+    <div class="v-bar"></div>
+    <div class="v-bar"></div>
+  </div>
+
+  <div id="note-pills"></div>
+  <div id="status">Press "Play New Melody" to begin.</div>
+
+  <div class="play-row">
+    <button class="btn btn-primary" id="btn-play">▶ Play New Melody</button>
+  </div>
+</div>
+
+<!-- Rating Card -->
+<div class="card" id="rating-section">
+  <h2>Rate This Melody</h2>
+
+  <div id="rating-value-display">5 / 10</div>
+  <div class="rating-label"><span>0</span><span>10</span></div>
+  <input type="range" id="rating-slider" min="0" max="10" value="5" step="1" />
+
+  <div class="save-row">
+    <button class="btn btn-save" id="btn-save">💾 Save Rating</button>
+    <button class="btn btn-primary" id="btn-replay">🔁 Replay</button>
+  </div>
+</div>
+
+<!-- History -->
+<section id="history-section">
+  <h2>Saved Melodies</h2>
+  <div class="table-wrap">
+    <div id="empty-state">No melodies saved yet. Play one and rate it!</div>
+    <table id="history-table" style="display:none">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Rating</th>
+          <th>Frequencies (Hz)</th>
+          <th>Delays (ms)</th>
+          <th>Play</th>
+        </tr>
+      </thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
+  <div class="export-row">
+    <button class="btn btn-export" id="btn-export" disabled>⬇ Export JSON</button>
+  </div>
+</section>
+
+<footer>
+  <p>Built with the Web Audio API · <a href="https://rexuvia.com" target="_blank">rexuvia.com</a></p>
+</footer>
+
+<script>
+  /* ─── State ─────────────────────────────────────────────────────────── */
+  let savedMelodies = [];
+  let currentMelody = null; // { freqs: [], delays: [] }
+  let isPlaying = false;
+  let audioCtx = null;
+
+  /* ─── DOM refs ───────────────────────────────────────────────────────── */
+  const btnPlay        = document.getElementById('btn-play');
+  const btnSave        = document.getElementById('btn-save');
+  const btnReplay      = document.getElementById('btn-replay');
+  const btnExport      = document.getElementById('btn-export');
+  const ratingSection  = document.getElementById('rating-section');
+  const ratingSlider   = document.getElementById('rating-slider');
+  const ratingDisplay  = document.getElementById('rating-value-display');
+  const statusEl       = document.getElementById('status');
+  const notePills      = document.getElementById('note-pills');
+  const playCard       = document.getElementById('play-card');
+  const historyTable   = document.getElementById('history-table');
+  const historyBody    = document.getElementById('history-body');
+  const emptyState     = document.getElementById('empty-state');
+  const visualiser     = document.getElementById('visualiser');
+  const vBars          = visualiser.querySelectorAll('.v-bar');
+
+  /* ─── Audio helpers ──────────────────────────────────────────────────── */
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playNote(ctx, freq, startTime, duration = 0.35) {
+    const osc     = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = Math.random() < 0.5 ? 'sine' : 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    // Envelope: fast attack, hold, fast release — no clicks
+    const attackTime  = 0.02;
+    const releaseTime = 0.06;
+    gainNode.gain.setValueAtTime(0, startTime);
+    gainNode.gain.linearRampToValueAtTime(0.45, startTime + attackTime);
+    gainNode.gain.setValueAtTime(0.45, startTime + duration - releaseTime);
+    gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+  }
+
+  /* ─── Generate melody ────────────────────────────────────────────────── */
+  function randomFreq() {
+    // Use a musical-leaning distribution across ~100–8000 Hz
+    // Bias toward 150–2000 Hz (perceptually rich zone) via log-ish curve
+    const lo = Math.log2(100);
+    const hi = Math.log2(8000);
+    const exp = lo + Math.random() * (hi - lo);
+    return Math.round(Math.pow(2, exp));
+  }
+
+  function randomDelay() {
+    return Math.floor(Math.random() * 300) + 100; // 100–400 ms
+  }
+
+  function generateMelody() {
+    const freqs  = Array.from({ length: 6 }, randomFreq);
+    const delays = Array.from({ length: 6 }, randomDelay);
+    return { freqs, delays };
+  }
+
+  /* ─── Visual bar animation ───────────────────────────────────────────── */
+  let visualiserInterval = null;
+
+  function startVisualiser() {
+    stopVisualiser();
+    visualiserInterval = setInterval(() => {
+      vBars.forEach(bar => {
+        const h = Math.random() * 52 + 4;
+        bar.style.height = h + 'px';
+      });
+    }, 80);
+  }
+
+  function stopVisualiser() {
+    clearInterval(visualiserInterval);
+    vBars.forEach(bar => { bar.style.height = '4px'; });
+  }
+
+  /* ─── Build note pills ───────────────────────────────────────────────── */
+  function buildPills(freqs) {
+    notePills.innerHTML = '';
+    freqs.forEach((f, i) => {
+      const pill = document.createElement('div');
+      pill.className = 'pill';
+      pill.id = `pill-${i}`;
+      pill.textContent = `${f} Hz`;
+      notePills.appendChild(pill);
+    });
+  }
+
+  function setPillState(index, state) {
+    const pill = document.getElementById(`pill-${index}`);
+    if (!pill) return;
+    pill.className = `pill ${state}`;
+  }
+
+  /* ─── Play melody ────────────────────────────────────────────────────── */
+  async function playMelody(melody, onDone) {
+    const ctx = getAudioCtx();
+    let cursor = ctx.currentTime + 0.05; // small scheduling buffer
+    const noteDur = 0.35;
+
+    melody.freqs.forEach((freq, i) => {
+      const startAt = cursor;
+
+      // Schedule Web Audio note
+      playNote(ctx, freq, startAt, noteDur);
+
+      // Schedule DOM pill highlight via setTimeout
+      const delayFromNow = (startAt - ctx.currentTime) * 1000;
+      setTimeout(() => {
+        if (i > 0) setPillState(i - 1, 'done');
+        setPillState(i, 'active');
+      }, delayFromNow);
+
+      // Advance cursor: note duration + gap delay
+      cursor += noteDur + melody.delays[i] / 1000;
+    });
+
+    // Total duration until all notes end
+    const totalMs = (cursor - ctx.currentTime) * 1000;
+
+    // Mark last pill done when finished
+    setTimeout(() => {
+      setPillState(melody.freqs.length - 1, 'done');
+    }, totalMs - noteDur * 500);
+
+    return new Promise(resolve => setTimeout(resolve, totalMs + 100));
+  }
+
+  /* ─── UI state machine ───────────────────────────────────────────────── */
+  function setPlaying(flag) {
+    isPlaying = flag;
+    btnPlay.disabled = flag;
+    if (flag) {
+      playCard.classList.add('playing');
+      statusEl.textContent = '🎶 Playing…';
+      startVisualiser();
+    } else {
+      playCard.classList.remove('playing');
+      stopVisualiser();
+    }
+  }
+
+  function showRatingSection() {
+    ratingSection.style.display = 'block';
+    ratingSlider.value = 5;
+    updateSliderStyle();
+    ratingDisplay.textContent = '5 / 10';
+    statusEl.textContent = 'Melody done! Rate it below.';
+  }
+
+  function hideRatingSection() {
+    ratingSection.style.display = 'none';
+  }
+
+  function updateSliderStyle() {
+    const pct = (ratingSlider.value / 10) * 100;
+    ratingSlider.style.setProperty('--pct', pct + '%');
+  }
+
+  /* ─── Event: slider ──────────────────────────────────────────────────── */
+  ratingSlider.addEventListener('input', () => {
+    ratingDisplay.textContent = `${ratingSlider.value} / 10`;
+    updateSliderStyle();
+  });
+
+  /* ─── Colour helper for rating ───────────────────────────────────────── */
+  function ratingColor(r) {
+    if (r >= 8) return '#00ffe7';
+    if (r >= 5) return '#c000ff';
+    if (r >= 3) return '#ff8c00';
+    return '#ff2eee';
+  }
+
+  /* ─── Event: Play New Melody ─────────────────────────────────────────── */
+  btnPlay.addEventListener('click', async () => {
+    hideRatingSection();
+    currentMelody = generateMelody();
+    buildPills(currentMelody.freqs);
+    setPlaying(true);
+    await playMelody(currentMelody);
+    setPlaying(false);
+    showRatingSection();
+  });
+
+  /* ─── Event: Replay ──────────────────────────────────────────────────── */
+  btnReplay.addEventListener('click', async () => {
+    if (!currentMelody || isPlaying) return;
+    hideRatingSection();
+    buildPills(currentMelody.freqs);
+    setPlaying(true);
+    await playMelody(currentMelody);
+    setPlaying(false);
+    showRatingSection();
+  });
+
+  /* ─── Event: Save Rating ─────────────────────────────────────────────── */
+  btnSave.addEventListener('click', () => {
+    if (!currentMelody) return;
+    const rating = parseInt(ratingSlider.value, 10);
+    const entry = {
+      id: savedMelodies.length + 1,
+      rating,
+      freqs: currentMelody.freqs,
+      delays: currentMelody.delays,
+      timestamp: new Date().toISOString()
+    };
+    savedMelodies.unshift(entry);
+    hideRatingSection();
+    statusEl.textContent = `✅ Saved! Rating: ${rating}/10. Play another?`;
+    currentMelody = null;
+    btnPlay.disabled = false;
+    renderTable();
+    btnExport.disabled = false;
+  });
+
+  /* ─── Event: Export JSON ─────────────────────────────────────────────── */
+  btnExport.addEventListener('click', () => {
+    const data = JSON.stringify(savedMelodies, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `melody-explorer-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  /* ─── Render table ───────────────────────────────────────────────────── */
+  function renderTable() {
+    if (savedMelodies.length === 0) {
+      emptyState.style.display = 'block';
+      historyTable.style.display = 'none';
+      return;
+    }
+    emptyState.style.display = 'none';
+    historyTable.style.display = 'table';
+    historyBody.innerHTML = '';
+
+    savedMelodies.forEach((entry, idx) => {
+      const tr = document.createElement('tr');
+
+      // Row play button
+      const playBtn = document.createElement('button');
+      playBtn.className = 'btn-play-row';
+      playBtn.textContent = '▶';
+      playBtn.title = 'Replay this melody';
+      playBtn.addEventListener('click', async () => {
+        if (isPlaying) return;
+        const m = { freqs: entry.freqs, delays: entry.delays };
+        buildPills(m.freqs);
+        setPlaying(true);
+        statusEl.textContent = `🔁 Replaying #${entry.id}…`;
+        await playMelody(m);
+        setPlaying(false);
+        statusEl.textContent = 'Replay done.';
+      });
+
+      const color = ratingColor(entry.rating);
+      tr.innerHTML = `
+        <td>${entry.id}</td>
+        <td><span class="rating-badge" style="color:${color};border:1px solid ${color};background:${color}22">${entry.rating}/10</span></td>
+        <td><span class="hz-list">${entry.freqs.join(', ')}</span></td>
+        <td><span class="delay-list">${entry.delays.join(', ')}</span></td>
+        <td></td>
+      `;
+      tr.cells[4].appendChild(playBtn);
+      historyBody.appendChild(tr);
+    });
+  }
+
+  /* ─── Init ───────────────────────────────────────────────────────────── */
+  renderTable();
+  updateSliderStyle();
+</script>
+</body>
+</html>

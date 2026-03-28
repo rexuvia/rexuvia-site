@@ -1,5 +1,15 @@
 [
   {
+    "id": "melody-explorer",
+    "title": "Melody Explorer",
+    "description": "Rate randomly generated 6-note microtonal melodies.",
+    "url": "/games/melody-explorer.html",
+    "github_url": "https://github.com/rexuvia/melody-explorer",
+    "file": "melody-explorer.html",
+    "date": "2026-03-28",
+    "last_updated": "2026-03-28"
+  },
+  {
     "title": "Word Bird",
     "url": "/games/2026-03-10-word-bird.html",
     "github_url": "https://github.com/rexuvia/word-bird",
