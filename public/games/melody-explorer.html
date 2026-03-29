@@ -403,6 +403,17 @@
   <div id="note-pills"></div>
   <div id="status">Press "Play New Melody" to begin.</div>
 
+  <div style="margin-bottom: 1rem; color: var(--muted); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
+    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+      <input type="checkbox" id="auto-start" checked style="accent-color: var(--accent1);" />
+      Auto-start next melody after rating
+    </label>
+    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+      <input type="checkbox" id="use-scale" style="accent-color: var(--accent2);" />
+      Use commonly used notes (scale) instead of random frequencies
+    </label>
+  </div>
+
   <div class="play-row">
     <button class="btn btn-primary" id="btn-play">▶ Play New Melody</button>
   </div>
@@ -503,7 +514,12 @@
   }
 
   /* ─── Generate melody ────────────────────────────────────────────────── */
+  const commonNotes = [130.81, 146.83, 164.81, 174.61, 196.00, 220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50];
+
   function randomFreq() {
+    if (document.getElementById('use-scale') && document.getElementById('use-scale').checked) {
+      return Math.round(commonNotes[Math.floor(Math.random() * commonNotes.length)]);
+    }
     // Use a musical-leaning distribution across ~100–8000 Hz
     // Bias toward 150–2000 Hz (perceptually rich zone) via log-ish curve
     const lo = Math.log2(100);
@@ -513,7 +529,7 @@
   }
 
   function randomDelay() {
-    return Math.floor(Math.random() * 300) + 100; // 100–400 ms
+    return Math.floor(Math.random() * 85) + 15; // 15–100 ms max
   }
 
   function generateMelody() {
@@ -677,6 +693,10 @@
     btnPlay.disabled = false;
     renderTable();
     btnExport.disabled = false;
+
+    if (document.getElementById('auto-start') && document.getElementById('auto-start').checked) {
+      btnPlay.click();
+    }
   });
 
   /* ─── Event: Export JSON ─────────────────────────────────────────────── */
