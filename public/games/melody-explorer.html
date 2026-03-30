@@ -192,6 +192,56 @@
       flex-wrap: wrap;
     }
 
+    /* ── Settings dropdowns ─────────────────────────────────────────── */
+    .settings-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      align-items: flex-end;
+    }
+
+    .setting-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .setting-group label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .setting-group select {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.45rem 0.7rem;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238866aa' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.7rem center;
+      padding-right: 2rem;
+      transition: border-color 0.15s;
+    }
+
+    .setting-group select:hover,
+    .setting-group select:focus {
+      border-color: var(--accent2);
+      box-shadow: var(--glow2);
+    }
+
     /* ── Rating section ─────────────────────────────────────────────── */
     #rating-section {
       display: none;
@@ -321,11 +371,6 @@
       font-family: monospace;
     }
 
-    .delay-list {
-      color: var(--muted);
-      font-family: monospace;
-    }
-
     .btn-play-row {
       background: transparent;
       border: 1px solid var(--accent1);
@@ -403,6 +448,31 @@
   <div id="note-pills"></div>
   <div id="status">Press "Play New Melody" to begin.</div>
 
+  <!-- Playback Settings -->
+  <div class="settings-row">
+    <div class="setting-group">
+      <label for="note-duration">Note Duration</label>
+      <select id="note-duration">
+        <option value="50">50 ms</option>
+        <option value="100">100 ms</option>
+        <option value="200" selected>200 ms</option>
+        <option value="300">300 ms</option>
+        <option value="400">400 ms</option>
+        <option value="500">500 ms</option>
+      </select>
+    </div>
+    <div class="setting-group">
+      <label for="note-gap">Gap Between Notes</label>
+      <select id="note-gap">
+        <option value="0">0 ms</option>
+        <option value="10">10 ms</option>
+        <option value="25" selected>25 ms</option>
+        <option value="50">50 ms</option>
+        <option value="100">100 ms</option>
+      </select>
+    </div>
+  </div>
+
   <div style="margin-bottom: 1rem; color: var(--muted); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
       <input type="checkbox" id="auto-start" checked style="accent-color: var(--accent1);" />
@@ -444,7 +514,6 @@
           <th>#</th>
           <th>Rating</th>
           <th>Frequencies (Hz)</th>
-          <th>Delays (ms)</th>
           <th>Play</th>
         </tr>
       </thead>
@@ -461,28 +530,58 @@
 </footer>
 
 <script>
+  /* ─── Constants ──────────────────────────────────────────────────────── */
+  const LS_DURATION_KEY = 'melodyExplorer_noteDuration';
+  const LS_GAP_KEY      = 'melodyExplorer_noteGap';
+
   /* ─── State ─────────────────────────────────────────────────────────── */
   let savedMelodies = [];
-  let currentMelody = null; // { freqs: [], delays: [] }
+  let currentMelody = null; // { freqs: [] }
   let isPlaying = false;
   let audioCtx = null;
 
   /* ─── DOM refs ───────────────────────────────────────────────────────── */
-  const btnPlay        = document.getElementById('btn-play');
-  const btnSave        = document.getElementById('btn-save');
-  const btnReplay      = document.getElementById('btn-replay');
-  const btnExport      = document.getElementById('btn-export');
-  const ratingSection  = document.getElementById('rating-section');
-  const ratingSlider   = document.getElementById('rating-slider');
-  const ratingDisplay  = document.getElementById('rating-value-display');
-  const statusEl       = document.getElementById('status');
-  const notePills      = document.getElementById('note-pills');
-  const playCard       = document.getElementById('play-card');
-  const historyTable   = document.getElementById('history-table');
-  const historyBody    = document.getElementById('history-body');
-  const emptyState     = document.getElementById('empty-state');
-  const visualiser     = document.getElementById('visualiser');
-  const vBars          = visualiser.querySelectorAll('.v-bar');
+  const btnPlay          = document.getElementById('btn-play');
+  const btnSave          = document.getElementById('btn-save');
+  const btnReplay        = document.getElementById('btn-replay');
+  const btnExport        = document.getElementById('btn-export');
+  const ratingSection    = document.getElementById('rating-section');
+  const ratingSlider     = document.getElementById('rating-slider');
+  const ratingDisplay    = document.getElementById('rating-value-display');
+  const statusEl         = document.getElementById('status');
+  const notePills        = document.getElementById('note-pills');
+  const playCard         = document.getElementById('play-card');
+  const historyTable     = document.getElementById('history-table');
+  const historyBody      = document.getElementById('history-body');
+  const emptyState       = document.getElementById('empty-state');
+  const visualiser       = document.getElementById('visualiser');
+  const vBars            = visualiser.querySelectorAll('.v-bar');
+  const noteDurationSel  = document.getElementById('note-duration');
+  const noteGapSel       = document.getElementById('note-gap');
+
+  /* ─── Helpers: get current settings ─────────────────────────────────── */
+  function getNoteDurationMs()  { return parseInt(noteDurationSel.value, 10); }
+  function getNoteGapMs()       { return parseInt(noteGapSel.value, 10); }
+
+  /* ─── localStorage: persist settings ────────────────────────────────── */
+  function saveSettings() {
+    localStorage.setItem(LS_DURATION_KEY, noteDurationSel.value);
+    localStorage.setItem(LS_GAP_KEY,      noteGapSel.value);
+  }
+
+  function loadSettings() {
+    const dur = localStorage.getItem(LS_DURATION_KEY);
+    const gap = localStorage.getItem(LS_GAP_KEY);
+    if (dur && [...noteDurationSel.options].some(o => o.value === dur)) {
+      noteDurationSel.value = dur;
+    }
+    if (gap && [...noteGapSel.options].some(o => o.value === gap)) {
+      noteGapSel.value = gap;
+    }
+  }
+
+  noteDurationSel.addEventListener('change', saveSettings);
+  noteGapSel.addEventListener('change', saveSettings);
 
   /* ─── Audio helpers ──────────────────────────────────────────────────── */
   function getAudioCtx() {
@@ -491,8 +590,8 @@
     return audioCtx;
   }
 
-  function playNote(ctx, freq, startTime, duration = 0.35) {
-    const osc     = ctx.createOscillator();
+  function playNote(ctx, freq, startTime, durationSec) {
+    const osc      = ctx.createOscillator();
     const gainNode = ctx.createGain();
 
     osc.type = Math.random() < 0.5 ? 'sine' : 'triangle';
@@ -500,17 +599,17 @@
 
     // Envelope: fast attack, hold, fast release — no clicks
     const attackTime  = 0.02;
-    const releaseTime = 0.06;
+    const releaseTime = Math.min(0.06, durationSec * 0.15);
     gainNode.gain.setValueAtTime(0, startTime);
     gainNode.gain.linearRampToValueAtTime(0.45, startTime + attackTime);
-    gainNode.gain.setValueAtTime(0.45, startTime + duration - releaseTime);
-    gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+    gainNode.gain.setValueAtTime(0.45, startTime + durationSec - releaseTime);
+    gainNode.gain.linearRampToValueAtTime(0, startTime + durationSec);
 
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
 
     osc.start(startTime);
-    osc.stop(startTime + duration);
+    osc.stop(startTime + durationSec);
   }
 
   /* ─── Generate melody ────────────────────────────────────────────────── */
@@ -520,22 +619,15 @@
     if (document.getElementById('use-scale') && document.getElementById('use-scale').checked) {
       return Math.round(commonNotes[Math.floor(Math.random() * commonNotes.length)]);
     }
-    // Use a musical-leaning distribution across ~100–8000 Hz
-    // Bias toward 150–2000 Hz (perceptually rich zone) via log-ish curve
     const lo = Math.log2(100);
     const hi = Math.log2(8000);
     const exp = lo + Math.random() * (hi - lo);
     return Math.round(Math.pow(2, exp));
   }
 
-  function randomDelay() {
-    return Math.floor(Math.random() * 85) + 15; // 15–100 ms max
-  }
-
   function generateMelody() {
-    const freqs  = Array.from({ length: 6 }, randomFreq);
-    const delays = Array.from({ length: 6 }, randomDelay);
-    return { freqs, delays };
+    const freqs = Array.from({ length: 6 }, randomFreq);
+    return { freqs };
   }
 
   /* ─── Visual bar animation ───────────────────────────────────────────── */
@@ -575,16 +667,17 @@
   }
 
   /* ─── Play melody ────────────────────────────────────────────────────── */
-  async function playMelody(melody, onDone) {
-    const ctx = getAudioCtx();
-    let cursor = ctx.currentTime + 0.05; // small scheduling buffer
-    const noteDur = 0.35;
+  async function playMelody(melody) {
+    const ctx        = getAudioCtx();
+    const noteDurSec = getNoteDurationMs() / 1000;
+    const gapSec     = getNoteGapMs() / 1000;
+    let cursor       = ctx.currentTime + 0.05; // small scheduling buffer
 
     melody.freqs.forEach((freq, i) => {
       const startAt = cursor;
 
       // Schedule Web Audio note
-      playNote(ctx, freq, startAt, noteDur);
+      playNote(ctx, freq, startAt, noteDurSec);
 
       // Schedule DOM pill highlight via setTimeout
       const delayFromNow = (startAt - ctx.currentTime) * 1000;
@@ -593,8 +686,8 @@
         setPillState(i, 'active');
       }, delayFromNow);
 
-      // Advance cursor: note duration + gap delay
-      cursor += noteDur + melody.delays[i] / 1000;
+      // Advance cursor: note duration + constant gap
+      cursor += noteDurSec + gapSec;
     });
 
     // Total duration until all notes end
@@ -603,7 +696,7 @@
     // Mark last pill done when finished
     setTimeout(() => {
       setPillState(melody.freqs.length - 1, 'done');
-    }, totalMs - noteDur * 500);
+    }, totalMs - noteDurSec * 500);
 
     return new Promise(resolve => setTimeout(resolve, totalMs + 100));
   }
@@ -683,7 +776,6 @@
       id: savedMelodies.length + 1,
       rating,
       freqs: currentMelody.freqs,
-      delays: currentMelody.delays,
       timestamp: new Date().toISOString()
     };
     savedMelodies.unshift(entry);
@@ -722,17 +814,17 @@
     historyTable.style.display = 'table';
     historyBody.innerHTML = '';
 
-    savedMelodies.forEach((entry, idx) => {
+    savedMelodies.forEach((entry) => {
       const tr = document.createElement('tr');
 
-      // Row play button
+      // Row play button — replays using current settings
       const playBtn = document.createElement('button');
       playBtn.className = 'btn-play-row';
       playBtn.textContent = '▶';
       playBtn.title = 'Replay this melody';
       playBtn.addEventListener('click', async () => {
         if (isPlaying) return;
-        const m = { freqs: entry.freqs, delays: entry.delays };
+        const m = { freqs: entry.freqs };
         buildPills(m.freqs);
         setPlaying(true);
         statusEl.textContent = `🔁 Replaying #${entry.id}…`;
@@ -746,15 +838,15 @@
         <td>${entry.id}</td>
         <td><span class="rating-badge" style="color:${color};border:1px solid ${color};background:${color}22">${entry.rating}/10</span></td>
         <td><span class="hz-list">${entry.freqs.join(', ')}</span></td>
-        <td><span class="delay-list">${entry.delays.join(', ')}</span></td>
         <td></td>
       `;
-      tr.cells[4].appendChild(playBtn);
+      tr.cells[3].appendChild(playBtn);
       historyBody.appendChild(tr);
     });
   }
 
   /* ─── Init ───────────────────────────────────────────────────────────── */
+  loadSettings();
   renderTable();
   updateSliderStyle();
 </script>
