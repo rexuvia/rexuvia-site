@@ -454,8 +454,8 @@
       <label for="note-duration">Note Duration</label>
       <select id="note-duration">
         <option value="50">50 ms</option>
-        <option value="100">100 ms</option>
-        <option value="200" selected>200 ms</option>
+        <option value="100" selected>100 ms</option>
+        <option value="200">200 ms</option>
         <option value="300">300 ms</option>
         <option value="400">400 ms</option>
         <option value="500">500 ms</option>
@@ -464,9 +464,9 @@
     <div class="setting-group">
       <label for="note-gap">Gap Between Notes</label>
       <select id="note-gap">
-        <option value="0">0 ms</option>
+        <option value="0" selected>0 ms</option>
         <option value="10">10 ms</option>
-        <option value="25" selected>25 ms</option>
+        <option value="25">25 ms</option>
         <option value="50">50 ms</option>
         <option value="100">100 ms</option>
       </select>
@@ -620,7 +620,7 @@
       return Math.round(commonNotes[Math.floor(Math.random() * commonNotes.length)]);
     }
     const lo = Math.log2(100);
-    const hi = Math.log2(8000);
+    const hi = Math.log2(1500);
     const exp = lo + Math.random() * (hi - lo);
     return Math.round(Math.pow(2, exp));
   }
@@ -849,6 +849,28 @@
   loadSettings();
   renderTable();
   updateSliderStyle();
+
+  /* ─── Keyboard shortcuts ─────────────────────────────────────────────── */
+  window.addEventListener('keydown', (e) => {
+    if (!currentMelody || isPlaying || ratingSection.style.display === 'none') return;
+    const num = parseInt(e.key, 10);
+    if (!isNaN(num) && num >= 1 && num <= 9) {
+      ratingSlider.value = num;
+      ratingDisplay.textContent = `${num} / 10`;
+      updateSliderStyle();
+      if (document.getElementById('auto-start') && document.getElementById('auto-start').checked) {
+        btnSave.click();
+      }
+    } else if (e.key === '0') {
+      ratingSlider.value = 10;
+      ratingDisplay.textContent = '10 / 10';
+      updateSliderStyle();
+      if (document.getElementById('auto-start') && document.getElementById('auto-start').checked) {
+        btnSave.click();
+      }
+    }
+  });
+
 </script>
 </body>
 </html>
