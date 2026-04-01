@@ -1,8 +1,36 @@
 {
   "version": "1.0.1",
-  "last_updated": "2026-03-28T22:47:11.354212Z",
-  "count": 13,
+  "last_updated": "2026-03-31T00:57:57.878178Z",
+  "count": 14,
   "results": [
+    {
+      "id": "show-me-the-entire-gettysburg-2026-03-31-0043",
+      "slug": "show-me-the-entire-gettysburg",
+      "timestamp": "2026-03-31T00:43:00Z",
+      "prompt": "show me the entire Gettysburg Address by Abraham Lincoln, but word it as if it was written and presented by the fictional character Boomhauer from \"King of the Hill\"",
+      "prompt_preview": "show me the entire Gettysburg Address by Abraham Lincoln, but word it as if it was written and prese...",
+      "models_queried": [
+        "google/gemini-2.5-pro",
+        "openrouter/deepseek/deepseek-v3.2",
+        "openrouter/x-ai/grok-4",
+        "openrouter/moonshotai/kimi-k2.5",
+        "openrouter/qwen/qwen3-max",
+        "openrouter/mistralai/mistral-large-2512"
+      ],
+      "models_queried_count": 6,
+      "judge_model": "openrouter/google/gemini-3.1-pro-preview",
+      "winner_model": "google/gemini-2.5-pro",
+      "winner_score": 9.0,
+      "total_duration_ms": 67000,
+      "json_url": "/modelshow-results/show-me-the-entire-gettysburg-2026-03-31-0043.json",
+      "md_url": "/modelshow-results/show-me-the-entire-gettysburg-2026-03-31-0043.md",
+      "tags": [
+        "creative writing",
+        "style transfer",
+        "character speech",
+        "humor"
+      ]
+    },
     {
       "id": "i-want-to-setup-some-2026-03-28-2223",
       "slug": "i-want-to-setup-some",
