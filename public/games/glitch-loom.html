@@ -154,7 +154,7 @@ select option {
     <h2 style="font-size: 16px; margin-bottom: 10px; color: var(--cyan)">Glitch Loom</h2>
     
     <div class="ctrl-group">
-      <label>Speed</label>
+      <label>Animation Speed</label>
       <input type="range" id="anim-speed" min="1" max="100" value="50">
     </div>
     
@@ -190,6 +190,16 @@ select option {
     <div class="ctrl-group">
       <label>Var B <span id="varB-desc" style="color:var(--cyan);font-size:10px"></span></label>
       <input type="range" id="var-b" min="0" max="100" value="50">
+    </div>
+
+    <div class="ctrl-group">
+      <label>Color Intensity</label>
+      <input type="range" id="color-intensity" min="0" max="100" value="100">
+    </div>
+
+    <div class="ctrl-group">
+      <label>Noise Intensity</label>
+      <input type="range" id="noise-intensity" min="0" max="100" value="0">
     </div>
 
     <div class="ctrl-group">
@@ -295,7 +305,9 @@ const state = {
   scaleMod: 50,
   jitterMod: 0,
   varA: 50,
-  varB: 50
+  varB: 50,
+  colorIntensity: 100,
+  noiseIntensity: 0
 };
 
 // UI Elements
@@ -309,6 +321,8 @@ const uiElements = {
   jitterMod: document.getElementById('jitter-mod'),
   varA: document.getElementById('var-a'),
   varB: document.getElementById('var-b'),
+  colorIntensity: document.getElementById('color-intensity'),
+  noiseIntensity: document.getElementById('noise-intensity'),
   varADesc: document.getElementById('varA-desc'),
   varBDesc: document.getElementById('varB-desc'),
   stateString: document.getElementById('state-string'),
@@ -329,7 +343,9 @@ function encodeState() {
     state.scaleMod.toString(36).padStart(2, '0'),
     state.jitterMod.toString(36).padStart(2, '0'),
     state.varA.toString(36).padStart(2, '0'),
-    state.varB.toString(36).padStart(2, '0')
+    state.varB.toString(36).padStart(2, '0'),
+    state.colorIntensity.toString(36).padStart(2, '0'),
+    state.noiseIntensity.toString(36).padStart(2, '0')
   ];
   const str = parts.join('');
   uiElements.stateString.value = str;
@@ -341,8 +357,8 @@ function encodeState() {
 // Supports legacy 9/13-char formats (single-char pattern) and new 14-char format
 function decodeState(str) {
   try {
-    if (str.length === 18) {
-      // Current format: all 2-char fields including varA, varB
+    if (str.length === 22) {
+      // New format: includes colorIntensity and noiseIntensity
       state.speed          = parseInt(str.substr(0, 2), 36);
       state.density        = parseInt(str.substr(2, 2), 36);
       state.colorShift     = parseInt(str.substr(4, 2), 36);
@@ -352,6 +368,21 @@ function decodeState(str) {
       state.jitterMod      = parseInt(str.substr(12, 2), 36);
       state.varA           = parseInt(str.substr(14, 2), 36);
       state.varB           = parseInt(str.substr(16, 2), 36);
+      state.colorIntensity = parseInt(str.substr(18, 2), 36);
+      state.noiseIntensity = parseInt(str.substr(20, 2), 36);
+    } else if (str.length === 18) {
+      // Previous format: all 2-char fields including varA, varB
+      state.speed          = parseInt(str.substr(0, 2), 36);
+      state.density        = parseInt(str.substr(2, 2), 36);
+      state.colorShift     = parseInt(str.substr(4, 2), 36);
+      state.glitchIntensity= parseInt(str.substr(6, 2), 36);
+      state.pattern        = parseInt(str.substr(8, 2), 36);
+      state.scaleMod       = parseInt(str.substr(10, 2), 36);
+      state.jitterMod      = parseInt(str.substr(12, 2), 36);
+      state.varA           = parseInt(str.substr(14, 2), 36);
+      state.varB           = parseInt(str.substr(16, 2), 36);
+      state.colorIntensity = 100;
+      state.noiseIntensity = 0;
     } else if (str.length === 14) {
       // Legacy: 7 fields, no varA/varB
       state.speed          = parseInt(str.substr(0, 2), 36);
@@ -363,6 +394,8 @@ function decodeState(str) {
       state.jitterMod      = parseInt(str.substr(12, 2), 36);
       state.varA           = 50;
       state.varB           = 50;
+      state.colorIntensity = 100;
+      state.noiseIntensity = 0;
     } else if (str.length === 13) {
       // Legacy with scaleMod/jitterMod, single-char pattern
       state.speed          = parseInt(str.substr(0, 2), 36);
@@ -374,6 +407,8 @@ function decodeState(str) {
       state.jitterMod      = parseInt(str.substr(11, 2), 36);
       state.varA           = 50;
       state.varB           = 50;
+      state.colorIntensity = 100;
+      state.noiseIntensity = 0;
     } else if (str.length === 9) {
       // Legacy minimal, single-char pattern
       state.speed          = parseInt(str.substr(0, 2), 36);
@@ -385,6 +420,8 @@ function decodeState(str) {
       state.jitterMod      = 0;
       state.varA           = 50;
       state.varB           = 50;
+      state.colorIntensity = 100;
+      state.noiseIntensity = 0;
     } else {
       return false;
     }
@@ -405,6 +442,8 @@ function updateUIFromState() {
   uiElements.jitterMod.value = state.jitterMod;
   uiElements.varA.value = state.varA;
   uiElements.varB.value = state.varB;
+  uiElements.colorIntensity.value = state.colorIntensity;
+  uiElements.noiseIntensity.value = state.noiseIntensity;
   updateVarDescriptions();
   encodeState();
 }
@@ -419,12 +458,14 @@ function updateStateFromUI() {
   state.jitterMod = parseInt(uiElements.jitterMod.value);
   state.varA = parseInt(uiElements.varA.value);
   state.varB = parseInt(uiElements.varB.value);
+  state.colorIntensity = parseInt(uiElements.colorIntensity.value);
+  state.noiseIntensity = parseInt(uiElements.noiseIntensity.value);
   updateVarDescriptions();
   encodeState();
 }
 
 // Event Listeners
-['speed', 'density', 'colorShift', 'glitchIntensity', 'pattern', 'scaleMod', 'jitterMod', 'varA', 'varB'].forEach(key => {
+['speed', 'density', 'colorShift', 'glitchIntensity', 'pattern', 'scaleMod', 'jitterMod', 'varA', 'varB', 'colorIntensity', 'noiseIntensity'].forEach(key => {
   uiElements[key].addEventListener('input', updateStateFromUI);
 });
 // Also update descriptions on pattern change
@@ -440,6 +481,8 @@ document.getElementById('btn-randomize').addEventListener('click', () => {
   uiElements.jitterMod.value = Math.floor(Math.random() * 100);
   uiElements.varA.value = Math.floor(Math.random() * 101);
   uiElements.varB.value = Math.floor(Math.random() * 101);
+  uiElements.colorIntensity.value = Math.floor(Math.random() * 101);
+  uiElements.noiseIntensity.value = Math.floor(Math.random() * 101);
   updateStateFromUI();
 });
 
@@ -1058,7 +1101,9 @@ function render() {
 
         if (val > 0.1) {
           let hue = (state.colorShift + val * 180 + (x/rdSize)*90 + time*10) % 360;
-          ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
+          let saturation = state.colorIntensity; // 0-100%
+          let lightness = 50; // Keep lightness at 50% for vibrancy
+          ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.8)`;
           ctx.fillRect(cx, cy, tileW * (0.5 + val) * (state.scaleMod / 50), tileH * (0.5 + val) * (state.scaleMod / 50));
         }
       }
@@ -1074,6 +1119,12 @@ function render() {
 
       let val = computePattern(px, py, state.pattern, time);
 
+      // Add noise to pattern value
+      if (state.noiseIntensity > 0) {
+        val += (Math.random() - 0.5) * (state.noiseIntensity / 50);
+        val = Math.max(-1, Math.min(1, val)); // Clamp to reasonable range
+      }
+
       // Glitch effect
       let cx = x * cellW;
       let cy = y * cellH;
@@ -1086,7 +1137,9 @@ function render() {
 
       if (val > 0) {
         let hue = (state.colorShift + (val * 180) + (x/cells)*90 + time*10) % 360;
-        ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
+        let saturation = state.colorIntensity; // 0-100%
+        let lightness = 50; // Keep lightness at 50% for vibrancy
+        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.8)`;
         ctx.fillRect(cx, cy, cellW * (0.5 + val) * (state.scaleMod / 50), cellH * (0.5 + val) * (state.scaleMod / 50));
       }
     }
@@ -1098,7 +1151,7 @@ function render() {
 // Load state from URL hash if present
 function loadFromURL() {
   const hash = window.location.hash.slice(1);
-  if (hash && (hash.length === 9 || hash.length === 13 || hash.length === 14 || hash.length === 18)) {
+  if (hash && (hash.length === 9 || hash.length === 13 || hash.length === 14 || hash.length === 18 || hash.length === 22)) {
     if (decodeState(hash)) return true;
   }
   return false;
