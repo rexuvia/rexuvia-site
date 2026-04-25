@@ -205,10 +205,8 @@ function slugify(text) {
 }
 
 function generatePromptLink(result) {
-  if (!result || !result.timestamp || !result.prompt_preview) return '#';
-  const datePart = result.timestamp.substring(0, 10);
-  const promptSlug = slugify(result.prompt_preview).substring(0, 50);
-  return `/modelshow-results/#${datePart}-${result.id}-${promptSlug}`;
+  if (!result || !result.id) return '#';
+  return `/modelshow-results/#${result.id}`;
 }
 
 async function copyLinkToClipboard(link) {
