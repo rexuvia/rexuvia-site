@@ -191,6 +191,27 @@ function fmtDuration(ms) {
   return `${(ms / 1000).toFixed(1)}s`
 }
 
+
+function slugify(text) {
+  if (typeof text !== 'string' || !text) return '';
+  return text
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function generatePromptLink(result) {
+  if (!result || !result.timestamp || !result.prompt_preview) return '#';
+  const datePart = result.timestamp.substring(0, 10); // YYYY-MM-DD
+  const promptSlug = slugify(result.prompt_preview).substring(0, 50); // Limit slug length
+  return `/modelshow-results/#${datePart}-${result.id}-${promptSlug}`;
+}
+
 function getMedal(rank) {
   return ['🥇', '🥈', '🥉'][rank - 1] ?? `#${rank}`
 }
@@ -260,6 +281,17 @@ async function fetchFullResult(id, jsonUrl) {
   }
 }
 
+async function copyLinkToClipboard(link) {
+  try {
+    await navigator.clipboard.writeText(link);
+    // Optional: provide visual feedback to the user
+    alert('Link copied to clipboard!');
+  } catch (err) {
+    console.error('Failed to copy: ', err);
+    alert('Failed to copy link.');
+  }
+}
+
 function clearFilter() {
   filterText.value = ''
 }
@@ -290,12 +322,45 @@ function changeItemsPerPage(value) {
 
 // ── Lifecycle ──────────────────────────────────────────────────────────
 onMounted(() => {
-  fetchIndex()
-})
+  fetchIndex().then(() => {
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1); // Remove '#'
+      const parts = hash.split('-');
+      // Expected format: YYYY-MM-DD-ID-SLUG
+      // parts[0] = YYYY, parts[1] = MM, parts[2] = DD, parts[3] = ID, parts[4...N] = SLUG
+      // Corrected targetId extraction: YYYY-MM-DD-ID-... so ID is parts[3] if there's a YYYY-MM-DD part.
+      // Simpler approach: find the result by ID, which is typically unique.
+      // Assuming the ID is after the date part and is a standard UUID/string.
+      // The ID itself is expected to be unique and sufficient.
+      const targetId = parts.length > 3 ? parts[3] : parts.length > 1 ? parts[1] : null; // Handle potential variations
+
+      if (targetId) {
+        // Find the result that matches the ID
+        const targetResult = results.value.find(r => r.id === targetId);
+
+        if (targetResult) {
+          // Set itemsPerPage to 0 (All) to ensure the target result is on the current "page"
+          // This is a workaround to ensure the element is in the DOM for scrolling.
+          itemsPerPage.value = 0;
+          nextTick(() => { // Wait for pagination to re-render
+            fetchFullResult(targetResult.id, targetResult.json_url).then(() => {
+              // Scroll to the expanded item
+              nextTick(() => { // Wait for the detail row to render
+                const element = document.getElementById(`modelshow-result-${targetResult.id}`);
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              });
+            });
+          });
+        }
+      }
+    }
+  });
+});
 
 // ── Watchers ──────────────────────────────────────────────────────────
 // Reset to first page when filter changes or sorted results change
-import { watch } from 'vue'
 watch([filterText, sortedResults], () => {
   currentPage.value = 1
 })
@@ -360,6 +425,7 @@ watch([filterText, sortedResults], () => {
             <!-- Main row -->
             <tr
               class="ms-row"
+              :id="`modelshow-result-${r.id}`"
               :class="{
                 'ms-row-new': newIds.has(r.id),
                 'ms-row-expanded': expandedId === r.id
@@ -383,6 +449,14 @@ watch([filterText, sortedResults], () => {
               </td>
               
               <td class="ms-td ms-td-actions">
+                <button
+                  class="ms-copy-link-btn"
+                  @click.stop="copyLinkToClipboard(generatePromptLink(r))"
+                  aria-label="Copy link to this prompt"
+                  title="Copy link to this prompt"
+                >
+                  🔗
+                </button>
                 <button
                   class="ms-expand-btn"
                   @click="fetchFullResult(r.id, r.json_url)"
@@ -769,6 +843,26 @@ watch([filterText, sortedResults], () => {
 }
 
 /* ── Expand button ──────────────────────────────────── */
+.ms-copy-link-btn {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.2s, color 0.2s;
+  touch-action: manipulation;
+  min-width: 36px;
+  min-height: 36px; /* touch-friendly */
+  margin-right: 8px; /* Spacing between copy and expand button */
+}
+
+.ms-copy-link-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+}
+
 .ms-expand-btn {
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.05);
