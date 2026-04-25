@@ -191,6 +191,36 @@ function fmtDuration(ms) {
   return `${(ms / 1000).toFixed(1)}s`
 }
 
+function slugify(text) {
+  if (typeof text !== 'string' || !text) return '';
+  return text
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function generatePromptLink(result) {
+  if (!result || !result.timestamp || !result.prompt_preview) return '#';
+  const datePart = result.timestamp.substring(0, 10);
+  const promptSlug = slugify(result.prompt_preview).substring(0, 50);
+  return `/modelshow-results/#${datePart}-${result.id}-${promptSlug}`;
+}
+
+async function copyLinkToClipboard(link) {
+  try {
+    const fullUrl = window.location.origin + link;
+    await navigator.clipboard.writeText(fullUrl);
+    alert('Link copied to clipboard!');
+  } catch (err) {
+    console.error('Failed to copy: ', err);
+    alert('Failed to copy link.');
+  }
+}
 
 function getMedal(rank) {
   return ['🥇', '🥈', '🥉'][rank - 1] ?? `#${rank}`
@@ -291,7 +321,39 @@ function changeItemsPerPage(value) {
 
 // ── Lifecycle ──────────────────────────────────────────────────────────
 onMounted(() => {
-  fetchIndex()
+  fetchIndex().then(() => {
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      const parts = hash.split('-');
+      
+      // Since format is YYYY-MM-DD-ID-SLUG, we need to extract ID correctly.
+      // E.g. 2026-03-31-show-me-the-entire-gettysburg-2026-03-31-0043-show-me-the-entire-gettysburg-address-by-abraham-
+      // It's safer to extract it based on finding a matching ID from results array using substring match on hash
+      const targetResult = results.value.find(r => hash.includes(r.id));
+
+      if (targetResult) {
+        itemsPerPage.value = 0;
+        
+        // Use a small delay to ensure DOM is ready
+        setTimeout(() => {
+          fetchFullResult(targetResult.id, targetResult.json_url).then(() => {
+            setTimeout(() => {
+              const element = document.getElementById(`modelshow-result-${targetResult.id}`);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Optional highlight effect
+                element.style.transition = 'background-color 2s';
+                element.style.backgroundColor = 'rgba(232, 116, 97, 0.2)';
+                setTimeout(() => {
+                   element.style.backgroundColor = '';
+                }, 2000);
+              }
+            }, 100);
+          });
+        }, 100);
+      }
+    }
+  });
 })
 
 // ── Watchers ──────────────────────────────────────────────────────────
@@ -361,6 +423,7 @@ watch([filterText, sortedResults], () => {
             <!-- Main row -->
             <tr
               class="ms-row"
+              :id="`modelshow-result-${r.id}`"
               :class="{
                 'ms-row-new': newIds.has(r.id),
                 'ms-row-expanded': expandedId === r.id
@@ -384,6 +447,14 @@ watch([filterText, sortedResults], () => {
               </td>
               
               <td class="ms-td ms-td-actions">
+                <button
+                  class="ms-copy-link-btn"
+                  @click.stop="copyLinkToClipboard(generatePromptLink(r))"
+                  aria-label="Copy link to this prompt"
+                  title="Copy link to this prompt"
+                >
+                  🔗
+                </button>
                 <button
                   class="ms-expand-btn"
                   @click="fetchFullResult(r.id, r.json_url)"
@@ -770,6 +841,26 @@ watch([filterText, sortedResults], () => {
 }
 
 /* ── Expand button ──────────────────────────────────── */
+.ms-copy-link-btn {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.2s, color 0.2s;
+  touch-action: manipulation;
+  min-width: 36px;
+  min-height: 36px; /* touch-friendly */
+  margin-right: 8px; /* Spacing between copy and expand button */
+}
+
+.ms-copy-link-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+}
+
 .ms-expand-btn {
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.05);
