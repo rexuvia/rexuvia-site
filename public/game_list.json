@@ -22,63 +22,72 @@
     "url": "/games/glitch-loom.html",
     "github_url": "https://github.com/rexuvia/glitch-loom",
     "date": "2026-03-04",
-    "last_updated": "2026-05-09"
+    "last_updated": "2026-05-09",
+    "description": "Weave pixel-sorted and datamoshed strands into glitch art tapestries with custom patterns and animation exports."
   },
   {
     "title": "Memory Palace Builder",
     "url": "/games/memory-palace-builder.html",
     "github_url": "https://github.com/rexuvia/memory-palace-builder",
     "date": "2026-03-03",
-    "last_updated": "2026-03-05"
+    "last_updated": "2026-03-05",
+    "description": "3D interactive spatial memory system using WASD navigation. Place custom objects and practice your recall."
   },
   {
     "title": "Prime Spiral Observatory",
     "url": "/games/prime-spiral.html",
     "github_url": "https://github.com/rexuvia/prime-spiral",
     "date": "2026-03-02",
-    "last_updated": "2026-03-24"
+    "last_updated": "2026-03-24",
+    "description": "Explore the mysterious patterns of prime numbers through an interactive spiral visualization."
   },
   {
     "title": "Flock Mind",
     "url": "/games/flock-mind.html",
     "github_url": "https://github.com/rexuvia/flock-mind",
     "date": "2026-03-01",
-    "last_updated": "2026-03-01"
+    "last_updated": "2026-03-01",
+    "description": "Emergent boids flocking simulation with attract/repel interactions and spatial grid optimization."
   },
   {
     "title": "Branching Narrative Web",
     "url": "/games/branching-narrative-web.html",
     "github_url": "https://github.com/rexuvia/branching-narrative-web",
     "date": "2026-02-28",
-    "last_updated": "2026-02-28"
+    "last_updated": "2026-02-28",
+    "description": "Navigate complex interactive stories through an interconnected web of branching narrative paths."
   },
   {
     "title": "Sideways Tetris",
     "url": "/games/sideways-tetris.html",
     "github_url": "https://github.com/rexuvia/sideways-tetris",
     "date": "2026-02-28",
-    "last_updated": "2026-03-14"
+    "last_updated": "2026-03-14",
+    "description": "A mind-bending twist on the classic puzzle game where pieces fall horizontally instead of vertically."
   },
   {
     "title": "Wave Collapse Weaver",
     "url": "/games/wave-collapse-weaver.html",
     "github_url": "https://github.com/rexuvia/wave-collapse-weaver",
     "date": "2026-02-25",
-    "last_updated": "2026-02-25"
+    "last_updated": "2026-02-25",
+    "description": "Procedural generation tool using the Wave Function Collapse algorithm to create infinite, repeating patterns."
   },
   {
     "title": "Neural Knot Untangler",
     "url": "/games/2026-02-23-neural-knot-untangler.html",
     "github_url": "https://github.com/rexuvia/neural-knot-untangler",
     "date": "2026-02-23",
-    "last_updated": "2026-02-24"
+    "last_updated": "2026-02-24",
+    "description": "3D graph puzzle game. Untangle complex neural knots to clear crossings across varying difficulty levels."
   },
   {
     "date": "2026-02-22",
     "title": "Cell Symphony",
     "url": "/games/2026-02-22-cell-symphony.html",
     "github_url": "https://github.com/rexuvia/cell-symphony",
-    "last_updated": "2026-03-17"
+    "last_updated": "2026-03-17",
+    "description": "Interactive cellular automaton that generates dynamic musical soundscapes as life evolves on the grid."
   },
   {
     "date": "2026-02-21",
@@ -101,41 +110,47 @@
     "title": "Lava Flow",
     "url": "/games/lava-flow.html",
     "github_url": "https://github.com/rexuvia/lava-flow",
-    "last_updated": "2026-03-18"
+    "last_updated": "2026-03-18",
+    "description": "Mesmerizing fluid dynamics and particle simulation exploring the hypnotic movement of digital lava."
   },
   {
     "date": "2026-02-19",
     "title": "Mirror Maze",
     "url": "/games/mirror-maze.html",
     "github_url": "https://github.com/rexuvia/mirror-maze",
-    "last_updated": "2026-03-25"
+    "last_updated": "2026-03-25",
+    "description": "Navigate a tricky labyrinth of reflecting surfaces. Use logic and spatial reasoning to find the exit."
   },
   {
     "date": "2026-02-18",
     "title": "Signal Scope",
     "url": "/games/2026-02-18-signal-scope.html",
     "github_url": "https://github.com/rexuvia/signal-scope",
-    "last_updated": "2026-03-27"
+    "last_updated": "2026-03-27",
+    "description": "Real-time audio analyzer featuring 8 notation formats, pitch history, and visual waveform feedback."
   },
   {
     "date": "2026-02-17",
     "title": "Sort Cinema",
     "url": "/games/2026-02-17-sort-cinema.html",
     "github_url": "https://github.com/rexuvia/sort-cinema",
-    "last_updated": "2026-03-18"
+    "last_updated": "2026-03-18",
+    "description": "Educational visualization of 15 different sorting algorithms in action, complete with interactive explanations."
   },
   {
     "date": "2026-02-16",
     "title": "Neon Synth Pad",
     "url": "/games/2026-02-16-neon-synth-pad.html",
     "github_url": "https://github.com/rexuvia/neon-synth-pad",
-    "last_updated": "2026-03-28"
+    "last_updated": "2026-03-28",
+    "description": "Expressive, neon-infused synthesizer pad for creating rich electronic soundscapes in your browser."
   },
   {
     "date": "2026-02-16",
     "title": "Pendulum Waves",
     "url": "/games/2026-02-16-pendulum-waves.html",
     "github_url": "https://github.com/rexuvia/pendulum-waves",
-    "last_updated": "2026-03-22"
+    "last_updated": "2026-03-22",
+    "description": "Hypnotic physics simulation demonstrating the mathematical beauty of uncoupled pendulum waves."
   }
 ]
