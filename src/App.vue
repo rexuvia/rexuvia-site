@@ -171,6 +171,7 @@ onMounted(async () => {
               >
                 <a :href="game.url" target="_blank" class="game-card-main">
                   <span class="game-card-name">{{ game.title }}</span>
+                  <span v-if="game.description" class="game-card-description">{{ game.description }}</span>
                   <div class="game-card-meta">
                     <span class="game-card-date">Created: {{ game.date }}</span>
                     <span v-if="game.last_updated" class="game-card-updated">
@@ -710,7 +711,7 @@ html, body {
 
 .game-card:hover {
   background: rgba(255,255,255,0.07);
-  border-color: rgba(232, 116, 97, 0.4);
+  border-color: rgba(0, 240, 255, 0.3);
   transform: translateY(-1px);
 }
 
@@ -737,6 +738,24 @@ html, body {
 @media (min-width: 600px) {
   .game-card-name {
     font-size: 0.9rem;
+  }
+}
+
+.game-card-description {
+  font-size: 0.72rem;
+  color: #888;
+  line-height: 1.4;
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (min-width: 600px) {
+  .game-card-description {
+    font-size: 0.78rem;
+    -webkit-line-clamp: 3;
   }
 }
 
