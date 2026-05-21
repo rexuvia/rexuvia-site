@@ -9,20 +9,31 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const ZCASH_ADDRESS = 'u1aqs7vmn545y6qm2jata7t2pve5pvtqa2dpydsg3decqklplv9meesu8stf3lcad6s822slengfxq7fjv079a7c90snsm99f8y4mwjkmqhw30gtj74ffamx0e4qrvvxqvf44sj6ms43umre8mxqp9q7q0kkc72a4ax5r67vfj2gcegjsc'
+const MONERO_ADDRESS = '8BM7h4VQjtNdq4tSXh1sAEiehYSdSPfRohNXQJ9ohb8cEUwwkszpLyHHGRTsTcqQvVcJBd44Jd2zXXt84EhB7FKR8Y4rsqw'
 
-const qrCanvas = useTemplateRef('qrCanvas')
+const ZCASH_QR_ID = 'zcash_qr'
+const MONERO_QR_ID = 'monero_qr'
+
+const qrCanvasZcash = useTemplateRef('qrCanvasZcash')
+const qrCanvasMonero = useTemplateRef('qrCanvasMonero')
 const dialogRef = useTemplateRef('dialogRef')
-const copied = ref(false)
-const qrReady = ref(false)
-const qrError = ref(null)
+const copiedZcash = ref(false)
+const copiedMonero = ref(false)
+const qrReadyZcash = ref(false)
+const qrReadyMonero = ref(false)
+const qrErrorZcash = ref(null)
+const qrErrorMonero = ref(null)
 
-let copyResetTimer = null
+const activeTab = ref('zcash')
+
+let copyResetTimerZcash = null
+let copyResetTimerMonero = null
 let previousActive = null
 
-async function renderQr() {
-  if (!qrCanvas.value) return
+async function renderQrZcash() {
+  if (!qrCanvasZcash.value) return
   try {
-    await QRCode.toCanvas(qrCanvas.value, ZCASH_ADDRESS, {
+    await QRCode.toCanvas(qrCanvasZcash.value, ZCASH_ADDRESS, {
       errorCorrectionLevel: 'L',
       margin: 1,
       width: 220,
@@ -31,21 +42,45 @@ async function renderQr() {
         light: '#ffffff',
       },
     })
-    qrReady.value = true
-    qrError.value = null
+    qrReadyZcash.value = true
+    qrErrorZcash.value = null
   } catch (err) {
-    qrError.value = err?.message || 'Failed to render QR code'
-    qrReady.value = false
+    qrErrorZcash.value = err?.message || 'Failed to render QR code'
+    qrReadyZcash.value = false
   }
 }
 
-async function copyAddress() {
+async function renderQrMonero() {
+  if (!qrCanvasMonero.value) return
+  try {
+    await QRCode.toCanvas(qrCanvasMonero.value, MONERO_ADDRESS, {
+      errorCorrectionLevel: 'L',
+      margin: 1,
+      width: 220,
+      color: {
+        dark: '#0a0f15',
+        light: '#ffffff',
+      },
+    })
+    qrReadyMonero.value = true
+    qrErrorMonero.value = null
+  } catch (err) {
+    qrErrorMonero.value = err?.message || 'Failed to render QR code'
+    qrReadyMonero.value = false
+  }
+}
+
+async function renderQrs() {
+  await Promise.all([renderQrZcash(), renderQrMonero()])
+}
+
+async function copyAddressZcash() {
   try {
     await navigator.clipboard.writeText(ZCASH_ADDRESS)
-    copied.value = true
-    if (copyResetTimer) clearTimeout(copyResetTimer)
-    copyResetTimer = setTimeout(() => {
-      copied.value = false
+    copiedZcash.value = true
+    if (copyResetTimerZcash) clearTimeout(copyResetTimerZcash)
+    copyResetTimerZcash = setTimeout(() => {
+      copiedZcash.value = false
     }, 1500)
   } catch {
     const tmp = document.createElement('textarea')
@@ -57,10 +92,40 @@ async function copyAddress() {
     tmp.select()
     try {
       document.execCommand('copy')
-      copied.value = true
-      if (copyResetTimer) clearTimeout(copyResetTimer)
-      copyResetTimer = setTimeout(() => {
-        copied.value = false
+      copiedZcash.value = true
+      if (copyResetTimerZcash) clearTimeout(copyResetTimerZcash)
+      copyResetTimerZcash = setTimeout(() => {
+        copiedZcash.value = false
+      }, 1500)
+    } catch {
+      // ignore
+    }
+    document.body.removeChild(tmp)
+  }
+}
+
+async function copyAddressMonero() {
+  try {
+    await navigator.clipboard.writeText(MONERO_ADDRESS)
+    copiedMonero.value = true
+    if (copyResetTimerMonero) clearTimeout(copyResetTimerMonero)
+    copyResetTimerMonero = setTimeout(() => {
+      copiedMonero.value = false
+    }, 1500)
+  } catch {
+    const tmp = document.createElement('textarea')
+    tmp.value = MONERO_ADDRESS
+    tmp.setAttribute('readonly', '')
+    tmp.style.position = 'fixed'
+    tmp.style.opacity = '0'
+    document.body.appendChild(tmp)
+    tmp.select()
+    try {
+      document.execCommand('copy')
+      copiedMonero.value = true
+      if (copyResetTimerMonero) clearTimeout(copyResetTimerMonero)
+      copyResetTimerMonero = setTimeout(() => {
+        copiedMonero.value = false
       }, 1500)
     } catch {
       // ignore
@@ -84,12 +149,14 @@ watch(
       previousActive = document.activeElement
       document.body.style.overflow = 'hidden'
       await nextTick()
-      await renderQr()
+      await renderQrs()
       dialogRef.value?.focus()
     } else {
       document.body.style.overflow = ''
-      copied.value = false
-      qrReady.value = false
+      copiedZcash.value = false
+      copiedMonero.value = false
+      qrReadyZcash.value = false
+      qrReadyMonero.value = false
       if (previousActive && typeof previousActive.focus === 'function') {
         previousActive.focus()
       }
@@ -100,7 +167,8 @@ watch(
 
 onUnmounted(() => {
   document.body.style.overflow = ''
-  if (copyResetTimer) clearTimeout(copyResetTimer)
+  if (copyResetTimerZcash) clearTimeout(copyResetTimerZcash)
+  if (copyResetTimerMonero) clearTimeout(copyResetTimerMonero)
 })
 </script>
 
@@ -135,31 +203,77 @@ onUnmounted(() => {
         <p class="modal-body">
           The experiments shared on this site cost real money in API tokens.
           If anything here has sparked an idea or made you smile, you can chip
-          in via Zcash. Every contribution goes directly toward more
+          in via Zcash or Monero. Every contribution goes directly toward more
           experiments.
         </p>
 
-        <div class="qr-wrap">
-          <canvas
-            ref="qrCanvas"
-            class="qr-canvas"
-            :class="{ 'qr-ready': qrReady }"
-            aria-label="QR code for Zcash shielded address"
-          ></canvas>
-          <p v-if="qrError" class="qr-error">{{ qrError }}</p>
+        <div class="tabs">
+          <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'zcash' }" 
+            @click="activeTab = 'zcash'"
+          >
+            Zcash
+          </button>
+          <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'monero' }" 
+            @click="activeTab = 'monero'"
+          >
+            Monero
+          </button>
         </div>
 
-        <div class="address-section">
-          <p class="address-label">Shielded Zcash address</p>
-          <code class="address-text">{{ ZCASH_ADDRESS }}</code>
-          <button
-            type="button"
-            class="copy-btn"
-            :class="{ copied }"
-            @click="copyAddress"
-          >
-            {{ copied ? 'Copied!' : 'Copy address' }}
-          </button>
+        <div v-show="activeTab === 'zcash'" class="tab-content">
+          <div class="qr-wrap">
+            <canvas
+              ref="qrCanvasZcash"
+              class="qr-canvas"
+              :class="{ 'qr-ready': qrReadyZcash }"
+              aria-label="QR code for Zcash shielded address"
+            ></canvas>
+            <p v-if="qrErrorZcash" class="qr-error">{{ qrErrorZcash }}</p>
+          </div>
+
+          <div class="address-section">
+            <p class="address-label">Shielded Zcash address</p>
+            <code class="address-text">{{ ZCASH_ADDRESS }}</code>
+            <button
+              type="button"
+              class="copy-btn"
+              :class="{ copied: copiedZcash }"
+              @click="copyAddressZcash"
+            >
+              {{ copiedZcash ? 'Copied!' : 'Copy address' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-show="activeTab === 'monero'" class="tab-content">
+          <div class="qr-wrap">
+            <canvas
+              ref="qrCanvasMonero"
+              class="qr-canvas"
+              :class="{ 'qr-ready': qrReadyMonero }"
+              aria-label="QR code for Monero address"
+            ></canvas>
+            <p v-if="qrErrorMonero" class="qr-error">{{ qrErrorMonero }}</p>
+          </div>
+
+          <div class="address-section">
+            <p class="address-label">Monero address</p>
+            <code class="address-text">{{ MONERO_ADDRESS }}</code>
+            <button
+              type="button"
+              class="copy-btn"
+              :class="{ copied: copiedMonero }"
+              @click="copyAddressMonero"
+            >
+              {{ copiedMonero ? 'Copied!' : 'Copy address' }}
+            </button>
+          </div>
         </div>
 
       </div>
@@ -241,7 +355,38 @@ onUnmounted(() => {
   font-size: 0.9rem;
   line-height: 1.6;
   color: #b0b0b0;
-  margin: 0 0 20px;
+  margin: 0 0 16px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.1);
 }
 
 .qr-wrap {
