@@ -2,10 +2,13 @@
 import { ref, onMounted } from 'vue'
 import RexuviaLogo from './components/RexuviaLogo.vue'
 import ModelShowResults from './components/ModelShowResults.vue'
+import TokenCounter from './components/TokenCounter.vue'
+import ContributeModal from './components/ContributeModal.vue'
 
 const currentYear = ref(new Date().getFullYear())
 const games = ref([])
 const activeTab = ref('modelshow') // 'modelshow' or 'games'
+const contributeOpen = ref(false)
 
 
 onMounted(async () => {
@@ -128,7 +131,6 @@ onMounted(async () => {
         </div>
       </section>
 
-      
       <!-- Interactive Content Slider -->
       <section class="section content-slider-section">
         <div class="slider-header">
@@ -189,6 +191,12 @@ onMounted(async () => {
           </div>
         </div>
       </section>
+
+      <!-- Token counter relocated to bottom -->
+      <div class="footer-token-counter">
+        <TokenCounter @contribute="contributeOpen = true" />
+      </div>
+      <ContributeModal :open="contributeOpen" @close="contributeOpen = false" />
 
       <!-- Footer -->
       <footer class="site-footer">
@@ -836,6 +844,12 @@ html, body {
   color: #444;
   font-style: italic;
   font-size: 0.95rem;
+}
+
+/* ── Tokens Footer Responsive Wrap ── */
+.footer-token-counter {
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
 }
 
 /* ── Footer ─────────────────────────────────────────── */
