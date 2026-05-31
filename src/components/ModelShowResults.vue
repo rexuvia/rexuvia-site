@@ -171,6 +171,45 @@ function shortModel(model) {
   return model.split('/').pop()
 }
 
+// Friendly, human-readable display names for the public site. Keys are the
+// short model id (last path segment). Falls back to a prettified version of the
+// short id when a model isn't explicitly listed, so new models still read well.
+const MODEL_DISPLAY_NAMES = {
+  'gemini-2.5-pro': 'Gemini 2.5 Pro',
+  'gemini-2.5-flash': 'Gemini 2.5 Flash',
+  'gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
+  'claude-sonnet-4.6': 'Claude Sonnet 4.6',
+  'claude-sonnet-4-5': 'Claude Sonnet 4.5',
+  'claude-opus-4.8': 'Claude Opus 4.8',
+  'claude-opus-4-7': 'Claude Opus 4.7',
+  'claude-opus-4-6': 'Claude Opus 4.6',
+  'claude-haiku-4-5': 'Claude Haiku 4.5',
+  'grok-4': 'Grok 4',
+  'grok-3': 'Grok 3',
+  'kimi-k2.5': 'Kimi K2.5',
+  'qwen3-max': 'Qwen3 Max',
+  'qwen3-235b-a22b': 'Qwen3 235B',
+  'mistral-large-2512': 'Mistral Large',
+  'deepseek-v3.2': 'DeepSeek V3.2',
+  'deepseek-r1-0528': 'DeepSeek R1',
+  'gpt-5': 'GPT-5',
+  'gpt-5-pro': 'GPT-5 Pro',
+  'gpt-4o': 'GPT-4o',
+  'llama-4-maverick': 'Llama 4 Maverick',
+  'glm-5': 'GLM-5',
+}
+
+function prettyModel(model) {
+  if (!model || typeof model !== 'string') return '—'
+  const short = model.split('/').pop()
+  if (MODEL_DISPLAY_NAMES[short]) return MODEL_DISPLAY_NAMES[short]
+  // Fallback: title-case the hyphen-separated short id (keeps version numbers).
+  return short
+    .split('-')
+    .map(part => /\d/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 function fmtDate(isoStr) {
   // Display date only — no time component shown in the main table
   return new Intl.DateTimeFormat('en-US', {
@@ -438,10 +477,10 @@ watch([filterText, sortedResults], () => {
                 </div>
               </td>
               <td class="ms-td ms-td-judge">
-                <span class="ms-judge-name">{{ shortModel(r.judge_model || r.meta?.judge_model) }}</span>
+                <span class="ms-judge-name">{{ prettyModel(r.judge_model || r.meta?.judge_model) }}</span>
               </td>
               <td class="ms-td ms-td-winner">
-                🏆 <span class="ms-winner-name">{{ shortModel(r.winner_model) }}</span>
+                🏆 <span class="ms-winner-name">{{ prettyModel(r.winner_model) }}</span>
               </td>
               
               <td class="ms-td ms-td-actions">
@@ -488,7 +527,7 @@ watch([filterText, sortedResults], () => {
                   <!-- Meta row -->
                   <div class="ms-detail-meta-row">
                     <span class="ms-chip">📅 {{ fmtDateFull(expandedFull.meta.timestamp) }}</span>
-                    <span class="ms-chip">⚖️ Judge: {{ shortModel(expandedFull.meta.judge_model) }}</span>
+                    <span class="ms-chip">⚖️ Judge: {{ prettyModel(expandedFull.meta.judge_model) }}</span>
                     <span class="ms-chip">👁 Mode: {{ expandedFull.meta.judging_mode === 'blind' ? 'double-blind' : expandedFull.meta.judging_mode }}</span>
                     <span v-if="expandedFull.metadata && expandedFull.metadata.total_duration_ms > 0" class="ms-chip">⏱ {{ fmtDuration(expandedFull.metadata.total_duration_ms) }}</span>
                     <span v-if="expandedFull.metadata && expandedFull.metadata.failed_models > 0" class="ms-chip ms-chip-warn">
@@ -506,7 +545,7 @@ watch([filterText, sortedResults], () => {
                     >
                       <div class="ms-rank-header">
                         <span class="ms-medal">{{ getMedal(entry.rank) }}</span>
-                        <strong class="ms-rank-model">{{ shortModel(entry.model) }}</strong>
+                        <strong class="ms-rank-model">{{ prettyModel(entry.model) }}</strong>
                         <span class="ms-rank-score">{{ entry.score.toFixed(1) }}/10</span>
                       </div>
                       <p class="ms-assessment">{{ entry.assessment }}</p>
