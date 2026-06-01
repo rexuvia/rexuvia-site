@@ -473,19 +473,30 @@
     </div>
   </div>
 
+  <div class="settings-row" style="margin-bottom: 0.5rem; justify-content: space-between;">
+    <div class="setting-group" style="flex: 2;">
+      <label for="state-string" style="display: flex; justify-content: space-between;">
+        Melody State String
+        <button id="btn-copy-state" style="background: none; border: none; color: var(--accent1); cursor: pointer; font-size: 0.75rem; text-decoration: underline;">Copy</button>
+      </label>
+      <input type="text" id="state-string" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent2); font-size: 0.9rem; font-weight: 600; padding: 0.45rem 0.7rem; width: 100%; outline: none;" placeholder="1:4:0:3:2:5" />
+    </div>
+  </div>
+
+  <div id="sequencer-sliders" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; justify-content: space-between; align-items: flex-end; height: 100px;">
+    <!-- Sliders injected by JS -->
+  </div>
+
   <div style="margin-bottom: 1rem; color: var(--muted); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
       <input type="checkbox" id="auto-start" checked style="accent-color: var(--accent1);" />
       Auto-start next melody after rating
     </label>
-    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-      <input type="checkbox" id="use-scale" style="accent-color: var(--accent2);" />
-      Use commonly used notes (scale) instead of random frequencies
-    </label>
   </div>
 
   <div class="play-row">
-    <button class="btn btn-primary" id="btn-play">▶ Play New Melody</button>
+    <button class="btn btn-primary" id="btn-play">▶ Play Random Melody</button>
+    <button class="btn btn-save" id="btn-play-state" style="margin-left: auto;">▶ Play State String</button>
   </div>
 </div>
 
@@ -513,6 +524,7 @@
         <tr>
           <th>#</th>
           <th>Rating</th>
+          <th>State String</th>
           <th>Frequencies (Hz)</th>
           <th>Play</th>
         </tr>
@@ -775,6 +787,7 @@
     const entry = {
       id: savedMelodies.length + 1,
       rating,
+      stateString: currentMelody.stateString,
       freqs: currentMelody.freqs,
       timestamp: new Date().toISOString()
     };
@@ -824,7 +837,11 @@
       playBtn.title = 'Replay this melody';
       playBtn.addEventListener('click', async () => {
         if (isPlaying) return;
-        const m = { freqs: entry.freqs };
+        
+        // update main UI to match
+        loadStateString(entry.stateString);
+        
+        const m = { freqs: entry.freqs, stateString: entry.stateString };
         buildPills(m.freqs);
         setPlaying(true);
         statusEl.textContent = `🔁 Replaying #${entry.id}…`;
@@ -837,16 +854,18 @@
       tr.innerHTML = `
         <td>${entry.id}</td>
         <td><span class="rating-badge" style="color:${color};border:1px solid ${color};background:${color}22">${entry.rating}/10</span></td>
+        <td><span style="font-family:monospace; color:var(--muted)">${entry.stateString}</span></td>
         <td><span class="hz-list">${entry.freqs.join(', ')}</span></td>
         <td></td>
       `;
-      tr.cells[3].appendChild(playBtn);
+      tr.cells[4].appendChild(playBtn);
       historyBody.appendChild(tr);
     });
   }
 
   /* ─── Init ───────────────────────────────────────────────────────────── */
   loadSettings();
+  initSeqSliders();
   renderTable();
   updateSliderStyle();
 
