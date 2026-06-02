@@ -303,6 +303,34 @@
       gap: 0.75rem;
     }
 
+    /* ── Parameter controls ─────────────────────────────────────────── */
+    .param-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .param-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .param-val {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--accent2);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    input[type="range"].param-slider {
+      margin-bottom: 0;
+      height: 6px;
+    }
+
     /* ── Table ───────────────────────────────────────────────────────── */
     #history-section {
       width: 100%;
@@ -429,7 +457,7 @@
 
 <header>
   <h1>🎵 Melody Explorer</h1>
-  <p>Generate · Listen · Rate · Export</p>
+  <p>Seeded melodies from a shareable state string · Generate · Tweak · Rate</p>
 </header>
 
 <!-- Play Card -->
@@ -477,14 +505,62 @@
     <div class="setting-group" style="flex: 2;">
       <label for="state-string" style="display: flex; justify-content: space-between;">
         Melody State String
-        <button id="btn-copy-state" style="background: none; border: none; color: var(--accent1); cursor: pointer; font-size: 0.75rem; text-decoration: underline;">Copy</button>
+        <button id="btn-copy-state" type="button" style="background: none; border: none; color: var(--accent1); cursor: pointer; font-size: 0.75rem; text-decoration: underline;">Copy</button>
       </label>
-      <input type="text" id="state-string" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent2); font-size: 0.9rem; font-weight: 600; padding: 0.45rem 0.7rem; width: 100%; outline: none;" placeholder="1:4:0:3:2:5" />
+      <input type="text" id="state-string" spellcheck="false" autocomplete="off" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent2); font-size: 0.9rem; font-weight: 600; padding: 0.45rem 0.7rem; width: 100%; outline: none; font-family: monospace;" placeholder="e.g. 4f2-0-2-8-2-4-3-4-0" />
     </div>
   </div>
+  <div style="font-size:0.72rem; color:var(--muted); margin-bottom:1rem;">
+    Paste a string and hit <b>Play State String</b> &mdash; the same string always makes the same melody. Tweak the sliders below to craft your own.
+  </div>
 
-  <div id="sequencer-sliders" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; justify-content: space-between; align-items: flex-end; height: 100px;">
-    <!-- Sliders injected by JS -->
+  <!-- Parameter controls: every field of the state string is editable here -->
+  <div id="param-controls" style="display:flex; flex-direction:column; gap:0.85rem; margin-bottom:1.25rem;">
+    <!-- Seed -->
+    <div class="param-row">
+      <label class="param-label" for="p-seed">Seed <span class="param-val" id="v-seed">0</span></label>
+      <input type="range" id="p-seed" class="param-slider" min="0" max="46655" step="1" value="0" />
+    </div>
+    <!-- Root note -->
+    <div class="param-row">
+      <label class="param-label" for="p-root">Root Note <span class="param-val" id="v-root">C</span></label>
+      <input type="range" id="p-root" class="param-slider" min="0" max="11" step="1" value="0" />
+    </div>
+    <!-- Scale -->
+    <div class="param-row">
+      <label class="param-label" for="p-scale">Scale <span class="param-val" id="v-scale">Major</span></label>
+      <input type="range" id="p-scale" class="param-slider" min="0" max="7" step="1" value="0" />
+    </div>
+    <!-- Length -->
+    <div class="param-row">
+      <label class="param-label" for="p-len">Length <span class="param-val" id="v-len">8 notes</span></label>
+      <input type="range" id="p-len" class="param-slider" min="3" max="16" step="1" value="8" />
+    </div>
+    <!-- Octave range -->
+    <div class="param-row">
+      <label class="param-label" for="p-octaves">Octave Range <span class="param-val" id="v-octaves">2</span></label>
+      <input type="range" id="p-octaves" class="param-slider" min="1" max="4" step="1" value="2" />
+    </div>
+    <!-- Base octave -->
+    <div class="param-row">
+      <label class="param-label" for="p-baseoct">Base Octave <span class="param-val" id="v-baseoct">4</span></label>
+      <input type="range" id="p-baseoct" class="param-slider" min="2" max="6" step="1" value="4" />
+    </div>
+    <!-- Jumpiness -->
+    <div class="param-row">
+      <label class="param-label" for="p-jump">Jumpiness <span class="param-val" id="v-jump">3</span></label>
+      <input type="range" id="p-jump" class="param-slider" min="0" max="9" step="1" value="3" />
+    </div>
+    <!-- Rhythm variation -->
+    <div class="param-row">
+      <label class="param-label" for="p-rhythm">Rhythm Variation <span class="param-val" id="v-rhythm">4</span></label>
+      <input type="range" id="p-rhythm" class="param-slider" min="0" max="9" step="1" value="4" />
+    </div>
+    <!-- Waveform -->
+    <div class="param-row">
+      <label class="param-label" for="p-wave">Waveform <span class="param-val" id="v-wave">Sine</span></label>
+      <input type="range" id="p-wave" class="param-slider" min="0" max="3" step="1" value="0" />
+    </div>
   </div>
 
   <div style="margin-bottom: 1rem; color: var(--muted); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
@@ -495,7 +571,7 @@
   </div>
 
   <div class="play-row">
-    <button class="btn btn-primary" id="btn-play">▶ Play Random Melody</button>
+    <button class="btn btn-primary" id="btn-play">✨ Generate New Random Melody</button>
     <button class="btn btn-save" id="btn-play-state" style="margin-left: auto;">▶ Play State String</button>
   </div>
 </div>
@@ -546,9 +622,104 @@
   const LS_DURATION_KEY = 'melodyExplorer_noteDuration';
   const LS_GAP_KEY      = 'melodyExplorer_noteGap';
 
+  /* ===================================================================
+     STATE STRING ARCHITECTURE  (modelled on glitch-loom)
+     -------------------------------------------------------------------
+     A melody is FULLY described by a compact state string. Each field is
+     base-36 encoded and joined with '-'. The string is both the config
+     AND the seed: a deterministic PRNG (mulberry32) is keyed off it, so
+     the SAME string ALWAYS regenerates the EXACT same melody.
+
+        seed - root - scale - len - octaves - baseOct - jump - rhythm - wave
+
+     e.g.  4f2-0-2-8-2-4-3-4-0
+     =================================================================== */
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const SCALES = [
+    { name: 'Major',          steps: [0,2,4,5,7,9,11] },
+    { name: 'Minor',          steps: [0,2,3,5,7,8,10] },
+    { name: 'Pentatonic Maj', steps: [0,2,4,7,9] },
+    { name: 'Pentatonic Min', steps: [0,3,5,7,10] },
+    { name: 'Dorian',         steps: [0,2,3,5,7,9,10] },
+    { name: 'Phrygian',       steps: [0,1,3,5,7,8,10] },
+    { name: 'Blues',          steps: [0,3,5,6,7,10] },
+    { name: 'Chromatic',      steps: [0,1,2,3,4,5,6,7,8,9,10,11] }
+  ];
+  const WAVES = ['sine','triangle','square','sawtooth'];
+
+  // Field definitions: [key, min, max]. Order defines string order.
+  const FIELDS = [
+    ['seed',    0, 46655],  // up to 'zzz' in base36
+    ['root',    0, 11],
+    ['scale',   0, SCALES.length - 1],
+    ['len',     3, 16],
+    ['octaves', 1, 4],
+    ['baseOct', 2, 6],
+    ['jump',    0, 9],
+    ['rhythm',  0, 9],
+    ['wave',    0, WAVES.length - 1]
+  ];
+
+  // Live parameter state — the single source of truth for generation.
+  const params = {
+    seed: 0, root: 0, scale: 0, len: 8, octaves: 2,
+    baseOct: 4, jump: 3, rhythm: 4, wave: 0
+  };
+
+  function clampField(key, val) {
+    const f = FIELDS.find(f => f[0] === key);
+    if (!f) return val;
+    val = Math.round(Number(val));
+    if (isNaN(val)) val = f[1];
+    return Math.max(f[1], Math.min(f[2], val));
+  }
+
+  // Encode params -> state string (base36, '-' separated)
+  function encodeState() {
+    return FIELDS.map(([key]) => clampField(key, params[key]).toString(36)).join('-');
+  }
+
+  // Decode state string -> params. Returns true on success.
+  function decodeState(str) {
+    if (!str) return false;
+    const parts = String(str).trim().toLowerCase().split('-');
+    if (parts.length !== FIELDS.length) return false;
+    const next = {};
+    for (let i = 0; i < FIELDS.length; i++) {
+      const key = FIELDS[i][0];
+      const n = parseInt(parts[i], 36);
+      if (isNaN(n)) return false;
+      next[key] = clampField(key, n);
+    }
+    Object.assign(params, next);
+    return true;
+  }
+
+  /* ─── Deterministic PRNG (mulberry32) ────────────────────────────────── */
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Derive a 32-bit seed by hashing the ENTIRE state string (FNV-1a),
+  // so changing ANY parameter changes the generated note sequence.
+  function deriveSeed() {
+    let h = 2166136261 >>> 0;
+    const str = encodeState();
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
   /* ─── State ─────────────────────────────────────────────────────────── */
   let savedMelodies = [];
-  let currentMelody = null; // { freqs: [] }
+  let currentMelody = null; // { freqs, durations, stateString }
   let isPlaying = false;
   let audioCtx = null;
 
@@ -602,11 +773,11 @@
     return audioCtx;
   }
 
-  function playNote(ctx, freq, startTime, durationSec) {
+  function playNote(ctx, freq, startTime, durationSec, waveType) {
     const osc      = ctx.createOscillator();
     const gainNode = ctx.createGain();
 
-    osc.type = Math.random() < 0.5 ? 'sine' : 'triangle';
+    osc.type = WAVES[waveType] || 'sine';
     osc.frequency.setValueAtTime(freq, startTime);
 
     // Envelope: fast attack, hold, fast release — no clicks
@@ -624,22 +795,78 @@
     osc.stop(startTime + durationSec);
   }
 
-  /* ─── Generate melody ────────────────────────────────────────────────── */
-  const commonNotes = [130.81, 146.83, 164.81, 174.61, 196.00, 220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50];
+  /* ─── Generate melody (FULLY seeded from the state string) ───────────────
+     Every note is chosen by the deterministic PRNG keyed off the state
+     string, walking through the selected scale. The SAME state string
+     ALWAYS produces the EXACT same melody. ─────────────────────────────── */
 
-  function randomFreq() {
-    if (document.getElementById('use-scale') && document.getElementById('use-scale').checked) {
-      return Math.round(commonNotes[Math.floor(Math.random() * commonNotes.length)]);
-    }
-    const lo = Math.log2(100);
-    const hi = Math.log2(1500);
-    const exp = lo + Math.random() * (hi - lo);
-    return Math.round(Math.pow(2, exp));
+  // MIDI note -> frequency (Hz). A4 (midi 69) = 440 Hz.
+  function midiToFreq(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
   }
 
+  // Build the pool of allowed MIDI notes from root + scale across the
+  // requested octave range, starting at baseOct.
+  function buildScaleNotes() {
+    const scale = SCALES[clampField('scale', params.scale)];
+    const root  = clampField('root', params.root);
+    const baseOct = clampField('baseOct', params.baseOct);
+    const octaves = clampField('octaves', params.octaves);
+    const notes = [];
+    for (let o = 0; o < octaves; o++) {
+      const octBase = (baseOct + o + 1) * 12 + root; // +1: MIDI octave offset
+      for (const step of scale.steps) notes.push(octBase + step);
+    }
+    return notes.sort((a, b) => a - b);
+  }
+
+  // Generate a melody object purely from current `params`.
   function generateMelody() {
-    const freqs = Array.from({ length: 6 }, randomFreq);
-    return { freqs };
+    const stateString = encodeState();
+    const rand = mulberry32(deriveSeed());
+
+    const pool    = buildScaleNotes();
+    const len     = clampField('len', params.len);
+    const jump    = clampField('jump', params.jump);      // 0..9 how far steps can leap
+    const rhythm  = clampField('rhythm', params.rhythm);  // 0..9 rhythmic variation
+    const wave    = clampField('wave', params.wave);
+
+    // Start somewhere in the middle of the pool.
+    let idx = Math.floor(rand() * pool.length);
+
+    const freqs = [];
+    const durMul = []; // per-note duration multiplier (relative to base note duration)
+
+    // Max interval (in scale-degrees) scales with jumpiness.
+    const maxLeap = 1 + Math.round((jump / 9) * (Math.max(3, pool.length - 1) - 1));
+
+    for (let i = 0; i < len; i++) {
+      // Random walk through the scale pool, leap size bounded by jumpiness.
+      if (i > 0) {
+        const leap = Math.floor(rand() * (maxLeap * 2 + 1)) - maxLeap; // -maxLeap..+maxLeap
+        idx += leap;
+        // reflect at boundaries so we stay in range
+        if (idx < 0) idx = -idx;
+        if (idx >= pool.length) idx = pool.length - 1 - (idx - pool.length);
+        idx = Math.max(0, Math.min(pool.length - 1, idx));
+      }
+      freqs.push(Math.round(midiToFreq(pool[idx]) * 100) / 100);
+
+      // Rhythm: pick a duration multiplier. With rhythm=0 all notes equal (1x).
+      if (rhythm === 0) {
+        durMul.push(1);
+      } else {
+        const choices = [0.5, 1, 1, 1.5, 2];
+        // higher rhythm => more chance of non-1 values
+        if (rand() < rhythm / 9) {
+          durMul.push(choices[Math.floor(rand() * choices.length)]);
+        } else {
+          durMul.push(1);
+        }
+      }
+    }
+
+    return { freqs, durMul, wave, stateString };
   }
 
   /* ─── Visual bar animation ───────────────────────────────────────────── */
@@ -681,15 +908,18 @@
   /* ─── Play melody ────────────────────────────────────────────────────── */
   async function playMelody(melody) {
     const ctx        = getAudioCtx();
-    const noteDurSec = getNoteDurationMs() / 1000;
+    const baseDurSec = getNoteDurationMs() / 1000;
     const gapSec     = getNoteGapMs() / 1000;
+    const wave       = (melody.wave != null) ? melody.wave : clampField('wave', params.wave);
     let cursor       = ctx.currentTime + 0.05; // small scheduling buffer
 
     melody.freqs.forEach((freq, i) => {
-      const startAt = cursor;
+      const startAt  = cursor;
+      const mul      = (melody.durMul && melody.durMul[i]) ? melody.durMul[i] : 1;
+      const noteDur  = baseDurSec * mul;
 
       // Schedule Web Audio note
-      playNote(ctx, freq, startAt, noteDurSec);
+      playNote(ctx, freq, startAt, noteDur, wave);
 
       // Schedule DOM pill highlight via setTimeout
       const delayFromNow = (startAt - ctx.currentTime) * 1000;
@@ -699,7 +929,7 @@
       }, delayFromNow);
 
       // Advance cursor: note duration + constant gap
-      cursor += noteDurSec + gapSec;
+      cursor += noteDur + gapSec;
     });
 
     // Total duration until all notes end
@@ -708,7 +938,7 @@
     // Mark last pill done when finished
     setTimeout(() => {
       setPillState(melody.freqs.length - 1, 'done');
-    }, totalMs - noteDurSec * 500);
+    }, totalMs - baseDurSec * 500);
 
     return new Promise(resolve => setTimeout(resolve, totalMs + 100));
   }
@@ -758,16 +988,165 @@
     return '#ff2eee';
   }
 
-  /* ─── Event: Play New Melody ─────────────────────────────────────────── */
+  /* ─── State-string <-> sliders plumbing ──────────────────────────────── */
+  const sliderRefs = {
+    seed:    document.getElementById('p-seed'),
+    root:    document.getElementById('p-root'),
+    scale:   document.getElementById('p-scale'),
+    len:     document.getElementById('p-len'),
+    octaves: document.getElementById('p-octaves'),
+    baseOct: document.getElementById('p-baseoct'),
+    jump:    document.getElementById('p-jump'),
+    rhythm:  document.getElementById('p-rhythm'),
+    wave:    document.getElementById('p-wave')
+  };
+  const valRefs = {
+    seed:    document.getElementById('v-seed'),
+    root:    document.getElementById('v-root'),
+    scale:   document.getElementById('v-scale'),
+    len:     document.getElementById('v-len'),
+    octaves: document.getElementById('v-octaves'),
+    baseOct: document.getElementById('v-baseoct'),
+    jump:    document.getElementById('v-jump'),
+    rhythm:  document.getElementById('v-rhythm'),
+    wave:    document.getElementById('v-wave')
+  };
+  const stateInput = document.getElementById('state-string');
+
+  // Human-readable label for each param value.
+  function valLabel(key) {
+    const v = clampField(key, params[key]);
+    switch (key) {
+      case 'root':  return NOTE_NAMES[v];
+      case 'scale': return SCALES[v].name;
+      case 'len':   return v + ' notes';
+      case 'wave':  return WAVES[v].charAt(0).toUpperCase() + WAVES[v].slice(1);
+      default:      return String(v);
+    }
+  }
+
+  // Push params -> sliders + value labels + state-string field.
+  function syncUIFromParams() {
+    for (const key in sliderRefs) {
+      const v = clampField(key, params[key]);
+      if (sliderRefs[key]) sliderRefs[key].value = v;
+      if (valRefs[key])    valRefs[key].textContent = valLabel(key);
+    }
+    stateInput.value = encodeState();
+  }
+
+  // Read all sliders -> params.
+  function syncParamsFromSliders() {
+    for (const key in sliderRefs) {
+      if (sliderRefs[key]) params[key] = clampField(key, sliderRefs[key].value);
+    }
+  }
+
+  // Wire each slider so editing it updates params + state string live.
+  function initSeqSliders() {
+    for (const key in sliderRefs) {
+      const el = sliderRefs[key];
+      if (!el) continue;
+      el.addEventListener('input', () => {
+        params[key] = clampField(key, el.value);
+        if (valRefs[key]) valRefs[key].textContent = valLabel(key);
+        stateInput.value = encodeState();
+      });
+    }
+    // Editing the state-string field directly updates everything.
+    stateInput.addEventListener('change', () => {
+      if (decodeState(stateInput.value)) {
+        syncUIFromParams();
+      } else {
+        stateInput.value = encodeState();
+      }
+    });
+    syncUIFromParams();
+  }
+
+  // Load a state string into params + UI (used by table replay & paste).
+  function loadStateString(str) {
+    if (decodeState(str)) {
+      syncUIFromParams();
+      return true;
+    }
+    return false;
+  }
+
+  /* ─── Event: Generate New Random Melody ───────────────────────────────
+     Picks a fresh random SEED (and lightly randomizes musical params),
+     which produces a brand-new state string -> a brand-new melody. ───── */
   btnPlay.addEventListener('click', async () => {
+    if (isPlaying) return;
     hideRatingSection();
+
+    // New random seed is what drives a fresh melody.
+    params.seed = Math.floor(Math.random() * 46656); // 0..'zzz'
+    // Roll a few musical params too, for variety (sliders update to match).
+    params.root  = Math.floor(Math.random() * 12);
+    params.scale = Math.floor(Math.random() * SCALES.length);
+    params.len   = 5 + Math.floor(Math.random() * 9);   // 5..13
+    params.jump  = Math.floor(Math.random() * 7);        // 0..6
+    params.rhythm= Math.floor(Math.random() * 7);        // 0..6
+    params.wave  = Math.floor(Math.random() * WAVES.length);
+    syncUIFromParams();
+
     currentMelody = generateMelody();
     buildPills(currentMelody.freqs);
     setPlaying(true);
+    statusEl.textContent = '🎶 Playing…  ' + currentMelody.stateString;
     await playMelody(currentMelody);
     setPlaying(false);
     showRatingSection();
   });
+
+  /* ─── Event: Play State String ────────────────────────────────────────
+     Reads the state-string field (or the current sliders) and plays the
+     deterministic melody it describes. ───────────────────────────────── */
+  const btnPlayState = document.getElementById('btn-play-state');
+  btnPlayState.addEventListener('click', async () => {
+    if (isPlaying) return;
+    const typed = stateInput.value.trim();
+    if (typed) {
+      if (!loadStateString(typed)) {
+        statusEl.textContent = '⚠️ Invalid state string. Expected: seed-root-scale-len-octaves-baseOct-jump-rhythm-wave';
+        return;
+      }
+    } else {
+      // No string typed: use whatever the sliders currently say.
+      syncParamsFromSliders();
+      syncUIFromParams();
+    }
+    hideRatingSection();
+    currentMelody = generateMelody();
+    buildPills(currentMelody.freqs);
+    setPlaying(true);
+    statusEl.textContent = '🎶 Playing…  ' + currentMelody.stateString;
+    await playMelody(currentMelody);
+    setPlaying(false);
+    showRatingSection();
+  });
+
+  /* ─── Event: Copy state string ───────────────────────────────────────── */
+  const btnCopyState = document.getElementById('btn-copy-state');
+  if (btnCopyState) {
+    btnCopyState.addEventListener('click', () => {
+      stateInput.value = encodeState();
+      stateInput.select();
+      const done = () => {
+        const orig = btnCopyState.textContent;
+        btnCopyState.textContent = 'Copied!';
+        setTimeout(() => { btnCopyState.textContent = orig; }, 1200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(stateInput.value).then(done).catch(() => {
+          document.execCommand('copy'); done();
+        });
+      } else {
+        document.execCommand('copy'); done();
+      }
+    });
+  }
 
   /* ─── Event: Replay ──────────────────────────────────────────────────── */
   btnReplay.addEventListener('click', async () => {
@@ -775,6 +1154,7 @@
     hideRatingSection();
     buildPills(currentMelody.freqs);
     setPlaying(true);
+    statusEl.textContent = '🔁 Replaying…  ' + (currentMelody.stateString || '');
     await playMelody(currentMelody);
     setPlaying(false);
     showRatingSection();
