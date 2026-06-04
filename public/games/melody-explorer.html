@@ -503,15 +503,18 @@
 
   <div class="settings-row" style="margin-bottom: 0.5rem; justify-content: space-between;">
     <div class="setting-group" style="flex: 2;">
-      <label for="state-string" style="display: flex; justify-content: space-between;">
+      <label for="state-string" style="display: flex; justify-content: space-between; gap: 0.75rem;">
         Melody State String
-        <button id="btn-copy-state" type="button" style="background: none; border: none; color: var(--accent1); cursor: pointer; font-size: 0.75rem; text-decoration: underline;">Copy</button>
+        <span style="display:flex; gap:0.9rem;">
+          <button id="btn-share-link" type="button" style="background: none; border: none; color: var(--accent2); cursor: pointer; font-size: 0.75rem; text-decoration: underline;">🔗 Share Link</button>
+          <button id="btn-copy-state" type="button" style="background: none; border: none; color: var(--accent1); cursor: pointer; font-size: 0.75rem; text-decoration: underline;">Copy</button>
+        </span>
       </label>
       <input type="text" id="state-string" spellcheck="false" autocomplete="off" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent2); font-size: 0.9rem; font-weight: 600; padding: 0.45rem 0.7rem; width: 100%; outline: none; font-family: monospace;" placeholder="e.g. 4f2-0-2-8-2-4-3-4-0" />
     </div>
   </div>
   <div style="font-size:0.72rem; color:var(--muted); margin-bottom:1rem;">
-    Paste a string and hit <b>Play State String</b> &mdash; the same string always makes the same melody. Tweak the sliders below to craft your own.
+    Paste a string and hit <b>Play State String</b> &mdash; the same string always makes the same melody, or hit <b>🔗 Share Link</b> to copy a URL that opens straight to this melody. Tweak the sliders below to craft your own.
   </div>
 
   <!-- Parameter controls: every field of the state string is editable here -->
@@ -1033,6 +1036,38 @@
       if (valRefs[key])    valRefs[key].textContent = valLabel(key);
     }
     stateInput.value = encodeState();
+    updateURLState();
+  }
+
+  /* ─── Shareable URL plumbing (?state=...) ─────────────────────────────
+     The current state string is attached to the page URL as a `state`
+     query variable, so the URL itself fully describes the melody. Opening
+     such a URL loads and plays-ready that exact melody (modelled on the
+     glitch-loom share-link feature). ──────────────────────────────────── */
+  // Build a full, copy/paste-able URL with the current state attached.
+  function getShareURL() {
+    const base = window.location.origin + window.location.pathname;
+    return base + '?state=' + encodeURIComponent(encodeState());
+  }
+
+  // Reflect the current state into the address bar without reloading.
+  function updateURLState() {
+    try {
+      const url = '?state=' + encodeURIComponent(encodeState());
+      history.replaceState(null, '', url);
+    } catch (e) { /* non-browser / sandboxed: ignore */ }
+  }
+
+  // Read a state string from the URL (?state=... query var, with #hash
+  // fallback for older shared links). Returns the string or null.
+  function readStateFromURL() {
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const fromQuery = qs.get('state');
+      if (fromQuery) return fromQuery;
+    } catch (e) { /* ignore */ }
+    const hash = (window.location.hash || '').replace(/^#/, '');
+    return hash || null;
   }
 
   // Read all sliders -> params.
@@ -1148,6 +1183,37 @@
     });
   }
 
+  /* ─── Event: Share Link (copy a URL with the state attached) ─────────── */
+  const btnShareLink = document.getElementById('btn-share-link');
+  if (btnShareLink) {
+    btnShareLink.addEventListener('click', () => {
+      // Make sure the state string reflects the current params before sharing.
+      stateInput.value = encodeState();
+      updateURLState();
+      const url = getShareURL();
+      const done = () => {
+        const orig = btnShareLink.textContent;
+        btnShareLink.textContent = '✓ Link Copied!';
+        setTimeout(() => { btnShareLink.textContent = orig; }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); } catch (e) {}
+          document.body.removeChild(ta); done();
+        });
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  }
+
   /* ─── Event: Replay ──────────────────────────────────────────────────── */
   btnReplay.addEventListener('click', async () => {
     if (!currentMelody || isPlaying) return;
@@ -1243,11 +1309,37 @@
     });
   }
 
+  /* ─── Load shared state from the URL on page open ─────────────────────
+     If the page was opened with a ?state=... (or legacy #hash), apply that
+     melody so the visitor lands on the exact shared melody, ready to play. */
+  function loadFromURL() {
+    const fromURL = readStateFromURL();
+    if (fromURL && decodeState(fromURL)) {
+      syncUIFromParams();
+      return true;
+    }
+    return false;
+  }
+
+  // Capture any shared state from the URL BEFORE initSeqSliders runs, since
+  // initSeqSliders -> syncUIFromParams -> updateURLState would otherwise
+  // overwrite the address bar with the default params on first load.
+  const initialURLState = readStateFromURL();
+
+  // Re-apply if the URL state changes (e.g. back/forward or pasted link).
+  window.addEventListener('hashchange', loadFromURL);
+  window.addEventListener('popstate', loadFromURL);
+
   /* ─── Init ───────────────────────────────────────────────────────────── */
   loadSettings();
+  // Apply shared state (if any) into params before the sliders initialise.
+  const sharedLoaded = !!(initialURLState && decodeState(initialURLState));
   initSeqSliders();
   renderTable();
   updateSliderStyle();
+  if (sharedLoaded) {
+    statusEl.textContent = '🔗 Shared melody loaded — hit ▶ Play State String to hear it.';
+  }
 
   /* ─── Keyboard shortcuts ─────────────────────────────────────────────── */
   window.addEventListener('keydown', (e) => {
