@@ -41,11 +41,15 @@ sync_html_and_json() {
 }
 
 invalidate_cache() {
-    local paths="${1:-/*}"
-    echo "Invalidating CloudFront cache: $paths"
+    # Accept one space-separated string OR multiple args; split into separate
+    # --paths arguments (CloudFront rejects a single string containing spaces).
+    local paths="${*:-/*}"
+    # shellcheck disable=SC2086
+    set -- $paths
+    echo "Invalidating CloudFront cache: $*"
     aws cloudfront create-invalidation \
         --distribution-id "$CF_DIST_ID" \
-        --paths "$paths" \
+        --paths "$@" \
         --region "$REGION" \
         --query 'Invalidation.Id' --output text
 }
