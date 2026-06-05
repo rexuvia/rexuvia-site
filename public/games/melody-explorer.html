@@ -112,6 +112,13 @@
     }
     .btn-primary:hover:not(:disabled) { filter: brightness(1.2); }
 
+    .btn-stop {
+      background: linear-gradient(135deg, #aa0000, #ff3333);
+      color: #fff;
+      box-shadow: 0 0 12px #ff333388;
+    }
+    .btn-stop:hover:not(:disabled) { filter: brightness(1.2); }
+
     .btn-save {
       background: linear-gradient(135deg, var(--accent2), #009977);
       color: #000;
@@ -730,6 +737,8 @@
   let savedMelodies = [];
   let currentMelody = null; // { freqs, durations, stateString }
   let isPlaying = false;
+  let stopRequested = false;
+  let playPromiseResolve = null;
   let audioCtx = null;
 
   /* ─── DOM refs ───────────────────────────────────────────────────────── */
@@ -923,6 +932,7 @@
 
   /* ─── Play melody ────────────────────────────────────────────────────── */
   async function playMelody(melody) {
+    if (stopRequested) return;
     const ctx        = getAudioCtx();
     const baseDurSec = getNoteDurationMs() / 1000;
     const gapSec     = getNoteGapMs() / 1000;
@@ -934,44 +944,86 @@
       const mul      = (melody.durMul && melody.durMul[i]) ? melody.durMul[i] : 1;
       const noteDur  = baseDurSec * mul;
 
-      // Schedule Web Audio note
       playNote(ctx, freq, startAt, noteDur, wave);
 
-      // Schedule DOM pill highlight via setTimeout
       const delayFromNow = (startAt - ctx.currentTime) * 1000;
       setTimeout(() => {
+        if (!isPlaying || stopRequested) return;
         if (i > 0) setPillState(i - 1, 'done');
         setPillState(i, 'active');
       }, delayFromNow);
 
-      // Advance cursor: note duration + constant gap
       cursor += noteDur + gapSec;
     });
 
-    // Total duration until all notes end
     const totalMs = (cursor - ctx.currentTime) * 1000;
 
-    // Mark last pill done when finished
     setTimeout(() => {
+      if (!isPlaying || stopRequested) return;
       setPillState(melody.freqs.length - 1, 'done');
-      if (loopMelodyCb && loopMelodyCb.checked && currentMelody === melody && isPlaying) {
-        // Simple SetTimeout Recursion at the Play Button (end of sequence)
+      if (loopMelodyCb && loopMelodyCb.checked && currentMelody === melody && !stopRequested && isPlaying) {
         playMelody(melody);
+      } else {
+        if (playPromiseResolve) {
+          playPromiseResolve();
+          playPromiseResolve = null;
+        }
       }
     }, totalMs - baseDurSec * 500);
 
-    return new Promise(resolve => setTimeout(resolve, totalMs + 100));
+    if (!playPromiseResolve) {
+      return new Promise(resolve => {
+        playPromiseResolve = resolve;
+      });
+    }
   }
 
   /* ─── UI state machine ───────────────────────────────────────────────── */
-  function setPlaying(flag) {
+  let activePlayBtn = null;
+  let activePlayHtml = '';
+
+  function stopAudio() {
+    stopRequested = true;
+    isPlaying = false;
+    if (playPromiseResolve) {
+      playPromiseResolve();
+      playPromiseResolve = null;
+    }
+    // Optional: could close AudioContext here, but for simplicity let scheduled nodes finish
+  }
+
+  function setPlaying(flag, callerBtn = null, rawHtml = '') {
     isPlaying = flag;
-    btnPlay.disabled = flag;
     if (flag) {
+      activePlayBtn = callerBtn;
+      activePlayHtml = rawHtml;
+      
+      if (activePlayBtn) {
+        if (activePlayBtn.classList.contains('btn-primary')) activePlayBtn.classList.replace('btn-primary', 'btn-stop');
+        else if (activePlayBtn.classList.contains('btn-save')) activePlayBtn.classList.replace('btn-save', 'btn-stop');
+        else if (activePlayBtn.classList.contains('btn-play-row')) {
+           activePlayBtn.style.color = '#ff3333';
+           activePlayBtn.style.borderColor = '#ff3333';
+        }
+        activePlayBtn.textContent = activePlayBtn.classList.contains('btn-play-row') ? '⏹' : '⏹ Stop Playing';
+      }
+
       playCard.classList.add('playing');
       statusEl.textContent = '🎶 Playing…';
       startVisualiser();
     } else {
+      if (activePlayBtn) {
+        if (activePlayBtn.classList.contains('btn-stop')) {
+           if (activePlayBtn === btnPlay) activePlayBtn.classList.replace('btn-stop', 'btn-primary');
+           else activePlayBtn.classList.replace('btn-stop', 'btn-save');
+        } else if (activePlayBtn.classList.contains('btn-play-row')) {
+           activePlayBtn.style.color = '';
+           activePlayBtn.style.borderColor = '';
+        }
+        activePlayBtn.innerHTML = activePlayHtml;
+      }
+      activePlayBtn = null;
+
       playCard.classList.remove('playing');
       stopVisualiser();
     }
@@ -1129,7 +1181,12 @@
      Picks a fresh random SEED (and lightly randomizes musical params),
      which produces a brand-new state string -> a brand-new melody. ───── */
   btnPlay.addEventListener('click', async () => {
-    if (isPlaying) return;
+    if (isPlaying) {
+      stopAudio();
+      setPlaying(false);
+      return;
+    }
+    stopRequested = false;
     hideRatingSection();
 
     // New random seed is what drives a fresh melody.
@@ -1145,11 +1202,11 @@
 
     currentMelody = generateMelody();
     buildPills(currentMelody.freqs);
-    setPlaying(true);
+    setPlaying(true, btnPlay, '✨ Generate New Random Melody');
     statusEl.textContent = '🎶 Playing…  ' + currentMelody.stateString;
     await playMelody(currentMelody);
     setPlaying(false);
-    showRatingSection();
+    if(!stopRequested) showRatingSection();
   });
 
   /* ─── Event: Play State String ────────────────────────────────────────
@@ -1157,7 +1214,12 @@
      deterministic melody it describes. ───────────────────────────────── */
   const btnPlayState = document.getElementById('btn-play-state');
   btnPlayState.addEventListener('click', async () => {
-    if (isPlaying) return;
+    if (isPlaying) {
+      stopAudio();
+      setPlaying(false);
+      return;
+    }
+    stopRequested = false;
     const typed = stateInput.value.trim();
     if (typed) {
       if (!loadStateString(typed)) {
@@ -1172,11 +1234,11 @@
     hideRatingSection();
     currentMelody = generateMelody();
     buildPills(currentMelody.freqs);
-    setPlaying(true);
+    setPlaying(true, btnPlayState, '▶ Play State String');
     statusEl.textContent = '🎶 Playing…  ' + currentMelody.stateString;
     await playMelody(currentMelody);
     setPlaying(false);
-    showRatingSection();
+    if(!stopRequested) showRatingSection();
   });
 
   /* ─── Event: Copy state string ───────────────────────────────────────── */
@@ -1233,14 +1295,20 @@
 
   /* ─── Event: Replay ──────────────────────────────────────────────────── */
   btnReplay.addEventListener('click', async () => {
-    if (!currentMelody || isPlaying) return;
+    if (isPlaying) {
+      stopAudio();
+      setPlaying(false);
+      return;
+    }
+    if (!currentMelody) return;
+    stopRequested = false;
     hideRatingSection();
     buildPills(currentMelody.freqs);
-    setPlaying(true);
+    setPlaying(true, btnReplay, '🔁 Replay');
     statusEl.textContent = '🔁 Replaying…  ' + (currentMelody.stateString || '');
     await playMelody(currentMelody);
     setPlaying(false);
-    showRatingSection();
+    if(!stopRequested) showRatingSection();
   });
 
   /* ─── Event: Save Rating ─────────────────────────────────────────────── */
@@ -1258,7 +1326,7 @@
     hideRatingSection();
     statusEl.textContent = `✅ Saved! Rating: ${rating}/10. Play another?`;
     currentMelody = null;
-    btnPlay.disabled = false;
+    // btnPlay.disabled = false;
     renderTable();
     btnExport.disabled = false;
 
@@ -1299,18 +1367,23 @@
       playBtn.textContent = '▶';
       playBtn.title = 'Replay this melody';
       playBtn.addEventListener('click', async () => {
-        if (isPlaying) return;
+        if (isPlaying) {
+          stopAudio();
+          setPlaying(false);
+          return;
+        }
+        stopRequested = false;
         
         // update main UI to match
         loadStateString(entry.stateString);
         
         const m = { freqs: entry.freqs, stateString: entry.stateString };
         buildPills(m.freqs);
-        setPlaying(true);
+        setPlaying(true, playBtn, '▶');
         statusEl.textContent = `🔁 Replaying #${entry.id}…`;
         await playMelody(m);
         setPlaying(false);
-        statusEl.textContent = 'Replay done.';
+        if(!stopRequested) statusEl.textContent = 'Replay done.';
       });
 
       const color = ratingColor(entry.rating);
