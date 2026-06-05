@@ -513,8 +513,13 @@
       <input type="text" id="state-string" spellcheck="false" autocomplete="off" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--accent2); font-size: 0.9rem; font-weight: 600; padding: 0.45rem 0.7rem; width: 100%; outline: none; font-family: monospace;" placeholder="e.g. 4f2-0-2-8-2-4-3-4-0" />
     </div>
   </div>
-  <div style="font-size:0.72rem; color:var(--muted); margin-bottom:1rem;">
-    Paste a string and hit <b>Play State String</b> &mdash; the same string always makes the same melody, or hit <b>🔗 Share Link</b> to copy a URL that opens straight to this melody. Tweak the sliders below to craft your own.
+  <div style="font-size:0.72rem; color:var(--muted); margin-bottom:1rem; display: flex; justify-content: space-between; align-items: center;">
+    <span>Paste a string and hit <b>Play State String</b> &mdash; the same string always makes the same melody, or hit <b>🔗 Share Link</b> to copy a URL that opens straight to this melody. Tweak the sliders below to craft your own.</span>
+    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; white-space: nowrap; font-weight: bold; color: var(--accent2);">
+      <input type="checkbox" id="loop-melody" checked style="accent-color: var(--accent2);" />
+      Loop Melody
+    </label>
+  </div>
   </div>
 
   <!-- Parameter controls: every field of the state string is editable here -->
@@ -624,6 +629,7 @@
   /* ─── Constants ──────────────────────────────────────────────────────── */
   const LS_DURATION_KEY = 'melodyExplorer_noteDuration';
   const LS_GAP_KEY      = 'melodyExplorer_noteGap';
+  const LS_LOOP_KEY     = 'melodyExplorer_loop';
 
   /* ===================================================================
      STATE STRING ARCHITECTURE  (modelled on glitch-loom)
@@ -744,6 +750,7 @@
   const vBars            = visualiser.querySelectorAll('.v-bar');
   const noteDurationSel  = document.getElementById('note-duration');
   const noteGapSel       = document.getElementById('note-gap');
+  const loopMelodyCb     = document.getElementById('loop-melody');
 
   /* ─── Helpers: get current settings ─────────────────────────────────── */
   function getNoteDurationMs()  { return parseInt(noteDurationSel.value, 10); }
@@ -753,21 +760,27 @@
   function saveSettings() {
     localStorage.setItem(LS_DURATION_KEY, noteDurationSel.value);
     localStorage.setItem(LS_GAP_KEY,      noteGapSel.value);
+    localStorage.setItem(LS_LOOP_KEY,     loopMelodyCb.checked ? '1' : '0');
   }
 
   function loadSettings() {
     const dur = localStorage.getItem(LS_DURATION_KEY);
     const gap = localStorage.getItem(LS_GAP_KEY);
+    const loop = localStorage.getItem(LS_LOOP_KEY);
     if (dur && [...noteDurationSel.options].some(o => o.value === dur)) {
       noteDurationSel.value = dur;
     }
     if (gap && [...noteGapSel.options].some(o => o.value === gap)) {
       noteGapSel.value = gap;
     }
+    if (loop !== null) {
+      loopMelodyCb.checked = (loop === '1');
+    }
   }
 
   noteDurationSel.addEventListener('change', saveSettings);
   noteGapSel.addEventListener('change', saveSettings);
+  loopMelodyCb.addEventListener('change', saveSettings);
 
   /* ─── Audio helpers ──────────────────────────────────────────────────── */
   function getAudioCtx() {
@@ -941,6 +954,10 @@
     // Mark last pill done when finished
     setTimeout(() => {
       setPillState(melody.freqs.length - 1, 'done');
+      if (loopMelodyCb && loopMelodyCb.checked && currentMelody === melody && isPlaying) {
+        // Simple SetTimeout Recursion at the Play Button (end of sequence)
+        playMelody(melody);
+      }
     }, totalMs - baseDurSec * 500);
 
     return new Promise(resolve => setTimeout(resolve, totalMs + 100));
