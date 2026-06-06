@@ -738,7 +738,6 @@
   let currentMelody = null; // { freqs, durations, stateString }
   let isPlaying = false;
   let stopRequested = false;
-  let playPromiseResolve = null;
   let audioCtx = null;
 
   /* ─── DOM refs ───────────────────────────────────────────────────────── */
@@ -958,24 +957,20 @@
 
     const totalMs = (cursor - ctx.currentTime) * 1000;
 
-    setTimeout(() => {
-      if (!isPlaying || stopRequested) return;
-      setPillState(melody.freqs.length - 1, 'done');
-      if (loopMelodyCb && loopMelodyCb.checked && currentMelody === melody && !stopRequested && isPlaying) {
-        playMelody(melody);
-      } else {
-        if (playPromiseResolve) {
-          playPromiseResolve();
-          playPromiseResolve = null;
+    return new Promise(resolve => {
+      setTimeout(() => {
+        if (!isPlaying || stopRequested) {
+          resolve();
+          return;
         }
-      }
-    }, totalMs - baseDurSec * 500);
-
-    if (!playPromiseResolve) {
-      return new Promise(resolve => {
-        playPromiseResolve = resolve;
-      });
-    }
+        setPillState(melody.freqs.length - 1, 'done');
+        if (loopMelodyCb && loopMelodyCb.checked && currentMelody === melody && !stopRequested && isPlaying) {
+          playMelody(melody).then(resolve);
+        } else {
+          resolve();
+        }
+      }, totalMs - baseDurSec * 500);
+    });
   }
 
   /* ─── UI state machine ───────────────────────────────────────────────── */
