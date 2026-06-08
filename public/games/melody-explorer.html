@@ -771,6 +771,7 @@
   let currentMelody = null; // { freqs, durations, stateString }
   let isPlaying = false;
   let stopRequested = false;
+  let playPromiseResolve = null; // resolver for the active playMelody() Promise (used by stopAudio)
   let audioCtx = null;
 
   /* ─── DOM refs ───────────────────────────────────────────────────────── */
@@ -991,16 +992,25 @@
     const totalMs = (cursor - ctx.currentTime) * 1000;
 
     return new Promise(resolve => {
+      // Expose this resolver so stopAudio() can short-circuit playback immediately
+      // instead of waiting for the scheduled setTimeout to fire.
+      playPromiseResolve = resolve;
+
+      const finish = (value) => {
+        if (playPromiseResolve === resolve) playPromiseResolve = null;
+        resolve(value);
+      };
+
       setTimeout(() => {
         if (!isPlaying || stopRequested) {
-          resolve();
+          finish();
           return;
         }
         setPillState(melody.freqs.length - 1, 'done');
         if (loopMelodyCb && loopMelodyCb.checked && currentMelody === melody && !stopRequested && isPlaying) {
-          playMelody(melody).then(resolve);
+          playMelody(melody).then(finish);
         } else {
-          resolve();
+          finish();
         }
       }, totalMs - baseDurSec * 500);
     });
