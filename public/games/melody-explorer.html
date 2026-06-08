@@ -251,7 +251,24 @@
 
     /* ── Rating section ─────────────────────────────────────────────── */
     #rating-section {
-      display: none;
+      /* Always visible — users can rate the currently displayed melody at
+         any time, not just after playback finishes. */
+    }
+
+    #rating-section .rating-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+      line-height: 1.4;
+    }
+
+    #rating-section .rating-hint code {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 0.05rem 0.35rem;
+      border-radius: 4px;
+      color: var(--accent2);
+      font-size: 0.78rem;
     }
 
     .rating-label {
@@ -595,6 +612,11 @@
 <div class="card" id="rating-section">
   <h2>Rate This Melody</h2>
 
+  <p class="rating-hint">
+    Rate the melody currently shown above (state string <code id="rating-state-preview">—</code>).
+    Saving stores it to your history and generates a new state string for the next melody.
+  </p>
+
   <div id="rating-value-display">5 / 10</div>
   <div class="rating-label"><span>0</span><span>10</span></div>
   <input type="range" id="rating-slider" min="0" max="10" value="5" step="1" />
@@ -609,7 +631,7 @@
 <section id="history-section">
   <h2>Saved Melodies</h2>
   <div class="table-wrap">
-    <div id="empty-state">No melodies saved yet. Play one and rate it!</div>
+    <div id="empty-state">No melodies saved yet. Pick a rating below and hit 💾 Save Rating to add the current melody.</div>
     <table id="history-table" style="display:none">
       <thead>
         <tr>
@@ -618,6 +640,7 @@
           <th>State String</th>
           <th>Frequencies (Hz)</th>
           <th>Play</th>
+          <th>Load</th>
         </tr>
       </thead>
       <tbody id="history-body"></tbody>
@@ -734,7 +757,17 @@
   }
 
   /* ─── State ─────────────────────────────────────────────────────────── */
+  const LS_SAVED_MELODIES_KEY = 'melodyExplorer_savedMelodies';
   let savedMelodies = [];
+  try {
+    const fromStorage = localStorage.getItem(LS_SAVED_MELODIES_KEY);
+    if (fromStorage) {
+      savedMelodies = JSON.parse(fromStorage);
+    }
+  } catch (e) {
+    console.warn("Could not load saved melodies from localStorage:", e);
+  }
+
   let currentMelody = null; // { freqs, durations, stateString }
   let isPlaying = false;
   let stopRequested = false;
@@ -1024,16 +1057,27 @@
     }
   }
 
-  function showRatingSection() {
-    ratingSection.style.display = 'block';
+  // The rating section is now always visible — it rates the currently
+  // displayed melody (whatever the state string describes). These helpers
+  // just refresh the hint preview and (optionally) reset the slider.
+  const ratingStatePreview = document.getElementById('rating-state-preview');
+  function updateRatingPreview() {
+    if (ratingStatePreview) {
+      ratingStatePreview.textContent = encodeState();
+    }
+  }
+  function resetRatingSlider() {
     ratingSlider.value = 5;
     updateSliderStyle();
     ratingDisplay.textContent = '5 / 10';
-    statusEl.textContent = 'Melody done! Rate it below.';
   }
-
+  // Kept as no-ops / shims so existing call sites still work.
+  function showRatingSection() {
+    updateRatingPreview();
+  }
   function hideRatingSection() {
-    ratingSection.style.display = 'none';
+    // Rating section stays visible; just refresh the preview.
+    updateRatingPreview();
   }
 
   function updateSliderStyle() {
@@ -1045,6 +1089,11 @@
   ratingSlider.addEventListener('input', () => {
     ratingDisplay.textContent = `${ratingSlider.value} / 10`;
     updateSliderStyle();
+  });
+
+  // Keep the rating preview in sync when the state string is edited directly.
+  document.getElementById('state-string').addEventListener('input', () => {
+    if (typeof updateRatingPreview === 'function') updateRatingPreview();
   });
 
   /* ─── Colour helper for rating ───────────────────────────────────────── */
@@ -1101,6 +1150,7 @@
     }
     stateInput.value = encodeState();
     updateURLState();
+    if (typeof updateRatingPreview === 'function') updateRatingPreview();
   }
 
   /* ─── Shareable URL plumbing (?state=...) ─────────────────────────────
@@ -1117,8 +1167,10 @@
   // Reflect the current state into the address bar without reloading.
   function updateURLState() {
     try {
-      const url = '?state=' + encodeURIComponent(encodeState());
+      const stateStr = encodeState();
+      const url = '?state=' + encodeURIComponent(stateStr);
       history.replaceState(null, '', url);
+      document.title = stateStr + " — Melody Explorer";
     } catch (e) { /* non-browser / sandboxed: ignore */ }
   }
 
@@ -1150,6 +1202,7 @@
         params[key] = clampField(key, el.value);
         if (valRefs[key]) valRefs[key].textContent = valLabel(key);
         stateInput.value = encodeState();
+        if (typeof updateRatingPreview === 'function') updateRatingPreview();
       });
     }
     // Editing the state-string field directly updates everything.
@@ -1306,24 +1359,80 @@
     if(!stopRequested) showRatingSection();
   });
 
-  /* ─── Event: Save Rating ─────────────────────────────────────────────── */
+  /* ─── Event: Save Rating ─────────────────────────────────────────────
+     The Save button is always available. If no melody object exists yet
+     (e.g. user opened the page, tweaked sliders, but never hit Play),
+     we generate one on the fly from the current params so the displayed
+     state string can still be rated.
+
+     After saving, a NEW random state string is generated and loaded into
+     the UI, so the user is immediately presented with a new melody to
+     rate next. ───────────────────────────────────────────────────────── */
+  function rollNewState() {
+    // Roll a fresh random seed + a few musical params for variety.
+    params.seed  = Math.floor(Math.random() * 46656); // 0..'zzz'
+    params.root  = Math.floor(Math.random() * 12);
+    params.scale = Math.floor(Math.random() * SCALES.length);
+    params.len   = 5 + Math.floor(Math.random() * 9);   // 5..13
+    params.jump  = Math.floor(Math.random() * 7);        // 0..6
+    params.rhythm= Math.floor(Math.random() * 7);        // 0..6
+    params.wave  = Math.floor(Math.random() * WAVES.length);
+    syncUIFromParams();
+    // Refresh the currently-displayed melody so Replay etc. uses the new one.
+    currentMelody = generateMelody();
+    buildPills(currentMelody.freqs);
+  }
+
   btnSave.addEventListener('click', () => {
-    if (!currentMelody) return;
+    // Make sure the params reflect the latest slider / state-input values.
+    syncParamsFromSliders();
+    // If no melody object exists, derive one from current params so the
+    // user can rate purely from the displayed state string.
+    if (!currentMelody) {
+      currentMelody = generateMelody();
+      buildPills(currentMelody.freqs);
+    }
     const rating = parseInt(ratingSlider.value, 10);
-    const entry = {
-      id: savedMelodies.length + 1,
-      rating,
-      stateString: currentMelody.stateString,
-      freqs: currentMelody.freqs,
-      timestamp: new Date().toISOString()
-    };
-    savedMelodies.unshift(entry);
-    hideRatingSection();
-    statusEl.textContent = `✅ Saved! Rating: ${rating}/10. Play another?`;
-    currentMelody = null;
-    // btnPlay.disabled = false;
+    const savedString = currentMelody.stateString;
+
+    // If a melody with the EXACT same state string is already saved, update
+    // that existing entry's rating + timestamp (and bump it to the top)
+    // rather than creating a duplicate row.
+    const existingIdx = savedMelodies.findIndex(
+      (m) => m.stateString === currentMelody.stateString
+    );
+    if (existingIdx !== -1) {
+      const existing = savedMelodies[existingIdx];
+      existing.rating = rating;
+      existing.freqs = currentMelody.freqs;
+      existing.timestamp = new Date().toISOString();
+      // Bump to the top so the most recently rated melody is most visible.
+      savedMelodies.splice(existingIdx, 1);
+      savedMelodies.unshift(existing);
+      statusEl.textContent = `✅ Updated ${savedString} → ${rating}/10. New melody ready below.`;
+    } else {
+      const entry = {
+        id: savedMelodies.length + 1,
+        rating,
+        stateString: currentMelody.stateString,
+        freqs: currentMelody.freqs,
+        timestamp: new Date().toISOString()
+      };
+      savedMelodies.unshift(entry);
+      statusEl.textContent = `✅ Saved ${savedString} @ ${rating}/10. New melody ready below.`;
+    }
+    try {
+      localStorage.setItem(LS_SAVED_MELODIES_KEY, JSON.stringify(savedMelodies));
+    } catch (e) {
+      console.warn("Could not save melodies to localStorage:", e);
+    }
     renderTable();
     btnExport.disabled = false;
+
+    // Generate a new state string for the next rating round.
+    rollNewState();
+    resetRatingSlider();
+    updateRatingPreview();
 
     if (document.getElementById('auto-start') && document.getElementById('auto-start').checked) {
       btnPlay.click();
@@ -1381,6 +1490,35 @@
         if(!stopRequested) statusEl.textContent = 'Replay done.';
       });
 
+      // Load/Edit button — pulls this row's params into the main UI sliders,
+      // refreshes the component state and reflects its saved rating, WITHOUT
+      // auto-playing the audio. Lets the user re-rate or tweak parameters.
+      const loadBtn = document.createElement('button');
+      loadBtn.className = 'btn-play-row';
+      loadBtn.textContent = '✎ Load';
+      loadBtn.title = 'Load this melody into the editor (no playback)';
+      loadBtn.style.fontSize = '0.75rem';
+      loadBtn.addEventListener('click', () => {
+        // Bring the saved parameter state into the main UI sliders.
+        if (!loadStateString(entry.stateString)) return;
+        // Refresh the current melody object so Replay/Save target this one.
+        currentMelody = generateMelody();
+        buildPills(currentMelody.freqs);
+        // Reflect the existing saved rating on the slider so the user sees it.
+        const r = parseInt(entry.rating, 10);
+        if (!isNaN(r)) {
+          ratingSlider.value = r;
+          ratingDisplay.textContent = `${r} / 10`;
+          updateSliderStyle();
+        }
+        updateRatingPreview();
+        statusEl.textContent = `✎ Loaded ${entry.stateString} @ ${entry.rating}/10 — edit params or re-rate, then Save.`;
+        // Bring the editor into view on mobile.
+        if (playCard && playCard.scrollIntoView) {
+          playCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+
       const color = ratingColor(entry.rating);
       tr.innerHTML = `
         <td>${entry.id}</td>
@@ -1388,8 +1526,10 @@
         <td><span style="font-family:monospace; color:var(--muted)">${entry.stateString}</span></td>
         <td><span class="hz-list">${entry.freqs.join(', ')}</span></td>
         <td></td>
+        <td></td>
       `;
       tr.cells[4].appendChild(playBtn);
+      tr.cells[5].appendChild(loadBtn);
       historyBody.appendChild(tr);
     });
   }
@@ -1422,13 +1562,36 @@
   initSeqSliders();
   renderTable();
   updateSliderStyle();
+
+  // Generate an initial melody right away so the rating component always has
+  // a concrete target the moment the page loads — no need to press Play /
+  // Generate first. Rating (sliders, number keys, Save) works immediately and
+  // is fully decoupled from playback state.
+  if (!currentMelody) {
+    try {
+      currentMelody = generateMelody();
+      buildPills(currentMelody.freqs);
+    } catch (e) {
+      console.warn('Could not generate initial melody:', e);
+    }
+  }
+
   if (sharedLoaded) {
     statusEl.textContent = '🔗 Shared melody loaded — hit ▶ Play State String to hear it.';
+    document.title = initialURLState + " — Melody Explorer";
   }
+
+  // Initial rating preview reflects whatever state was loaded.
+  if (typeof updateRatingPreview === 'function') updateRatingPreview();
 
   /* ─── Keyboard shortcuts ─────────────────────────────────────────────── */
   window.addEventListener('keydown', (e) => {
-    if (!currentMelody || isPlaying || ratingSection.style.display === 'none') return;
+    // Number keys set a rating directly. The rating section is always
+    // visible now, so we only block while a melody is currently playing
+    // or when the user is typing in an input field.
+    if (isPlaying) return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     const num = parseInt(e.key, 10);
     if (!isNaN(num) && num >= 1 && num <= 9) {
       ratingSlider.value = num;
