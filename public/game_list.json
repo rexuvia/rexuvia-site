@@ -12,12 +12,12 @@
   {
     "id": "melody-explorer",
     "title": "Melody Explorer",
-    "description": "Generate seeded melodies from a shareable state string. Tweak root note, scale, length, octave range, jumpiness, rhythm, and waveform — the same string always replays the same melody.",
+    "description": "Generate seeded melodies from a shareable state string. Tweak root note, scale, length, octave range, jumpiness, rhythm, and waveform — the same string always replays the same melody. Choose from multiple notation systems (English, Solfège, Scientific Pitch, Helmholtz, German, Byzantine) with each note's frequency shown for reference.",
     "url": "/games/melody-explorer.html",
     "github_url": "https://github.com/rexuvia/melody-explorer",
     "file": "melody-explorer.html",
     "date": "2026-03-28",
-    "last_updated": "2026-06-08"
+    "last_updated": "2026-06-10"
   },
   {
     "title": "Word Bird",

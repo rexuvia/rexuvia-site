@@ -162,14 +162,30 @@
     }
 
     .pill {
-      padding: 0.2rem 0.65rem;
-      border-radius: 20px;
-      font-size: 0.78rem;
-      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.28rem 0.7rem;
+      border-radius: 14px;
       background: var(--bg2);
       border: 1px solid var(--border);
       color: var(--muted);
       transition: all 0.2s;
+      line-height: 1.15;
+    }
+
+    .pill-note {
+      font-size: 0.92rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .pill-freq {
+      font-size: 0.6rem;
+      font-weight: 600;
+      opacity: 0.7;
+      font-family: monospace;
+      margin-top: 1px;
     }
 
     .pill.active {
@@ -423,6 +439,29 @@
       font-family: monospace;
     }
 
+    .note-cell {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 0.25rem 0.25rem 0;
+      padding: 0.12rem 0.4rem;
+      border-radius: 6px;
+      background: var(--bg2);
+      border: 1px solid #2a0050;
+    }
+    .note-cell-name {
+      color: var(--accent2);
+      font-weight: 700;
+      font-size: 0.8rem;
+      line-height: 1.1;
+    }
+    .note-cell-hz {
+      color: var(--muted);
+      font-family: monospace;
+      font-size: 0.62rem;
+      line-height: 1.1;
+    }
+
     .btn-play-row {
       background: transparent;
       border: 1px solid var(--accent1);
@@ -499,6 +538,23 @@
 
   <div id="note-pills"></div>
   <div id="status">Press "Play New Melody" to begin.</div>
+
+  <!-- Notation system selector -->
+  <div class="settings-row">
+    <div class="setting-group" style="flex: 1 1 100%;">
+      <label for="notation-system">Notation System</label>
+      <select id="notation-system">
+        <option value="english" selected>Standard (English: C, D, E…)</option>
+        <option value="solfege">Solfège (Do, Re, Mi…)</option>
+        <option value="spn">Scientific Pitch Notation (C4, A4…)</option>
+        <option value="helmholtz">Helmholtz (C, c, c′…)</option>
+        <option value="german">German (C, D, …, H, B)</option>
+        <option value="byzantine">Byzantine (Ni, Pa, Vu…)</option>
+        <option value="hz">Frequency only (Hz)</option>
+      </select>
+      <span style="font-size:0.7rem; color:var(--muted); margin-top:0.15rem;">Each note shows its name in the chosen system with the exact frequency in small text underneath — handy for learning.</span>
+    </div>
+  </div>
 
   <!-- Playback Settings -->
   <div class="settings-row">
@@ -638,7 +694,7 @@
           <th>#</th>
           <th>Rating</th>
           <th>State String</th>
-          <th>Frequencies (Hz)</th>
+          <th>Notes</th>
           <th>Play</th>
           <th>Load</th>
         </tr>
@@ -660,6 +716,7 @@
   const LS_DURATION_KEY = 'melodyExplorer_noteDuration';
   const LS_GAP_KEY      = 'melodyExplorer_noteGap';
   const LS_LOOP_KEY     = 'melodyExplorer_loop';
+  const LS_NOTATION_KEY = 'melodyExplorer_notation';
 
   /* ===================================================================
      STATE STRING ARCHITECTURE  (modelled on glitch-loom)
@@ -685,6 +742,67 @@
     { name: 'Chromatic',      steps: [0,1,2,3,4,5,6,7,8,9,10,11] }
   ];
   const WAVES = ['sine','triangle','square','sawtooth'];
+
+  /* ===================================================================
+     NOTATION SYSTEMS
+     -------------------------------------------------------------------
+     Notes are stored purely as frequencies (Hz). To display them in a
+     chosen naming system we find the nearest equal-tempered MIDI note
+     (A4 = 440 Hz, midi 69) and format its pitch-class + octave.
+     Each formatter returns the note's NAME in that system; the exact
+     frequency is always shown alongside it in smaller text.
+     =================================================================== */
+  // Sharps-based pitch-class names (index 0..11 == C..B).
+  const PC_ENGLISH   = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+  // German: B♮ is 'H', and B♭ is 'B'. Sharps use '-is', flats '-es'.
+  const PC_GERMAN    = ['C','Cis','D','Dis','E','F','Fis','G','Gis','A','B','H'];
+  // Solfège (fixed Do). Sharps marked with ♯.
+  const PC_SOLFEGE   = ['Do','Do♯','Re','Re♯','Mi','Fa','Fa♯','Sol','Sol♯','La','La♯','Si'];
+  // Byzantine / Greek parallage (martyria names), fixed-Do style.
+  const PC_BYZANTINE = ['Ni','Ni♯','Pa','Pa♯','Vu','Ga','Ga♯','Di','Di♯','Ke','Ke♯','Zo'];
+
+  // Convert a frequency to the nearest MIDI note number.
+  function freqToMidi(freq) {
+    return Math.round(69 + 12 * Math.log2(freq / 440));
+  }
+
+  // Helmholtz pitch notation: great octave uppercase (C, C♯ … with sub-
+  // scripts as ,, ), small octave lowercase (c), then c′, c″ for higher
+  // octaves. Octave boundaries are by scientific octave number.
+  function helmholtz(pc, sciOct) {
+    const name = PC_ENGLISH[pc];
+    if (sciOct <= 1) {
+      // C..B: C2 -> 'C,'  C1 -> 'C,,' (sub-contra), C0 -> 'C,,,'
+      const commas = ',';
+      const extra  = sciOct <= 0 ? ',' .repeat(2 - sciOct) : '';
+      return name.toUpperCase() + commas + extra;
+    }
+    if (sciOct === 2) return name.toUpperCase();          // great octave: C
+    if (sciOct === 3) return name.toLowerCase();          // small octave: c
+    // sciOct 4 -> c′, 5 -> c″, 6 -> c‴ …
+    return name.toLowerCase() + '′'.repeat(sciOct - 3);
+  }
+
+  // Format a frequency in a given notation system. Returns the NAME only;
+  // the caller renders the Hz separately in smaller text.
+  function formatNote(freq, system) {
+    const midi   = freqToMidi(freq);
+    const pc     = ((midi % 12) + 12) % 12;
+    const sciOct = Math.floor(midi / 12) - 1; // MIDI octave: C4 = midi 60
+    switch (system) {
+      case 'hz':        return freq + ' Hz';
+      case 'solfege':   return PC_SOLFEGE[pc];
+      case 'german':    return PC_GERMAN[pc];
+      case 'byzantine': return PC_BYZANTINE[pc];
+      case 'helmholtz': return helmholtz(pc, sciOct);
+      case 'spn':       return PC_ENGLISH[pc] + sciOct;
+      case 'english':
+      default:          return PC_ENGLISH[pc];
+    }
+  }
+
+  // Currently-selected notation system (set from the dropdown / storage).
+  let currentNotation = 'english';
 
   // Field definitions: [key, min, max]. Order defines string order.
   const FIELDS = [
@@ -793,6 +911,7 @@
   const noteDurationSel  = document.getElementById('note-duration');
   const noteGapSel       = document.getElementById('note-gap');
   const loopMelodyCb     = document.getElementById('loop-melody');
+  const notationSel      = document.getElementById('notation-system');
 
   /* ─── Helpers: get current settings ─────────────────────────────────── */
   function getNoteDurationMs()  { return parseInt(noteDurationSel.value, 10); }
@@ -803,6 +922,7 @@
     localStorage.setItem(LS_DURATION_KEY, noteDurationSel.value);
     localStorage.setItem(LS_GAP_KEY,      noteGapSel.value);
     localStorage.setItem(LS_LOOP_KEY,     loopMelodyCb.checked ? '1' : '0');
+    localStorage.setItem(LS_NOTATION_KEY, notationSel.value);
   }
 
   function loadSettings() {
@@ -818,11 +938,23 @@
     if (loop !== null) {
       loopMelodyCb.checked = (loop === '1');
     }
+    const notation = localStorage.getItem(LS_NOTATION_KEY);
+    if (notation && [...notationSel.options].some(o => o.value === notation)) {
+      notationSel.value = notation;
+    }
+    currentNotation = notationSel.value;
   }
 
   noteDurationSel.addEventListener('change', saveSettings);
   noteGapSel.addEventListener('change', saveSettings);
   loopMelodyCb.addEventListener('change', saveSettings);
+  notationSel.addEventListener('change', () => {
+    currentNotation = notationSel.value;
+    saveSettings();
+    // Re-render the currently displayed notes/table in the new system.
+    if (currentMelody && currentMelody.freqs) buildPills(currentMelody.freqs);
+    renderTable();
+  });
 
   /* ─── Audio helpers ──────────────────────────────────────────────────── */
   function getAudioCtx() {
@@ -952,7 +1084,13 @@
       const pill = document.createElement('div');
       pill.className = 'pill';
       pill.id = `pill-${i}`;
-      pill.textContent = `${f} Hz`;
+      const noteName = formatNote(f, currentNotation);
+      if (currentNotation === 'hz') {
+        // Frequency-only mode: just the Hz, but keep the two-line structure.
+        pill.innerHTML = `<span class="pill-note">${f}</span><span class="pill-freq">Hz</span>`;
+      } else {
+        pill.innerHTML = `<span class="pill-note">${noteName}</span><span class="pill-freq">${f} Hz</span>`;
+      }
       notePills.appendChild(pill);
     });
   }
@@ -1534,7 +1672,7 @@
         <td>${entry.id}</td>
         <td><span class="rating-badge" style="color:${color};border:1px solid ${color};background:${color}22">${entry.rating}/10</span></td>
         <td><span style="font-family:monospace; color:var(--muted)">${entry.stateString}</span></td>
-        <td><span class="hz-list">${entry.freqs.join(', ')}</span></td>
+        <td>${entry.freqs.map(f => `<span class="note-cell"><span class="note-cell-name">${formatNote(f, currentNotation)}</span><span class="note-cell-hz">${f} Hz</span></span>`).join('')}</td>
         <td></td>
         <td></td>
       `;
