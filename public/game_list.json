@@ -1,5 +1,15 @@
 [
   {
+    "id": "glitch-weaver",
+    "title": "Glitchweaver",
+    "date": "2026-06-10",
+    "last_updated": "2026-06-10",
+    "description": "Explore the genetic space of glitch-art weaves and soundscapes in this hybrid sidescroller.",
+    "url": "/games/glitch-weaver.html",
+    "file": "glitch-weaver.html",
+    "github_url": "https://github.com/rexuvia/glitch-weaver"
+  },
+  {
     "id": "melody-explorer",
     "title": "Melody Explorer",
     "description": "Generate seeded melodies from a shareable state string. Tweak root note, scale, length, octave range, jumpiness, rhythm, and waveform — the same string always replays the same melody.",
