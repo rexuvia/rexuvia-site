@@ -371,6 +371,33 @@
       height: 6px;
     }
 
+    /* Pattern / scale dropdown — matches the synth control aesthetic. */
+    select.param-select {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--accent2);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.45rem 0.7rem;
+      padding-right: 2rem;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238866aa' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.7rem center;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    select.param-select:hover,
+    select.param-select:focus {
+      border-color: var(--accent2);
+      box-shadow: var(--glow2);
+    }
+
     /* ── Table ───────────────────────────────────────────────────────── */
     #history-section {
       width: 100%;
@@ -614,10 +641,10 @@
       <label class="param-label" for="p-root">Root Note <span class="param-val" id="v-root">C</span></label>
       <input type="range" id="p-root" class="param-slider" min="0" max="11" step="1" value="0" />
     </div>
-    <!-- Scale -->
+    <!-- Scale / Pattern (dropdown, populated from SCALES) -->
     <div class="param-row">
-      <label class="param-label" for="p-scale">Scale <span class="param-val" id="v-scale">Major</span></label>
-      <input type="range" id="p-scale" class="param-slider" min="0" max="7" step="1" value="0" />
+      <label class="param-label" for="p-scale">Scale / Pattern <span class="param-val" id="v-scale">Major</span></label>
+      <select id="p-scale" class="param-select"></select>
     </div>
     <!-- Length -->
     <div class="param-row">
@@ -731,6 +758,9 @@
      e.g.  4f2-0-2-8-2-4-3-4-0
      =================================================================== */
   const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  // Musical patterns (scales / modes). NOTE: new patterns are APPENDED to the
+  // end of this list so existing shared state strings (which encode the scale
+  // by its index) keep resolving to the same pattern — never reorder entries.
   const SCALES = [
     { name: 'Major',          steps: [0,2,4,5,7,9,11] },
     { name: 'Minor',          steps: [0,2,3,5,7,8,10] },
@@ -739,7 +769,18 @@
     { name: 'Dorian',         steps: [0,2,3,5,7,9,10] },
     { name: 'Phrygian',       steps: [0,1,3,5,7,8,10] },
     { name: 'Blues',          steps: [0,3,5,6,7,10] },
-    { name: 'Chromatic',      steps: [0,1,2,3,4,5,6,7,8,9,10,11] }
+    { name: 'Chromatic',      steps: [0,1,2,3,4,5,6,7,8,9,10,11] },
+    // ── New patterns ──────────────────────────────────────────────────
+    { name: 'Harmonic Minor', steps: [0,2,3,5,7,8,11] },
+    { name: 'Melodic Minor',  steps: [0,2,3,5,7,9,11] },
+    { name: 'Lydian',         steps: [0,2,4,6,7,9,11] },
+    { name: 'Mixolydian',     steps: [0,2,4,5,7,9,10] },
+    { name: 'Locrian',        steps: [0,1,3,5,6,8,10] },
+    { name: 'Whole Tone',     steps: [0,2,4,6,8,10] },
+    { name: 'Hungarian Min',  steps: [0,2,3,6,7,8,11] },
+    { name: 'Hirajoshi',      steps: [0,2,3,7,8] },
+    { name: 'Double Harm',    steps: [0,1,4,5,7,8,11] },
+    { name: 'Egyptian',       steps: [0,2,5,7,10] }
   ];
   const WAVES = ['sine','triangle','square','sawtooth'];
 
@@ -1341,17 +1382,36 @@
     }
   }
 
+  // Populate the Scale/Pattern dropdown from SCALES. Option values are the
+  // SCALES index, keeping them in lockstep with the seeded state string.
+  function populateScaleOptions() {
+    const sel = sliderRefs.scale;
+    if (!sel || sel.tagName !== 'SELECT') return;
+    sel.innerHTML = '';
+    SCALES.forEach((s, i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+    sel.value = String(clampField('scale', params.scale));
+  }
+
   // Wire each slider so editing it updates params + state string live.
   function initSeqSliders() {
+    populateScaleOptions();
     for (const key in sliderRefs) {
       const el = sliderRefs[key];
       if (!el) continue;
-      el.addEventListener('input', () => {
+      const onEdit = () => {
         params[key] = clampField(key, el.value);
         if (valRefs[key]) valRefs[key].textContent = valLabel(key);
         stateInput.value = encodeState();
         if (typeof updateRatingPreview === 'function') updateRatingPreview();
-      });
+      };
+      el.addEventListener('input', onEdit);
+      // Selects fire 'change' reliably across browsers; harmless for ranges.
+      if (el.tagName === 'SELECT') el.addEventListener('change', onEdit);
     }
     // Editing the state-string field directly updates everything.
     stateInput.addEventListener('change', () => {
